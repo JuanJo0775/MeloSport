@@ -1,0 +1,12 @@
+para correr tod
+
+        python manage.py runserver
+
+migraciones
+
+        python manage.py makemigrations
+        python manage.py migrate
+
+Admin
+
+        http://127.0.0.1:8000/admin
