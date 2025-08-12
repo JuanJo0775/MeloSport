@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 
@@ -55,6 +56,8 @@ INSTALLED_APPS = [
     # Apps externas
     'rest_framework',
     'rest_framework_simplejwt',
+    'django_filters',
+    'corsheaders',
 
     # Tus apps
     'apps.backoffice',
@@ -63,6 +66,9 @@ INSTALLED_APPS = [
     'apps.reports',
     'apps.users',
     'apps.database',
+
+    # nuestro api central
+    'apps.api',
 
     'apps.frontend',
 ]
@@ -73,12 +79,24 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',  # por defecto todo requiere auth
-    )
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
+}
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -118,6 +136,19 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Para collectstatic
 
 
 WSGI_APPLICATION = 'MeloSport.wsgi.application'
+
+
+#CORS — reemplaza https://tu-frontend.com con la URL final de tu frontend:
+
+# en desarrollo temporalmente:
+CORS_ALLOW_ALL_ORIGINS = True
+
+#CORS_ALLOWED_ORIGINS = [
+#    "http://localhost:3000",
+#    "http://127.0.0.1:3000",
+#    "http://localhost:8000",
+#    "https://tu-frontend.com",
+#]
 
 
 # Database
