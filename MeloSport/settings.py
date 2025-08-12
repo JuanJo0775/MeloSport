@@ -54,7 +54,7 @@ INSTALLED_APPS = [
 
 
 
-
+    'apps.backoffice',
     'apps.products',
     'apps.categories',
     'apps.reports',
@@ -78,8 +78,9 @@ ROOT_URLCONF = 'MeloSport.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],  # Cambiado a usar os.path.join
-        'APP_DIRS': True,
+        # Si tienes una carpeta global para templates fuera de las apps:
+        'DIRS': [],
+        'APP_DIRS': True,  # Esto hace que Django busque también en cada app
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -90,6 +91,16 @@ TEMPLATES = [
         },
     },
 ]
+
+# Para los archivos estáticos
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # Carpeta global (opcional)
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Para collectstatic
+
+# Esto permite que Django busque en cada app
+
 
 WSGI_APPLICATION = 'MeloSport.wsgi.application'
 
@@ -136,12 +147,6 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

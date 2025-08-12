@@ -1,0 +1,368 @@
+{% extends "backoffice/base_backoffice.html" %}
+
+{% block title %}Dashboard - Panel Administrativo - Melosport{% endblock %}
+
+{% block breadcrumb_active %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Bienvenida y resumen rápido -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="card-title h4 mb-1">¡Bienvenido de vuelta!</h2>
+                            <p class="text-muted mb-0">Aquí tienes un resumen de tu inventario</p>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">Última actualización: </small>
+                            <strong class="text-primary">Hoy, 14:30</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas de estadísticas principales -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card border-left-primary h-100">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Productos
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">1,247</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-box stats-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card border-left-success h-100">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Valor Inventario
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">$89,420</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-currency-dollar stats-icon text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card border-left-warning h-100">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Stock Bajo
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">23</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-exclamation-triangle stats-icon text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stats-card border-left-info h-100">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Categorías
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">12</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-tags stats-icon text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos y reportes -->
+    <div class="row mb-4">
+        <!-- Gráfico de ventas -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Movimientos de Inventario - Últimos 7 días</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">Ver reporte completo</a></li>
+                            <li><a class="dropdown-item" href="#">Exportar datos</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="movimientosChart" class="chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top productos -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Productos Más Vendidos</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">Balón Fútbol Profesional</div>
+                                <small class="text-muted">SKU: BFP-001</small>
+                            </div>
+                            <span class="badge bg-success">45 vendidos</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">Camiseta Deportiva L</div>
+                                <small class="text-muted">SKU: CD-L-002</small>
+                            </div>
+                            <span class="badge bg-success">38 vendidos</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">Zapatillas Running</div>
+                                <small class="text-muted">SKU: ZR-42-003</small>
+                            </div>
+                            <span class="badge bg-success">32 vendidos</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="#" class="btn btn-sm btn-outline-primary">Ver todos los reportes <i class="bi bi-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas y notificaciones -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-danger">Alertas de Stock Bajo</h6>
+                    <span class="badge bg-danger">23</span>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div class="alert alert-warning border-left-warning mb-3" role="alert">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <strong>Conos de Entrenamiento</strong><br>
+                                <small class="text-muted">SKU: CE-001 • Stock: 3 unidades</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning border-left-warning mb-3" role="alert">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <strong>Balón Voleibol Oficial</strong><br>
+                                <small class="text-muted">SKU: BVO-001 • Stock: 1 unidad</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-danger border-left-danger mb-3" role="alert">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-x-circle"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <strong>Guantes Portero Talla M</strong><br>
+                                <small class="text-muted">SKU: GP-M-002 • Stock: 0 unidades</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="#" class="btn btn-sm btn-outline-danger">Ver todas las alertas</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Actividad Reciente</h6>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div class="timeline">
+                        <div class="d-flex mb-3">
+                            <div class="flex-shrink-0">
+                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 32px; height: 32px;">
+                                    <i class="bi bi-plus text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <div class="fw-bold">Producto agregado</div>
+                                <small class="text-muted">Se agregó "Balón Basketball Pro" hace 2 horas</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex mb-3">
+                            <div class="flex-shrink-0">
+                                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 32px; height: 32px;">
+                                    <i class="bi bi-check text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <div class="fw-bold">Stock actualizado</div>
+                                <small class="text-muted">Inventario de "Camisetas XL" actualizado hace 4 horas</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex mb-3">
+                            <div class="flex-shrink-0">
+                                <div class="bg-info rounded-circle d-flex align-items-center justify-content-center" 
+                                     style="width: 32px; height: 32px;">
+                                    <i class="bi bi-person text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <div class="fw-bold">Nuevo usuario</div>
+                                <small class="text-muted">Usuario "vendedor2" creado hace 1 día</small>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <a href="#" class="btn btn-sm btn-outline-primary">Ver historial completo</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold text-primary">Acciones Rápidas</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="#" class="btn btn-outline-primary w-100 p-3">
+                                <i class="bi bi-plus-circle d-block mb-2" style="font-size: 2rem;"></i>
+                                Agregar Producto
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="#" class="btn btn-outline-success w-100 p-3">
+                                <i class="bi bi-upload d-block mb-2" style="font-size: 2rem;"></i>
+                                Subir Inventario
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="#" class="btn btn-outline-info w-100 p-3">
+                                <i class="bi bi-file-earmark-text d-block mb-2" style="font-size: 2rem;"></i>
+                                Generar Reporte
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <a href="#" class="btn btn-outline-warning w-100 p-3">
+                                <i class="bi bi-database d-block mb-2" style="font-size: 2rem;"></i>
+                                Crear Respaldo
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Configuración del gráfico de movimientos
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('movimientosChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                datasets: [{
+                    label: 'Entradas',
+                    data: [12, 19, 8, 5, 2, 3, 15],
+                    borderColor: 'rgb(13, 110, 253)',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: 'Salidas',
+                    data: [7, 11, 5, 8, 3, 7, 12],
+                    borderColor: 'rgb(253, 126, 20)',
+                    backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Actualizar automáticamente las estadísticas cada 5 minutos
+        setInterval(function() {
+            // Aquí se implementaría la lógica para actualizar datos en tiempo real
+            console.log('Actualizando estadísticas...');
+        }, 300000); // 5 minutos
+    });
+</script>
+{% endblock %}

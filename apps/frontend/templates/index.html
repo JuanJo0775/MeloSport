@@ -1,0 +1,559 @@
+{% extends "base_public.html" %}
+
+{% block title %}Melosport - Catálogo de Productos Deportivos{% endblock %}
+
+{% block description %}Descubre nuestra amplia gama de productos deportivos: balones, uniformes, accesorios y más. Calidad garantizada para todos los deportes.{% endblock %}
+
+{% block content %}
+<!-- Carrusel de Promociones -->
+<section aria-label="Promociones destacadas" class="mb-5">
+    <div id="promocionesCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#promocionesCarousel" data-bs-slide-to="0" class="active" 
+                    aria-current="true" aria-label="Promoción 1"></button>
+            <button type="button" data-bs-target="#promocionesCarousel" data-bs-slide-to="1" 
+                    aria-label="Promoción 2"></button>
+            <button type="button" data-bs-target="#promocionesCarousel" data-bs-slide-to="2" 
+                    aria-label="Promoción 3"></button>
+        </div>
+        
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <div class="bg-primary text-white py-5" style="min-height: 400px;">
+                    <div class="container">
+                        <div class="row align-items-center">
+                            <div class="col-lg-6">
+                                <h1 class="display-4 fw-bold">¡Nuevos Balones Oficiales!</h1>
+                                <p class="lead">Descubre nuestra colección de balones profesionales con hasta 25% de descuento</p>
+                                <a href="#productos" class="btn btn-light btn-lg">Ver Productos</a>
+                            </div>
+                            <div class="col-lg-6 text-center">
+                                <i class="fas fa-futbol display-1 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="carousel-item">
+                <div class="bg-success text-white py-5" style="min-height: 400px;">
+                    <div class="container">
+                        <div class="row align-items-center">
+                            <div class="col-lg-6">
+                                <h1 class="display-4 fw-bold">Uniformes Personalizados</h1>
+                                <p class="lead">Crea uniformes únicos para tu equipo con nuestro servicio de personalización</p>
+                                <a href="#contacto" class="btn btn-light btn-lg">Contactar</a>
+                            </div>
+                            <div class="col-lg-6 text-center">
+                                <i class="fas fa-tshirt display-1 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="carousel-item">
+                <div class="bg-warning text-dark py-5" style="min-height: 400px;">
+                    <div class="container">
+                        <div class="row align-items-center">
+                            <div class="col-lg-6">
+                                <h1 class="display-4 fw-bold">Accesorios Deportivos</h1>
+                                <p class="lead">Conos, silbatos, redes y todo lo que necesitas para entrenar como un profesional</p>
+                                <a href="#productos" class="btn btn-dark btn-lg">Explorar</a>
+                            </div>
+                            <div class="col-lg-6 text-center">
+                                <i class="fas fa-trophy display-1 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="carousel-control-prev" type="button" data-bs-target="#promocionesCarousel" 
+                data-bs-slide="prev" aria-label="Promoción anterior">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Anterior</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#promocionesCarousel" 
+                data-bs-slide="next" aria-label="Siguiente promoción">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Siguiente</span>
+        </button>
+    </div>
+</section>
+
+<!-- Sección de Productos -->
+<section id="productos" class="container" aria-label="Catálogo de productos">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="display-5 fw-bold text-center mb-3">Nuestros Productos</h2>
+            <p class="text-center text-muted">Encuentra todo lo que necesitas para tu deporte favorito</p>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-lg-8 col-md-6">
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-primary active" data-filter="todos" aria-pressed="true">
+                    Todos los productos
+                </button>
+                <button class="btn btn-outline-primary" data-filter="futbol" aria-pressed="false">
+                    <i class="fas fa-futbol me-1"></i>Fútbol
+                </button>
+                <button class="btn btn-outline-primary" data-filter="basquet" aria-pressed="false">
+                    <i class="fas fa-basketball-ball me-1"></i>Baloncesto
+                </button>
+                <button class="btn btn-outline-primary" data-filter="voleibol" aria-pressed="false">
+                    <i class="fas fa-volleyball-ball me-1"></i>Voleibol
+                </button>
+                <button class="btn btn-outline-primary" data-filter="accesorios" aria-pressed="false">
+                    <i class="fas fa-cog me-1"></i>Accesorios
+                </button>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <select class="form-select" aria-label="Ordenar productos">
+                <option selected>Ordenar por...</option>
+                <option value="precio-asc">Precio: Menor a Mayor</option>
+                <option value="precio-desc">Precio: Mayor a Menor</option>
+                <option value="nombre">Nombre A-Z</option>
+                <option value="disponibilidad">Disponibilidad</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Grid de Productos -->
+    <div class="masonry-grid fade-in" id="productosGrid">
+        <!-- Producto 1 - Balón de Fútbol -->
+        <div class="producto-card card" data-categoria="futbol">
+            <img src="https://via.placeholder.com/300x220/007bff/ffffff?text=Balón+Fútbol" 
+                 class="card-img-top" alt="Balón de fútbol profesional">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-primary">Fútbol</span>
+                    <div class="interaction-buttons">
+                        <button class="btn btn-sm interaction-btn" aria-label="Agregar a favoritos">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <h5 class="card-title">Balón Profesional FIFA</h5>
+                <p class="card-text text-muted">Balón oficial para competencias profesionales. Tamaño 5, cosido a mano.</p>
+                
+                <!-- Variantes de Color -->
+                <div class="mb-2">
+                    <small class="text-muted">Variantes:</small>
+                    <div class="d-flex gap-1 mt-1">
+                        <button class="btn btn-sm btn-outline-secondary active" data-variant="blanco">Blanco</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-variant="negro">Negro</button>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="h5 text-primary mb-0">$89.990</span>
+                        <small class="text-muted d-block">Stock: 15 unidades</small>
+                    </div>
+                    <span class="badge badge-success">Disponible</span>
+                </div>
+                
+                <!-- Rating -->
+                <div class="mt-2">
+                    <div class="estrellitas">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star-half-alt"></i>
+                    </div>
+                    <small class="text-muted ms-1">(4.5/5)</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Producto 2 - Uniforme de Baloncesto -->
+        <div class="producto-card card" data-categoria="basquet">
+            <img src="https://via.placeholder.com/300x220/28a745/ffffff?text=Uniforme+Basket" 
+                 class="card-img-top" alt="Uniforme de baloncesto completo">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-success">Baloncesto</span>
+                    <div class="interaction-buttons">
+                        <button class="btn btn-sm interaction-btn" aria-label="Agregar a favoritos">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <h5 class="card-title">Uniforme Completo NBA Style</h5>
+                <p class="card-text text-muted">Set completo: camiseta + pantaloneta. Tela transpirable y resistente.</p>
+                
+                <!-- Variantes de Talla -->
+                <div class="mb-2">
+                    <small class="text-muted">Tallas:</small>
+                    <div class="d-flex gap-1 mt-1">
+                        <button class="btn btn-sm btn-outline-secondary" data-variant="s">S</button>
+                        <button class="btn btn-sm btn-outline-secondary active" data-variant="m">M</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-variant="l">L</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-variant="xl">XL</button>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="h5 text-success mb-0">$125.000</span>
+                        <small class="text-muted d-block">Stock: 8 unidades</small>
+                    </div>
+                    <span class="badge badge-warning">Pocas unidades</span>
+                </div>
+                
+                <div class="mt-2">
+                    <div class="estrellitas">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="far fa-star"></i>
+                    </div>
+                    <small class="text-muted ms-1">(4.0/5)</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Producto 3 - Red de Voleibol -->
+        <div class="producto-card card" data-categoria="voleibol">
+            <img src="https://via.placeholder.com/300x220/fd7e14/ffffff?text=Red+Voleibol" 
+                 class="card-img-top" alt="Red de voleibol profesional">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-warning text-dark">Voleibol</span>
+                    <div class="interaction-buttons">
+                        <button class="btn btn-sm interaction-btn active-favorite" aria-label="Quitar de favoritos">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <h5 class="card-title">Red Profesional FIVB</h5>
+                <p class="card-text text-muted">Red oficial para competencias. Incluye postes telescópicos y sistema de tensado.</p>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="h5 text-warning mb-0">$450.000</span>
+                        <small class="text-muted d-block">Stock: 3 unidades</small>
+                    </div>
+                    <span class="badge badge-danger">Últimas unidades</span>
+                </div>
+                
+                <div class="mt-2">
+                    <div class="estrellitas">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <small class="text-muted ms-1">(5.0/5)</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Producto 4 - Conos de Entrenamiento -->
+        <div class="producto-card card" data-categoria="accesorios">
+            <img src="https://via.placeholder.com/300x220/dc3545/ffffff?text=Conos+Training" 
+                 class="card-img-top" alt="Set de conos para entrenamiento">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-danger">Accesorios</span>
+                    <div class="interaction-buttons">
+                        <button class="btn btn-sm interaction-btn" aria-label="Agregar a favoritos">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <h5 class="card-title">Set de Conos de Entrenamiento</h5>
+                <p class="card-text text-muted">Pack de 20 conos multicolor. Ideales para entrenamientos de agilidad y coordinación.</p>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="h5 text-danger mb-0">$35.000</span>
+                        <small class="text-muted d-block">Stock: 25 unidades</small>
+                    </div>
+                    <span class="badge badge-success">Disponible</span>
+                </div>
+                
+                <div class="mt-2">
+                    <div class="estrellitas">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="far fa-star"></i>
+                    </div>
+                    <small class="text-muted ms-1">(4.2/5)</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Producto 5 - Silbato Profesional -->
+        <div class="producto-card card" data-categoria="accesorios">
+            <img src="https://via.placeholder.com/300x220/6c757d/ffffff?text=Silbato+Pro" 
+                 class="card-img-top" alt="Silbato profesional para árbitros">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-secondary">Accesorios</span>
+                    <div class="interaction-buttons">
+                        <button class="btn btn-sm interaction-btn" aria-label="Agregar a favoritos">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <h5 class="card-title">Silbato Profesional Fox 40</h5>
+                <p class="card-text text-muted">Silbato sin bolilla, sonido potente y claro. Incluye cordón ajustable.</p>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="h5 text-secondary mb-0">$18.500</span>
+                        <small class="text-muted d-block">Stock: 12 unidades</small>
+                    </div>
+                    <span class="badge badge-success">Disponible</span>
+                </div>
+                
+                <div class="mt-2">
+                    <div class="estrellitas">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <small class="text-muted ms-1">(4.8/5)</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Producto 6 - Zapatillas Fútbol -->
+        <div class="producto-card card" data-categoria="futbol">
+            <img src="https://via.placeholder.com/300x220/17a2b8/ffffff?text=Zapatillas+Fútbol" 
+                 class="card-img-top" alt="Zapatillas de fútbol profesionales">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-info">Fútbol</span>
+                    <div class="interaction-buttons">
+                        <button class="btn btn-sm interaction-btn" aria-label="Agregar a favoritos">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <h5 class="card-title">Zapatillas Futsal Pro</h5>
+                <p class="card-text text-muted">Zapatillas para canchas sintéticas. Suela de goma antideslizante y upper en cuero sintético.</p>
+                
+                <!-- Variantes de Talla -->
+                <div class="mb-2">
+                    <small class="text-muted">Tallas:</small>
+                    <div class="d-flex gap-1 mt-1">
+                        <button class="btn btn-sm btn-outline-secondary" data-variant="38">38</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-variant="40">40</button>
+                        <button class="btn btn-sm btn-outline-secondary active" data-variant="42">42</button>
+                        <button class="btn btn-sm btn-outline-secondary" data-variant="44">44</button>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="h5 text-info mb-0">$165.000</span>
+                        <small class="text-muted d-block">Stock: 6 unidades</small>
+                    </div>
+                    <span class="badge badge-warning">Pocas unidades</span>
+                </div>
+                
+                <div class="mt-2">
+                    <div class="estrellitas">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="far fa-star"></i>
+                    </div>
+                    <small class="text-muted ms-1">(4.3/5)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botón Cargar Más -->
+    <div class="text-center mt-5">
+        <button class="btn btn-outline-primary btn-lg" id="cargarMas">
+            <i class="fas fa-plus me-2"></i>Cargar más productos
+        </button>
+    </div>
+</section>
+
+<!-- Sección de Contacto -->
+<section id="contacto" class="bg-light py-5 mt-5" aria-label="Información de contacto">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card border-0 shadow">
+                    <div class="card-body p-5">
+                        <h2 class="display-6 fw-bold text-center mb-4">¿Tienes preguntas?</h2>
+                        <p class="text-center text-muted mb-4">
+                            Contáctanos para más información sobre nuestros productos o para realizar pedidos especiales
+                        </p>
+                        
+                        <form class="row g-3" novalidate>
+                            <div class="col-md-6">
+                                <label for="nombre" class="form-label">Nombre completo</label>
+                                <input type="text" class="form-control" id="nombre" required>
+                                <div class="invalid-feedback">
+                                    Por favor ingresa tu nombre completo.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" required>
+                                <div class="invalid-feedback">
+                                    Por favor ingresa un email válido.
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label for="asunto" class="form-label">Asunto</label>
+                                <select class="form-select" id="asunto" required>
+                                    <option selected disabled value="">Selecciona un asunto...</option>
+                                    <option value="consulta">Consulta general</option>
+                                    <option value="cotizacion">Solicitar cotización</option>
+                                    <option value="personalizacion">Uniformes personalizados</option>
+                                    <option value="disponibilidad">Consultar disponibilidad</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Por favor selecciona un asunto.
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label for="mensaje" class="form-label">Mensaje</label>
+                                <textarea class="form-control" id="mensaje" rows="4" 
+                                          placeholder="Describe tu consulta..." required></textarea>
+                                <div class="invalid-feedback">
+                                    Por favor ingresa tu mensaje.
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="terminos" required>
+                                    <label class="form-check-label" for="terminos">
+                                        Acepto los <a href="#" class="text-primary">términos y condiciones</a>
+                                    </label>
+                                    <div class="invalid-feedback">
+                                        Debes aceptar los términos y condiciones.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 text-center">
+                                <button class="btn btn-primary btn-lg" type="submit">
+                                    <i class="fas fa-paper-plane me-2"></i>Enviar mensaje
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Funcionalidad de filtros
+        const filterButtons = document.querySelectorAll('[data-filter]');
+        const productCards = document.querySelectorAll('.producto-card');
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                
+                // Actualizar estado de botones
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.classList.add('btn-outline-primary');
+                    btn.classList.remove('btn-primary');
+                    btn.setAttribute('aria-pressed', 'false');
+                });
+                
+                this.classList.add('active', 'btn-primary');
+                this.classList.remove('btn-outline-primary');
+                this.setAttribute('aria-pressed', 'true');
+                
+                // Filtrar productos
+                productCards.forEach(card => {
+                    if (filter === 'todos' || card.getAttribute('data-categoria') === filter) {
+                        card.style.display = 'block';
+                        card.classList.add('fade-in');
+                    } else {
+                        card.style.display = 'none';
+                        card.classList.remove('fade-in');
+                    }
+                });
+            });
+        });
+        
+        // Funcionalidad de favoritos
+        const favoriteButtons = document.querySelectorAll('.interaction-btn');
+        favoriteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                if (icon.classList.contains('far')) {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    this.classList.add('active-favorite');
+                } else {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    this.classList.remove('active-favorite');
+                }
+            });
+        });
+        
+        // Validación del formulario de contacto
+        const form = document.querySelector('form[novalidate]');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!form.checkValidity()) {
+                e.stopPropagation();
+            } else {
+                // Aquí se enviaría el formulario
+                alert('¡Mensaje enviado correctamente! Nos pondremos en contacto contigo pronto.');
+                form.reset();
+                form.classList.remove('was-validated');
+                return;
+            }
+            
+            form.classList.add('was-validated');
+        });
+        
+        // Funcionalidad "Cargar más"
+        document.getElementById('cargarMas').addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Cargando...';
+            
+            // Simular carga
+            setTimeout(() => {
+                this.innerHTML = '<i class="fas fa-check me-2"></i>Todos los productos cargados';
+                this.disabled = true;
+                this.classList.add('btn-success');
+                this.classList.remove('btn-outline-primary');
+            }, 1500);
+        });
+        
+        // Funcionalidad de variantes
+        document.querySelectorAll('[data-variant]').forEach(button => {
+            button.addEventListener('click', function() {
+                const siblings = this.parentElement.querySelectorAll('[data-variant]');
+                siblings.forEach(sibling => sibling.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    });
+</script>
+{% endblock %}
