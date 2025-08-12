@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from apps.products.models import Product, ProductImage, ProductVariant
 from apps.categories.models import Category
+from apps.frontend.models import FeaturedProductCarousel, ContactMessage
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -44,3 +46,28 @@ class ProductSerializer(serializers.ModelSerializer):
             'created_at','updated_at'
         )
         read_only_fields = ('id','created_at','updated_at')
+
+class CarouselItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_id = serializers.IntegerField(source='product.id', read_only=True)
+    product_price = serializers.DecimalField(source='product.price', max_digits=10, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = FeaturedProductCarousel
+        fields = [
+            'id', 'custom_title', 'custom_subtitle',
+            'display_order', 'is_active', 'created_at',
+            'product_id', 'product_name', 'product_price'
+        ]
+        read_only_fields = fields  # Solo lectura
+
+class ContactoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactMessage
+        fields = ['id', 'name', 'email', 'phone', 'message', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def validate_message(self, value):
+        if len(value) < 10:
+            raise serializers.ValidationError("El mensaje es demasiado corto.")
+        return value
