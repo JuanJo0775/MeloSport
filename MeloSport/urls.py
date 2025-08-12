@@ -24,6 +24,6 @@ admin.site.site_title = "MeloSport Admin"
 admin.site.index_title = "Bienvenido al Panel de Administración"
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('apps.frontend.urls')),
+    path('api/auth/', include('apps.users.urls')),
     path('backoffice/', include('apps.backoffice.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

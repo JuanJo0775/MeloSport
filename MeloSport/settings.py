@@ -52,16 +52,31 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Apps externas
+    'rest_framework',
+    'rest_framework_simplejwt',
 
-
+    # Tus apps
     'apps.backoffice',
     'apps.products',
     'apps.categories',
     'apps.reports',
     'apps.users',
     'apps.database',
+
     'apps.frontend',
 ]
+
+# Configuración de Django REST Framework con JWT
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',  # por defecto todo requiere auth
+    )
+}
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -110,8 +125,12 @@ WSGI_APPLICATION = 'MeloSport.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'melosport_db',
+        'USER': 'melosport_admin',
+        'PASSWORD': 'admin_bocato0731',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

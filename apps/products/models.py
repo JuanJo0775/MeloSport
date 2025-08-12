@@ -143,11 +143,12 @@ class Product(models.Model):
         if Product.objects.filter(sku=self.sku).exclude(pk=self.pk).exists():
             raise ValidationError(f"El SKU {self.sku} ya existe para otro producto")
 
-        # Solo hacer validación estricta si ya existe (ya fue guardado) y no estamos en creación
-        if self.pk:
-            if not self.has_variants and self.variants.exists():
-                raise ValidationError("El producto está marcado como 'sin variantes' pero tiene variantes asociadas.")
-
+        # Solo validar si el producto ya existe (tiene PK) y no es nuevo
+        if self.pk and not self.has_variants and self.variants.exists():
+            raise ValidationError(
+                "El producto está marcado como 'sin variantes' pero tiene variantes asociadas. "
+                "Por favor cambie la opción '¿Tiene Variantes?' a 'Sí' o elimine las variantes."
+            )
 
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
@@ -225,8 +226,15 @@ class ProductVariant(models.Model):
         if not self.product_id:
             raise ValidationError("La variante debe estar asociada a un producto.")
 
-        if self.sku and Product.objects.filter(sku=self.sku).exclude(pk=self.pk).exists():
-            raise ValidationError(f"El SKU {self.sku} ya existe para otro producto.")
+        if self.sku and ProductVariant.objects.filter(sku=self.sku).exclude(pk=self.pk).exists():
+            raise ValidationError(f"El SKU {self.sku} ya existe para otra variante.")
+
+        # Validar que el producto padre permita variantes
+        if self.product_id and not self.product.has_variants:
+            raise ValidationError(
+                "El producto padre no está configurado para tener variantes. "
+                "Cambie la opción '¿Tiene Variantes?' en el producto primero."
+            )
 
 
 class ProductImage(models.Model):

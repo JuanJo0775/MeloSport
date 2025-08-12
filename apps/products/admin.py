@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django import forms
 from django.core.exceptions import ValidationError
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.html import format_html
 from .models import Product, ProductVariant, ProductImage, InventoryMovement
@@ -224,17 +225,36 @@ class ProductAdmin(admin.ModelAdmin):
     stock_status.admin_order_field = 'stock'
 
     def save_model(self, request, obj, form, change):
+        # Generar SKU si no existe
         if not obj.sku:
             obj.sku = obj.generate_product_sku()
+
+        # Guardar el modelo primero
         super().save_model(request, obj, form, change)
 
+        # Si es una creación nueva y tiene variantes, no validamos todavía
+        if not change and obj.has_variants:
+            self.message_user(
+                request,
+                "Producto creado correctamente. Ahora puede agregar las variantes necesarias.",
+                level=messages.INFO
+            )
+
     def save_related(self, request, form, formsets, change):
-        super().save_related(request, form, formsets, change)
         product = form.instance
 
-        # Validar después de guardar las variantes
-        if product.has_variants and not product.variants.exists():
-            raise ValidationError("El producto está marcado como 'con variantes' pero no tiene ninguna registrada.")
+        # Guardar primero todas las relaciones
+        super().save_related(request, form, formsets, change)
+
+        # Solo validar si es una edición (no creación) y el producto tiene has_variants=True
+        if change and product.has_variants and not product.variants.exists():
+            self.message_user(
+                request,
+                "Advertencia: Este producto está marcado como 'con variantes' pero no tiene ninguna registrada. "
+                "Por favor agregue al menos una variante.",
+                level=messages.WARNING
+            )
+            # No lanzamos excepción, solo mostramos advertencia
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
@@ -247,34 +267,27 @@ class ProductAdmin(admin.ModelAdmin):
         else:
             super().save_formset(request, form, formset, change)
 
-    def response_add(self, request, obj, post_url_continue=None):
-        if hasattr(obj, 'variants') and obj.variants.exists():
-
-            obj.save(update_fields=['stock'])
-
-        return super().response_add(request, obj, post_url_continue)
 
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related('categories')
 
+    def response_add(self, request, obj, post_url_continue=None):
+        # Redirigir a la página de edición para agregar variantes
+        if obj.has_variants:
+            return HttpResponseRedirect(
+                reverse('admin:products_product_change', args=[obj.pk])
+            )
+        return super().response_add(request, obj, post_url_continue)
+
     def response_change(self, request, obj):
-        if not obj.variants.exists():
+        if obj.has_variants and not obj.variants.exists():
             self.message_user(
                 request,
-                "Este producto aún no tiene variantes. Debes agregar al menos una para completar el inventario.",
+                "Recuerde que este producto está configurado para tener variantes pero aún no tiene ninguna.",
                 level=messages.WARNING
             )
         return super().response_change(request, obj)
-
-    def response_add(self, request, obj, post_url_continue=None):
-        if not obj.variants.exists():
-            self.message_user(
-                request,
-                "Producto creado correctamente. Ahora debes agregar sus variantes (tallas/colores).",
-                level=messages.INFO
-            )
-        return super().response_add(request, obj, post_url_continue)
 
 
     def get_readonly_fields(self, request, obj=None):
