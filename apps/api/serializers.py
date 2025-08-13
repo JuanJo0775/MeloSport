@@ -34,6 +34,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
+    main_image = serializers.SerializerMethodField()   # <-- Nuevo campo
     variants = ProductVariantSerializer(many=True, read_only=True)
     categories = CategorySerializer(many=True, read_only=True)
     stock = serializers.IntegerField(source='_stock', read_only=True)
@@ -41,11 +42,22 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = (
-            'id','sku','name','description','price','cost','tax_percentage','markup_percentage',
-            'stock','min_stock','status','has_variants','categories','images','variants',
-            'created_at','updated_at'
+            'id', 'sku', 'name', 'description', 'price', 'cost',
+            'tax_percentage', 'markup_percentage', 'stock', 'min_stock', 'status',
+            'has_variants', 'categories', 'images', 'main_image', 'variants',
+            'created_at', 'updated_at'
         )
-        read_only_fields = ('id','created_at','updated_at')
+        read_only_fields = ('id', 'created_at', 'updated_at')
+
+    def get_main_image(self, obj):
+        request = self.context.get('request', None)
+        first = None
+        if hasattr(obj, 'images') and getattr(obj, 'images').exists():
+            first = obj.images.filter(is_main=True).first() or obj.images.first()
+        if first and getattr(first, 'image', None):
+            url = first.image.url
+            return request.build_absolute_uri(url) if request else url
+        return None
 
 class CarouselItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
