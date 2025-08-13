@@ -147,15 +147,16 @@ WSGI_APPLICATION = 'MeloSport.wsgi.application'
 
 #CORS — reemplaza https://tu-frontend.com con la URL final de tu frontend:
 
-# en desarrollo temporalmente:
-CORS_ALLOW_ALL_ORIGINS = True
+# settings.py del backend
 
-#CORS_ALLOWED_ORIGINS = [
-#    "http://localhost:3000",
-#    "http://127.0.0.1:3000",
-#    "http://localhost:8000",
+CORS_ALLOW_ALL_ORIGINS = False  # Desactivar modo abierto
+
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:8001",
+    "http://localhost:8001",
 #    "https://tu-frontend.com",
-#]
+]
+
 
 
 # Database
