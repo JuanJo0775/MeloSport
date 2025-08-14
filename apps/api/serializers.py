@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.products.models import Product, ProductImage, ProductVariant
-from apps.categories.models import Category
+from apps.categories.models import Category, AbsoluteCategory
 from apps.frontend.models import FeaturedProductCarousel, ContactMessage
 
 
@@ -36,6 +36,7 @@ class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     main_image = serializers.SerializerMethodField()   # <-- Nuevo campo
     variants = ProductVariantSerializer(many=True, read_only=True)
+    absolute_category = serializers.SerializerMethodField()
     categories = CategorySerializer(many=True, read_only=True)
     stock = serializers.IntegerField(source='_stock', read_only=True)
 
@@ -44,7 +45,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'sku', 'name', 'description', 'price', 'cost',
             'tax_percentage', 'markup_percentage', 'stock', 'min_stock', 'status',
-            'has_variants', 'categories', 'images', 'main_image', 'variants',
+            'has_variants', 'absolute_category', 'categories', 'images', 'main_image', 'variants',
             'created_at', 'updated_at'
         )
         read_only_fields = ('id', 'created_at', 'updated_at')
@@ -58,6 +59,12 @@ class ProductSerializer(serializers.ModelSerializer):
             url = first.image.url
             return request.build_absolute_uri(url) if request else url
         return None
+
+    def get_absolute_category(self, obj):
+        if obj.absolute_category and obj.absolute_category.activo:
+            return AbsoluteCategorySerializer(obj.absolute_category).data
+        return None
+
 
 class CarouselItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -83,3 +90,11 @@ class ContactoSerializer(serializers.ModelSerializer):
         if len(value) < 10:
             raise serializers.ValidationError("El mensaje es demasiado corto.")
         return value
+
+class AbsoluteCategorySerializer(serializers.ModelSerializer):
+    product_count = serializers.IntegerField(source='get_product_count', read_only=True)
+
+    class Meta:
+        model = AbsoluteCategory
+        fields = ('id', 'nombre', 'descripcion', 'activo', 'product_count')
+

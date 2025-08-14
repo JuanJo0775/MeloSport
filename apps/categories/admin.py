@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.db import models
 from mptt.admin import DraggableMPTTAdmin
 from .models import Category
+from .models import AbsoluteCategory
 
 
 @admin.register(Category)
@@ -34,3 +35,20 @@ class CategoryAdmin(DraggableMPTTAdmin):
     def deactivate_categories(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, f"{updated} categorías desactivadas.")
+
+@admin.register(AbsoluteCategory)
+class AbsoluteCategoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nombre', 'descripcion', 'activo', 'get_product_count')
+    list_filter = ('activo',)
+    search_fields = ('nombre',)
+    actions = ['activar_categorias', 'desactivar_categorias']
+
+    @admin.action(description="Activar categorías seleccionadas")
+    def activar_categorias(self, request, queryset):
+        queryset.update(activo=True)
+        self.message_user(request, f"{queryset.count()} categorías activadas.")
+
+    @admin.action(description="Desactivar categorías seleccionadas")
+    def desactivar_categorias(self, request, queryset):
+        queryset.update(activo=False)
+        self.message_user(request, f"{queryset.count()} categorías desactivadas.")

@@ -10,6 +10,8 @@ from decimal import Decimal, InvalidOperation
 
 
 
+
+
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
@@ -107,10 +109,11 @@ class ProductAdmin(admin.ModelAdmin):
         'status',
         'stock_display',
         'has_variants',
+        'absolute_category',
         'categories_display',
         'updated_at'
     )
-    list_filter = ('status', 'categories', 'created_at')
+    list_filter = ('status', 'categories', 'absolute_category', 'created_at')
     filter_horizontal = ('categories',)
     search_fields = ('name', 'sku', 'description', 'categories__name')
     list_editable = ('status',)
@@ -118,7 +121,7 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline, ProductVariantInline, InventoryMovementInline]
     fieldsets = (
         ('Información Básica', {
-            'fields': ('sku', 'name', 'description', 'categories')
+            'fields': ('sku', 'name', 'description', 'absolute_category', 'categories')
         }),
         ('Costos y Precios', {
             'fields': (
@@ -295,6 +298,9 @@ class ProductAdmin(admin.ModelAdmin):
         if obj and obj.has_variants:
             base_fields.append('_stock')  # Bloquear edición si tiene variantes
         return base_fields
+
+
+
 
 
 @admin.register(ProductVariant)

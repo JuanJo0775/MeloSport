@@ -51,6 +51,13 @@ class Product(models.Model):
     )
     min_stock = models.IntegerField(default=5, verbose_name="Stock mínimo")
     status = models.CharField(max_length=10, choices=PRODUCT_STATUS, default='active')
+    absolute_category = models.ForeignKey(
+        'categories.AbsoluteCategory',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='products'
+    )
     categories = models.ManyToManyField(
         Category,
         related_name='products',
