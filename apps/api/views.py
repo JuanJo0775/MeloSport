@@ -1,3 +1,4 @@
+from django.db.models.functions import Coalesce
 from rest_framework import viewsets, mixins, generics
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -5,6 +6,9 @@ from rest_framework.throttling import AnonRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.db.models import Q, Sum, Value
+from unidecode import unidecode
+from rest_framework.decorators import action
 
 from apps.products.models import Product
 from apps.categories.models import Category, AbsoluteCategory
@@ -31,18 +35,73 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name','description']
     ordering_fields = ['name','created_at']
 
+
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Endpoints públicos: lista y detalle.
     Para operaciones de admin (crear/editar) puedes crear otro viewset protegido.
     """
-    queryset = Product.objects.filter(status='active').prefetch_related('images','variants','categories').distinct()
+    queryset = Product.objects.filter(status='active').prefetch_related(
+        'images', 'variants', 'categories'
+    ).distinct()
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProductFilter
-    search_fields = ['name','description','sku']
-    ordering_fields = ['price','created_at','name']
+    search_fields = ['name', 'description', 'sku']
+
+    # Campos disponibles para ordenar desde el frontend
+    ordering_fields = ['price', 'created_at', 'name', 'total_stock']
+    ordering = ['name']  # Orden por defecto
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filtro por búsqueda con normalización de acentos
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            normalized = unidecode(search).lower()
+            queryset = queryset.filter(
+                Q(name__icontains=normalized) |
+                Q(description__icontains=normalized) |
+                Q(sku__icontains=normalized)
+            )
+
+        # Anotar stock total (con fallback a 0 si no hay variantes)
+        queryset = queryset.annotate(
+            total_stock=Coalesce(Sum('variants__stock'), Value(0))
+        )
+
+        return queryset
+
+    @action(detail=False, methods=['get'])
+    def autocomplete(self, request):
+        """
+        Devuelve sugerencias de productos y categorías para autocompletar.
+        """
+        term = request.query_params.get('q', '').strip()
+        if not term:
+            return Response([])
+
+        normalized = unidecode(term).lower()
+
+        # Productos (máx 5)
+        productos = self.get_queryset().filter(
+            Q(name__icontains=normalized) |
+            Q(description__icontains=normalized) |
+            Q(sku__icontains=normalized)
+        ).values_list('name', flat=True).distinct()[:5]
+
+        # Categorías (máx 5)
+        categorias = Category.objects.filter(
+            Q(name__icontains=normalized) |
+            Q(nombre__icontains=normalized)
+        ).values_list('name', flat=True).distinct()[:5]
+
+        return Response({
+            "productos": list(productos),
+            "categorias": list(categorias)
+        })
 
 class CarouselViewSet(viewsets.ReadOnlyModelViewSet):
     """
