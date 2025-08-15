@@ -1,18 +1,22 @@
-from rest_framework import viewsets, mixins
+from rest_framework import viewsets, mixins, generics
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.throttling import AnonRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
 from apps.products.models import Product
-from apps.categories.models import Category
+from apps.categories.models import Category, AbsoluteCategory
 from apps.frontend.models import FeaturedProductCarousel, ContactMessage
+
+
 
 from .serializers import (
     ProductSerializer,
     CategorySerializer,
     CarouselItemSerializer,
-    ContactoSerializer
+    ContactoSerializer, AbsoluteCategorySerializer
 )
 from .filters import ProductFilter
 
@@ -61,3 +65,41 @@ class ContactoViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = ContactoSerializer
     permission_classes = [AllowAny]
     throttle_classes = [ContactoRateThrottle]
+
+class CategoryTreeView(APIView):
+    """
+    Devuelve categorías padre con sus hijas.
+    Excluye las categorías absolutas.
+    """
+    def get(self, request):
+        # Filtrar solo las categorías padre (sin parent) y que no sean absolutas
+        padres = Category.objects.filter(parent__isnull=True).prefetch_related('children')
+
+        data = []
+        for padre in padres:
+            hijas_data = []
+            for hija in padre.children.all():
+                hijas_data.append({
+                    "id": hija.id,
+                    "nombre": hija.name
+                })
+
+            data.append({
+                "id": padre.id,
+                "nombre": padre.name,
+                "is_parent": True,
+                "hijas": hijas_data
+            })
+
+        return Response(data)
+
+class AbsoluteCategoryListView(generics.ListAPIView):
+    """
+    Lista todas las categorías absolutas activas.
+    """
+    serializer_class = AbsoluteCategorySerializer
+
+    def get_queryset(self):
+        # Solo categorías absolutas activas
+        queryset = AbsoluteCategory.objects.filter(activo=True).order_by('nombre')
+        return queryset
