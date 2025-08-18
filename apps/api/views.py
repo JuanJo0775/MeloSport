@@ -1,4 +1,5 @@
-from django.db.models.functions import Coalesce
+from django.contrib.postgres.search import TrigramSimilarity
+from django.db.models.functions import Coalesce, Lower
 from rest_framework import viewsets, mixins, generics
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -6,9 +7,10 @@ from rest_framework.throttling import AnonRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db.models import Q, Sum, Value
+from django.db.models import Q, Sum, Value, Func, CharField, F
 from unidecode import unidecode
 from rest_framework.decorators import action
+
 
 from apps.products.models import Product
 from apps.categories.models import Category, AbsoluteCategory
@@ -35,6 +37,10 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name','description']
     ordering_fields = ['name','created_at']
 
+class Unaccent(Func):
+    function = "unaccent"
+    template = "%(function)s(%(expressions)s)"
+    output_field = CharField()
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -76,31 +82,42 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=['get'])
     def autocomplete(self, request):
-        """
-        Devuelve sugerencias de productos y categorías para autocompletar.
-        """
         term = request.query_params.get('q', '').strip()
         if not term:
-            return Response([])
+            return Response({"productos": [], "categorias": []})
 
-        normalized = unidecode(term).lower()
+        # Normalizar término (minusculas, sin acentos)
+        term_norm = unidecode(term).lower()
 
         # Productos (máx 5)
-        productos = self.get_queryset().filter(
-            Q(name__icontains=normalized) |
-            Q(description__icontains=normalized) |
-            Q(sku__icontains=normalized)
-        ).values_list('name', flat=True).distinct()[:5]
+        productos = (
+            self.get_queryset()
+            .annotate(
+                name_unaccent=Lower(Unaccent("name")),
+                desc_unaccent=Lower(Unaccent("description")),
+                sku_lower=Lower("sku"),
+                similarity=TrigramSimilarity("name", term),
+            )
+            .filter(Q(name_unaccent__istartswith=term_norm) | Q(similarity__gt=0.3))
+            .order_by(F("similarity").desc(), "name")[:5]
+            .values_list("name", flat=True)
+        )
 
-        # Categorías (máx 5)
-        categorias = Category.objects.filter(
-            Q(name__icontains=normalized) |
-            Q(nombre__icontains=normalized)
-        ).values_list('name', flat=True).distinct()[:5]
+        # Categorías (máx 5) – SOLO 'name', porque tu modelo no tiene 'nombre'
+        categorias_qs = (
+            Category.objects.annotate(
+                name_unaccent=Lower(Unaccent("name")),
+            )
+            .filter(name_unaccent__icontains=term_norm)
+            .distinct()
+            .values("id", "name")[:5]
+        )
+
+        categorias = [{"id": c["id"], "name": c["name"]} for c in categorias_qs]
 
         return Response({
             "productos": list(productos),
-            "categorias": list(categorias)
+            "categorias": categorias
         })
 
 class CarouselViewSet(viewsets.ReadOnlyModelViewSet):
