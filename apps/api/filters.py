@@ -3,8 +3,10 @@ from django_filters import rest_framework as filters
 from apps.products.models import Product
 from apps.categories.models import Category
 
+
 class NumberInFilter(filters.BaseInFilter, filters.NumberFilter):
     pass
+
 
 class ProductFilter(django_filters.FilterSet):
     price_min = django_filters.NumberFilter(field_name='price', lookup_expr='gte')
@@ -29,7 +31,6 @@ class ProductFilter(django_filters.FilterSet):
         if not ids:
             return queryset
 
-        # incluir hijas si el id es de un padre
         hijos_ids = Category.objects.filter(parent_id__in=ids).values_list('id', flat=True)
         all_ids = set(ids) | set(hijos_ids)
 
@@ -44,3 +45,13 @@ class ProductFilter(django_filters.FilterSet):
             return queryset
 
         return queryset.filter(absolute_category__id__in=ids).distinct()
+
+    def filter_in_stock(self, queryset, name, value):
+        """
+        Filtra productos en stock o fuera de stock.
+        """
+        if value is True:
+            return queryset.filter(total_stock__gt=0)  # cambia a stock__gt si tu modelo lo usa
+        if value is False:
+            return queryset.filter(total_stock__lte=0)
+        return queryset
