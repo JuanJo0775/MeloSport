@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
 
+
     # Tus apps
     'apps.backoffice',
     'apps.products',

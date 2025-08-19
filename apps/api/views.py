@@ -3,6 +3,7 @@ from django.db.models import Q, Sum, Value, Func, CharField, F
 from django.db.models.functions import Coalesce, Lower
 from rest_framework import viewsets, mixins, generics
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.throttling import AnonRateThrottle
@@ -60,10 +61,11 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Product.objects.all().prefetch_related("categories", "images", "variants")
     serializer_class = ProductSerializer
 
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = ProductFilter
     ordering_fields = ["price", "name", "created_at"]
     ordering = ["-created_at"]  # por defecto: más recientes
+    search_fields = ["name", "category__name"]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -78,7 +80,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             ).filter(
                 Q(name_u__icontains=term) |
                 Q(desc_u__icontains=term) |
-                Q(tags__name__icontains=term)
+                Q(categories__name__icontains=term)
             ).distinct()
 
         # Anotar stock total (con fallback a 0)
