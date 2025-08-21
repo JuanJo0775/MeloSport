@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from apps.products.models import Product, ProductImage, ProductVariant
 from apps.categories.models import Category, AbsoluteCategory
-from apps.frontend.models import FeaturedProductCarousel, ContactMessage
+from apps.frontend.models import FeaturedProductCarousel, ContactMessage, InformativeCarousel
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -98,3 +98,62 @@ class AbsoluteCategorySerializer(serializers.ModelSerializer):
         model = AbsoluteCategory
         fields = ('id', 'nombre', 'descripcion', 'activo', 'product_count')
 
+
+class CarouselImageSerializer(serializers.Serializer):
+    image_url = serializers.SerializerMethodField()
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        if obj and request:
+            return request.build_absolute_uri(obj.url)
+        if obj:
+            return obj.url
+        return None
+
+
+class UnifiedCarouselItemSerializer(serializers.Serializer):
+    def to_representation(self, obj):
+        request = self.context.get("request")
+
+        def absolute_url(image_field):
+            if not image_field:
+                return None
+            url = image_field.url
+            return request.build_absolute_uri(url) if request else url
+
+        # 🎯 Productos destacados
+        if isinstance(obj, FeaturedProductCarousel):
+            return {
+                "id": obj.id,
+                "type": "product",
+                "custom_title": obj.custom_title or obj.product.name,
+                "custom_subtitle": obj.custom_subtitle or None,
+                "display_order": obj.display_order,
+                "is_active": obj.is_active,
+                "product_id": obj.product.id,
+                "product_name": obj.product.name,
+                "product_price": str(obj.product.price),
+                "bg_color": obj.bg_color or None,
+                "images": [absolute_url(img) for img in obj.images],
+                "main_image": absolute_url(getattr(obj, "main_image", None)),
+                "layout": obj.layout,
+                "cta_href": obj.product_link,
+            }
+
+        # 📰 Tarjetas informativas
+        if isinstance(obj, InformativeCarousel):
+            return {
+                "id": obj.id,
+                "type": "info",
+                "custom_title": obj.title,
+                "custom_subtitle": obj.description or None,
+                "display_order": obj.display_order,
+                "is_active": obj.is_active,
+                "cta_href": obj.safe_link,
+                "bg_color": obj.bg_color or None,
+                "images": [absolute_url(img) for img in obj.images],
+                "layout": obj.layout,
+                "is_default": obj.is_default,
+            }
+
+        return super().to_representation(obj)

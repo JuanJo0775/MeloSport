@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 
 
+
 class Product(models.Model):
     PRODUCT_STATUS = [
         ('active', 'Activo'),
@@ -111,6 +112,9 @@ class Product(models.Model):
         if self.has_variants:
             return sum(v.stock for v in self.variants.all())
         return self._stock
+
+    def get_absolute_url(self):
+        return f"/productos/{self.pk}/"
 
     @property
     def stock(self):

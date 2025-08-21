@@ -13,7 +13,7 @@ from unidecode import unidecode
 
 from apps.products.models import Product
 from apps.categories.models import Category, AbsoluteCategory
-from apps.frontend.models import FeaturedProductCarousel, ContactMessage
+from apps.frontend.models import FeaturedProductCarousel, ContactMessage, InformativeCarousel
 
 from .serializers import (
     ProductSerializer,
@@ -21,6 +21,7 @@ from .serializers import (
     CarouselItemSerializer,
     ContactoSerializer,
     AbsoluteCategorySerializer,
+    UnifiedCarouselItemSerializer,
 )
 from .filters import ProductFilter
 
@@ -129,12 +130,31 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CarouselViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    Endpoint público para mostrar los elementos activos del carrusel.
+    Endpoint público para mostrar los elementos activos del carrusel (mixto).
+    Devuelve productos destacados + tarjetas informativas, ya ordenados.
     """
-    queryset = FeaturedProductCarousel.objects.filter(is_active=True).select_related("product").order_by("display_order")
-    serializer_class = CarouselItemSerializer
     permission_classes = [AllowAny]
+    serializer_class = UnifiedCarouselItemSerializer
 
+    def list(self, request, *args, **kwargs):
+        products = (
+            FeaturedProductCarousel.objects
+            .filter(is_active=True)
+            .select_related("product")
+            .order_by("display_order", "-created_at")
+        )
+        infos = (
+            InformativeCarousel.objects
+            .filter(is_active=True)
+            .order_by("display_order", "-created_at")
+        )
+
+        combined = list(products) + list(infos)
+        # Orden estable por display_order, y luego created_at descendente
+        combined.sort(key=lambda x: (x.display_order, getattr(x, "created_at", None)), reverse=False)
+
+        serializer = self.get_serializer(combined, many=True, context={"request": request})
+        return Response(serializer.data)
 
 # ===================== Contacto =====================
 
