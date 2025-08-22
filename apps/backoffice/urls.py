@@ -42,7 +42,7 @@ urlpatterns = [
 
     # Rutas internas del backoffice
     path('products/', include('apps.products.urls')),
-    path('categories/', include('apps.categories.urls')),
+    path('catalogo/', include('apps.categories.urls', namespace='categories')),
     path('reports/', include('apps.reports.urls')),
     path('users/', include('apps.users.urls')),
     path('database/', include('apps.database.urls')),

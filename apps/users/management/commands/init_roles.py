@@ -20,7 +20,7 @@ class Command(BaseCommand):
             admin_group.permissions.add(perm)
 
         # Vendedor: solo productos e inventario
-        allowed = Permission.objects.filter(content_type__app_label__in=["productos", "inventario"])
+        allowed = Permission.objects.filter(content_type__app_label__in=["productos", "inventario", 'categories'])
         vendedor_group.permissions.set(allowed)
 
         # Superusuario admin

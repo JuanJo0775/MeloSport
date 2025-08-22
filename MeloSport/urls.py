@@ -25,5 +25,5 @@ admin.site.index_title = "Bienvenido al Panel de Administración"
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('apps.api.urls')),
-    path('backoffice/', include('apps.backoffice.urls')),
+    path('backoffice/', include(('apps.backoffice.urls', 'backoffice'), namespace='backoffice')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
