@@ -41,7 +41,15 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 AUTH_USER_MODEL = 'users.User'
 
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",  # necesario para sesiones y admin
+    "apps.users.auth_backends.EmailOrUsernameModelBackend",  # nuevo backend para login con email o username
+]
 
+SESSION_COOKIE_AGE = 3600  # 1 hora
+SESSION_SAVE_EVERY_REQUEST = True  # renueva si hay actividad
+
+PASSWORD_RESET_TIMEOUT = 3600  # 1 hora
 
 # Application definition
 
@@ -190,6 +198,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'users.validators.ComplexPasswordValidator'
     },
 ]
 

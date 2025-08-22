@@ -10,3 +10,7 @@ migraciones
 Admin
 
         http://127.0.0.1:8000/admin
+
+Usuario de ejemplo admin
+        usuario: admin
+        contraseña: Admin123!
