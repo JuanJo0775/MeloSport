@@ -25,5 +25,5 @@ class Command(BaseCommand):
 
         # Superusuario admin
         if not User.objects.filter(username="admin").exists():
-            User.objects.create_superuser("admin", "admin@melosport.com", "Admin123!")
-            self.stdout.write(self.style.SUCCESS("Superusuario creado: admin / Admin123!"))
+            User.objects.create_superuser("admin", "admin@melosport.com", "Bocato0731@")
+            self.stdout.write(self.style.SUCCESS("Superusuario creado: admin / Bocato0731@"))

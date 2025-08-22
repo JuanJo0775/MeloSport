@@ -4,19 +4,20 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class EmailOrUsernameModelBackend(ModelBackend):
-    """
-    Autentica usando email o username.
-    """
     def authenticate(self, request, username=None, password=None, **kwargs):
-        if username is None:
-            username = kwargs.get(User.USERNAME_FIELD)
+        user = None
         try:
-            user = User.objects.get(email=username)  # intentar por email
+            # Buscar por username exacto
+            user = User.objects.get(username=username)
         except User.DoesNotExist:
-            try:
-                user = User.objects.get(username=username)  # intentar por username
-            except User.DoesNotExist:
-                return None
-        if user.check_password(password) and self.user_can_authenticate(user):
+            # Buscar por email, pero asegurando unicidad
+            users = User.objects.filter(email=username)
+            if users.count() == 1:
+                user = users.first()
+            else:
+                return None  # hay 0 o más de 1 → no autenticamos
+
+        if user and user.check_password(password):
             return user
         return None
+
