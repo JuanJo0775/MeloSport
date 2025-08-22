@@ -3,6 +3,7 @@ from MeloSport import settings
 from . import views
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
@@ -22,6 +23,10 @@ urlpatterns = [
                        auth_views.PasswordResetCompleteView.as_view(
                            template_name="backoffice/password_reset_complete.html"),
                        name="password_reset_complete"),
+
+    path("logout/", LogoutView.as_view(next_page="login"), name="logout"),
+
+
 
     # Rutas internas del backoffice
     path('products/', include('apps.products.urls')),
