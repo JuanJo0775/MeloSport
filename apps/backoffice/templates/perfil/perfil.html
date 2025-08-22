@@ -1,0 +1,50 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Mi Perfil{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Perfil" %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <!-- Tarjeta principal -->
+      <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+        <div class="card-header bg-primary text-white py-4">
+          <h3 class="mb-0"><i class="bi bi-person-circle me-2"></i>Mi Perfil</h3>
+        </div>
+        <div class="card-body p-4">
+          <!-- Info usuario -->
+          <div class="mb-3">
+            <p class="mb-1 text-muted"><i class="bi bi-person"></i> Usuario</p>
+            <h5 class="fw-semibold">{{ request.user.username }}</h5>
+          </div>
+
+          <div class="mb-3">
+            <p class="mb-1 text-muted"><i class="bi bi-envelope"></i> Email</p>
+            <h5 class="fw-semibold">{{ request.user.email }}</h5>
+          </div>
+
+          <div class="mb-3">
+            <p class="mb-1 text-muted"><i class="bi bi-card-text"></i> Nombre completo</p>
+            <h5 class="fw-semibold">{{ request.user.get_full_name }}</h5>
+          </div>
+
+          <!-- Acciones -->
+          <div class="d-flex justify-content-end mt-4">
+            <a href="{% url 'cambiar_password' %}" class="btn btn-outline-primary me-2">
+              <i class="bi bi-key"></i> Cambiar contraseña
+            </a>
+            <a href="{% url 'configuraciones' %}" class="btn btn-primary">
+              <i class="bi bi-gear"></i> Configuración
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

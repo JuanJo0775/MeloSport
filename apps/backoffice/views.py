@@ -39,3 +39,12 @@ def logout_view(request):
 @permission_required("productos.view_producto", raise_exception=True)
 def productos(request):
     return render(request, "backoffice/productos.html")
+
+
+@login_required
+def perfil_view(request):
+    return render(request, "perfil/perfil.html")
+
+@login_required
+def configuraciones_view(request):
+    return render(request, "perfil/configuraciones.html")

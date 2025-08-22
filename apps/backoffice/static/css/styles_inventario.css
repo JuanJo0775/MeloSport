@@ -260,3 +260,20 @@ canvas.chart-canvas {
 .border-left-info {
     border-left: 5px solid #17a2b8 !important;
 }
+
+/* Ajusta el breadcrumb para no chocar con el botón toggle */
+.breadcrumb-wrapper {
+  margin-left: 96px;   /* lo corre un poco a la derecha */
+  margin-top: 12px;
+  transition: margin-left 0.25s ease;
+}
+
+body.sidebar-collapsed .breadcrumb-wrapper {
+  margin-left: 56px;   /* cuando el sidebar está colapsado */
+}
+
+@media (max-width: 991.98px) {
+  .breadcrumb-wrapper {
+    margin-left: 12px; /* en móviles, alineado normal */
+  }
+}

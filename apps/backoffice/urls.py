@@ -27,7 +27,18 @@ urlpatterns = [
 
     path("logout/", LogoutView.as_view(next_page="login"), name="logout"),
 
-
+    path("perfil/", views.perfil_view, name="perfil"),
+    path("configuraciones/", views.configuraciones_view, name="configuraciones"),
+    path("cambiar-password/", 
+         auth_views.PasswordChangeView.as_view(
+             template_name="perfil/cambiar_password.html"
+         ), 
+         name="cambiar_password"),
+    path("cambiar-password/done/", 
+         auth_views.PasswordChangeDoneView.as_view(
+             template_name="perfil/cambiar_password_done.html"
+         ), 
+         name="password_change_done"),
 
     # Rutas internas del backoffice
     path('products/', include('apps.products.urls')),
