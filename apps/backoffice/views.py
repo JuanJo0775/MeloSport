@@ -5,9 +5,10 @@ from django_ratelimit.decorators import ratelimit
 from django.contrib import messages
 
 # Dashboard protegido: requiere login
-@login_required(login_url="/backoffice/login/")
+@login_required(login_url="/backoffice/login/")  # sigue funcionando bien
 def dashboard(request):
     return render(request, "backoffice/dashboard.html")
+
 
 # Login con rate limiting
 @ratelimit(key='ip', rate='5/m', block=True)
@@ -21,18 +22,19 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-            return redirect("dashboard")  # redirige al dashboard
+            return redirect("backoffice:dashboard")  # ✅ con namespace
         else:
             messages.error(request, "Credenciales inválidas. Inténtalo de nuevo.")
 
-    # 👇 Corrección aquí
     return render(request, "login/login.html")
+
 
 # Logout
 @login_required(login_url="/backoffice/login/")
 def logout_view(request):
     logout(request)
-    return redirect("login")   # 👈 mejor redirigir al login en lugar de renderizar directo
+    return redirect("backoffice:login")
+
 
 # Ejemplo de vista protegida por permisos
 @login_required(login_url="/backoffice/login/")
@@ -41,10 +43,18 @@ def productos(request):
     return render(request, "backoffice/productos.html")
 
 
-@login_required
+@login_required(login_url="/backoffice/login/")
 def perfil_view(request):
     return render(request, "perfil/perfil.html")
 
-@login_required
+
+@login_required(login_url="/backoffice/login/")
 def configuraciones_view(request):
     return render(request, "perfil/configuraciones.html")
+
+
+
+
+@login_required(login_url="/backoffice/login/")
+def placeholder_view(request):
+    return render(request, "backoffice/placeholder.html")

@@ -8,18 +8,17 @@ def breadcrumb(*args):
     """
     Renderiza un breadcrumb dinámico.
     Uso:
-        {% breadcrumb "Perfil" %}
-        {% breadcrumb "Usuarios" "usuarios" "Detalle" %}
-    Los pares se interpretan como (label, url_name opcional).
+        {% breadcrumb "Perfil|backoffice:perfil" %}
+        {% breadcrumb "Configuraciones|backoffice:configuraciones" "Cambiar Contraseña" %}
     """
     items = []
     for arg in args:
-        parts = arg.split("|")  # Ejemplo: "Perfil|perfil"
-        label = parts[0]
+        parts = arg.split("|")
+        label = parts[0].strip()
         url = None
         if len(parts) > 1:
             try:
-                url = reverse(parts[1])
+                url = reverse(parts[1].strip())
             except NoReverseMatch:
                 url = None
         items.append({"label": label, "url": url})

@@ -2,7 +2,10 @@
 
 {% block title %}Dashboard - Panel Administrativo - Melosport{% endblock %}
 
-{% block breadcrumb_active %}Dashboard{% endblock %}
+{% load breadcrumbs %}
+{% block breadcrumb %}
+  {% breadcrumb "Dashboard" %}
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -109,7 +112,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Movimientos de Inventario - Últimos 7 días</h6>
                     <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button"
                                 data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-three-dots"></i>
                         </button>
@@ -141,7 +144,7 @@
                             <span class="badge bg-success">45 vendidos</span>
                         </div>
                     </div>
-                    
+
                     <div class="mb-3 pb-3 border-bottom">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -151,7 +154,7 @@
                             <span class="badge bg-success">38 vendidos</span>
                         </div>
                     </div>
-                    
+
                     <div class="mb-3 pb-3 border-bottom">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -161,7 +164,7 @@
                             <span class="badge bg-success">32 vendidos</span>
                         </div>
                     </div>
-                    
+
                     <div class="text-center">
                         <a href="#" class="btn btn-sm btn-outline-primary">Ver todos los reportes <i class="bi bi-arrow-right"></i></a>
                     </div>
@@ -190,7 +193,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="alert alert-warning border-left-warning mb-3" role="alert">
                         <div class="d-flex">
                             <div class="flex-shrink-0">
@@ -202,7 +205,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="alert alert-danger border-left-danger mb-3" role="alert">
                         <div class="d-flex">
                             <div class="flex-shrink-0">
@@ -214,7 +217,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="text-center">
                         <a href="#" class="btn btn-sm btn-outline-danger">Ver todas las alertas</a>
                     </div>
@@ -231,7 +234,7 @@
                     <div class="timeline">
                         <div class="d-flex mb-3">
                             <div class="flex-shrink-0">
-                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" 
+                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
                                      style="width: 32px; height: 32px;">
                                     <i class="bi bi-plus text-white"></i>
                                 </div>
@@ -241,10 +244,10 @@
                                 <small class="text-muted">Se agregó "Balón Basketball Pro" hace 2 horas</small>
                             </div>
                         </div>
-                        
+
                         <div class="d-flex mb-3">
                             <div class="flex-shrink-0">
-                                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center" 
+                                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center"
                                      style="width: 32px; height: 32px;">
                                     <i class="bi bi-check text-white"></i>
                                 </div>
@@ -254,10 +257,10 @@
                                 <small class="text-muted">Inventario de "Camisetas XL" actualizado hace 4 horas</small>
                             </div>
                         </div>
-                        
+
                         <div class="d-flex mb-3">
                             <div class="flex-shrink-0">
-                                <div class="bg-info rounded-circle d-flex align-items-center justify-content-center" 
+                                <div class="bg-info rounded-circle d-flex align-items-center justify-content-center"
                                      style="width: 32px; height: 32px;">
                                     <i class="bi bi-person text-white"></i>
                                 </div>
@@ -267,7 +270,7 @@
                                 <small class="text-muted">Usuario "vendedor2" creado hace 1 día</small>
                             </div>
                         </div>
-                        
+
                         <div class="text-center">
                             <a href="#" class="btn btn-sm btn-outline-primary">Ver historial completo</a>
                         </div>
@@ -277,38 +280,39 @@
         </div>
     </div>
 
-    <!-- Acciones rápidas -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold text-primary">Acciones Rápidas</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="#" class="btn btn-outline-primary w-100 p-3">
-                                <i class="bi bi-plus-circle d-block mb-2" style="font-size: 2rem;"></i>
-                                Agregar Producto
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="#" class="btn btn-outline-success w-100 p-3">
-                                <i class="bi bi-upload d-block mb-2" style="font-size: 2rem;"></i>
-                                Subir Inventario
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="#" class="btn btn-outline-info w-100 p-3">
-                                <i class="bi bi-file-earmark-text d-block mb-2" style="font-size: 2rem;"></i>
-                                Generar Reporte
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <a href="#" class="btn btn-outline-warning w-100 p-3">
-                                <i class="bi bi-database d-block mb-2" style="font-size: 2rem;"></i>
-                                Crear Respaldo
-                            </a>
+        <!-- Acciones rápidas -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="m-0 font-weight-bold text-primary">Acciones Rápidas</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <a href="{% url 'backoffice:product-create' %}" class="btn btn-outline-primary w-100 p-3">
+                                    <i class="bi bi-plus-circle d-block mb-2" style="font-size: 2rem;"></i>
+                                    Agregar Producto
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <a href="{% url 'backoffice:inventory-upload' %}" class="btn btn-outline-success w-100 p-3">
+                                    <i class="bi bi-upload d-block mb-2" style="font-size: 2rem;"></i>
+                                    Subir Inventario
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <a href="{% url 'backoffice:report-list' %}" class="btn btn-outline-info w-100 p-3">
+                                    <i class="bi bi-file-earmark-text d-block mb-2" style="font-size: 2rem;"></i>
+                                    Generar Reporte
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <a href="{% url 'backoffice:backup-create' %}" class="btn btn-outline-warning w-100 p-3">
+                                    <i class="bi bi-database d-block mb-2" style="font-size: 2rem;"></i>
+                                    Crear Respaldo
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -323,7 +327,7 @@
     // Configuración del gráfico de movimientos
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('movimientosChart').getContext('2d');
-        
+
         new Chart(ctx, {
             type: 'line',
             data: {

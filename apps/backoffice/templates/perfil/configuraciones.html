@@ -7,6 +7,7 @@
   {% breadcrumb "Configuraciones" %}
 {% endblock %}
 
+
 {% block content %}
 <div class="container mt-4">
   <h2 class="fw-bold mb-4">Configuraciones</h2>
@@ -16,7 +17,8 @@
       <div class="card shadow-sm border-0 rounded-3 p-4 mb-4">
         <h5 class="fw-bold mb-3">Cambiar contraseña directamente</h5>
         <p class="text-muted">Introduce tu contraseña actual y la nueva.</p>
-        <a href="{% url 'cambiar_password' %}" class="btn btn-outline-primary">
+        <!-- ✅ corregido con namespace -->
+        <a href="{% url 'backoffice:cambiar_password' %}" class="btn btn-outline-primary">
           <i class="bi bi-key"></i> Cambiar contraseña
         </a>
       </div>
@@ -26,7 +28,8 @@
       <div class="card shadow-sm border-0 rounded-3 p-4 mb-4">
         <h5 class="fw-bold mb-3">Recuperar mediante correo</h5>
         <p class="text-muted">Te enviaremos un enlace de recuperación a tu email.</p>
-        <a href="{% url 'password_reset' %}" class="btn btn-outline-success">
+        <!-- ✅ corregido con namespace -->
+        <a href="{% url 'backoffice:password_reset' %}" class="btn btn-outline-success">
           <i class="bi bi-envelope"></i> Enviar enlace
         </a>
       </div>

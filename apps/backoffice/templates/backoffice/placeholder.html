@@ -1,0 +1,13 @@
+{% extends "backoffice/base_backoffice.html" %}
+
+{% block title %}Vista en construcción{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+    <h1 class="display-5 text-muted">🚧 Vista en construcción 🚧</h1>
+    <p class="lead">Esta funcionalidad estará disponible próximamente.</p>
+    <a href="{% url 'backoffice:dashboard' %}" class="btn btn-primary mt-3">
+        <i class="bi bi-arrow-left"></i> Volver al Dashboard
+    </a>
+</div>
+{% endblock %}
