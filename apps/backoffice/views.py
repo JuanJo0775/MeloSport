@@ -25,13 +25,14 @@ def login_view(request):
         else:
             messages.error(request, "Credenciales inválidas. Inténtalo de nuevo.")
 
-    return render(request, "backoffice/login.html")
+    # 👇 Corrección aquí
+    return render(request, "login/login.html")
 
 # Logout
 @login_required(login_url="/backoffice/login/")
 def logout_view(request):
     logout(request)
-    return redirect("login")
+    return redirect("login")   # 👈 mejor redirigir al login en lugar de renderizar directo
 
 # Ejemplo de vista protegida por permisos
 @login_required(login_url="/backoffice/login/")
