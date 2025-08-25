@@ -48,6 +48,12 @@ urlpatterns = [
          name="password_change_done"),
 
     path("categories/", include(("apps.categories.urls", "categories"), namespace="categories")),
+    path("products/", include(("apps.products.urls", "products"), namespace="products")),
+    path("database/", include(("apps.database.urls", "database"), namespace="database")),
+    path("frontend/", include(("apps.frontend.urls", "frontend"), namespace="frontend")),
+    path("users/", include(("apps.users.urls", "users"), namespace="users")),
+    path("reports/", include(("apps.reports.urls", "reports"), namespace="reports")),
+
 
     # 📌 Rutas dummy (temporal mientras se crean los módulos reales)
     path("productos/crear/", views.placeholder_view, name="product-create"),
