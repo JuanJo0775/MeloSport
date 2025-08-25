@@ -3,11 +3,19 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django_ratelimit.decorators import ratelimit
 from django.contrib import messages
+from apps.categories.models import Category, AbsoluteCategory
+
 
 # Dashboard protegido: requiere login
-@login_required(login_url="/backoffice/login/")  # sigue funcionando bien
+@login_required(login_url="/backoffice/login/")
 def dashboard(request):
-    return render(request, "backoffice/dashboard.html")
+    context = {
+        "stats": {
+            "categories_count": Category.objects.count(),
+            "absolute_categories_count": AbsoluteCategory.objects.count(),
+        }
+    }
+    return render(request, "backoffice/dashboard.html", context)
 
 
 # Login con rate limiting

@@ -10,6 +10,7 @@ from django.views.generic.base import TemplateView
 from .models import Category, AbsoluteCategory
 from ..products.models import Product
 from django.db.models import CharField
+from .forms import CategoryForm, AbsoluteCategoryForm
 
 
 class CategoryHomeView(LoginRequiredMixin, TemplateView):
@@ -117,7 +118,7 @@ class CategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
 class CategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     permission_required = 'categories.add_category'
     model = Category
-    fields = ['name', 'description', 'parent', 'is_active']
+    form_class = CategoryForm
     template_name = 'backoffice/categories/create.html'
     success_url = reverse_lazy('backoffice:categories:list')
 
@@ -125,7 +126,7 @@ class CategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView
 class CategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = 'categories.change_category'
     model = Category
-    fields = ['name', 'description', 'parent', 'is_active']
+    form_class = CategoryForm
     template_name = 'backoffice/categories/update.html'
     success_url = reverse_lazy('backoffice:categories:list')
 
@@ -244,7 +245,7 @@ class AbsoluteCategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, De
 class AbsoluteCategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     permission_required = 'categories.add_absolutecategory'
     model = AbsoluteCategory
-    fields = ['nombre', 'descripcion', 'activo']
+    form_class = AbsoluteCategoryForm
     template_name = 'backoffice/absolute_categories/create.html'
     success_url = reverse_lazy('backoffice:categories:absolute_list')
 
@@ -252,7 +253,7 @@ class AbsoluteCategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, Cr
 class AbsoluteCategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = 'categories.change_absolutecategory'
     model = AbsoluteCategory
-    fields = ['nombre', 'descripcion', 'activo']
+    form_class = AbsoluteCategoryForm
     template_name = 'backoffice/absolute_categories/update.html'
     success_url = reverse_lazy('backoffice:categories:absolute_list')
 

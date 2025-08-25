@@ -84,7 +84,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card stats-card border-left-info h-100">
                 <div class="card-body">
@@ -93,7 +92,9 @@
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Categorías
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">12</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ stats.categories_count }}
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-tags stats-icon text-info"></i>
@@ -101,6 +102,7 @@
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 

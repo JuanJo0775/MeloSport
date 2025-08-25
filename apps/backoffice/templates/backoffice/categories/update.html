@@ -4,7 +4,7 @@
 {% block title %}Editar Categoría - {{ object.name }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|categories:home" "Categorías|categories:list" "Editar" %}
+  {% breadcrumb "Gestión|backoffice:categories:home" "Categorías|backoffice:categories:list" "Editar Categoría" %}
 {% endblock %}
 
 {% block content %}
@@ -31,7 +31,7 @@
 
   <div class="row justify-content-center">
     <div class="col-xl-8">
-      <!-- Información de la categoría actual -->
+      <!-- Info categoría actual -->
       <div class="card border-0 bg-light mb-4">
         <div class="card-body">
           <div class="row align-items-center">
@@ -56,8 +56,8 @@
                 {% else %}
                   <span class="badge bg-secondary">Inactiva</span>
                 {% endif %}
-                <small class="text-muted">{{ object.get_children.count }} subcategorías</small>
-                <small class="text-muted">{{ object.all_products.count }} productos</small>
+                <small class="text-muted">{{ object.get_children.count }} subcategoría{{ object.get_children.count|pluralize }}</small>
+                <small class="text-muted">{{ object.all_products.count }} producto{{ object.all_products.count|pluralize }}</small>
               </div>
             </div>
           </div>
@@ -81,29 +81,19 @@
         <div class="card-body p-4">
           <form method="post" novalidate>
             {% csrf_token %}
-
             <div class="row g-4">
-              <!-- Nombre de la categoría -->
+              <!-- Nombre -->
               <div class="col-md-6">
                 <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">
-                  {{ form.name.label }}
-                  {% if form.name.field.required %}
-                    <span class="text-danger">*</span>
-                  {% endif %}
+                  {{ form.name.label }} {% if form.name.field.required %}<span class="text-danger">*</span>{% endif %}
                 </label>
                 {{ form.name }}
-                {% if form.name.help_text %}
-                  <div class="form-text">{{ form.name.help_text }}</div>
-                {% else %}
-                  <div class="form-text">Nombre descriptivo y único para la categoría</div>
-                {% endif %}
-                {% if form.name.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.name.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">
+                  {{ form.name.help_text|default:"Nombre descriptivo y único para la categoría" }}
+                </div>
+                {% for error in form.name.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
 
               <!-- Categoría Padre -->
@@ -112,18 +102,12 @@
                   {{ form.parent.label }}
                 </label>
                 {{ form.parent }}
-                {% if form.parent.help_text %}
-                  <div class="form-text">{{ form.parent.help_text }}</div>
-                {% else %}
-                  <div class="form-text">Cambia la categoría padre para reorganizar la jerarquía</div>
-                {% endif %}
-                {% if form.parent.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.parent.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">
+                  {{ form.parent.help_text|default:"Cambia la categoría padre para reorganizar la jerarquía" }}
+                </div>
+                {% for error in form.parent.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
 
               <!-- Descripción -->
@@ -132,69 +116,48 @@
                   {{ form.description.label }}
                 </label>
                 {{ form.description }}
-                {% if form.description.help_text %}
-                  <div class="form-text">{{ form.description.help_text }}</div>
-                {% else %}
-                  <div class="form-text">Descripción detallada de la categoría (opcional)</div>
-                {% endif %}
-                {% if form.description.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.description.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">
+                  {{ form.description.help_text|default:"Descripción detallada de la categoría (opcional)" }}
+                </div>
+                {% for error in form.description.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
 
-              <!-- Estado activo -->
+              <!-- Estado -->
               <div class="col-md-6">
-                <div class="form-check form-switch">
+                <div class="form-check form-switch mt-4">
                   {{ form.is_active }}
                   <label for="{{ form.is_active.id_for_label }}" class="form-check-label fw-semibold">
                     {{ form.is_active.label }}
                   </label>
-                  {% if form.is_active.help_text %}
-                    <div class="form-text">{{ form.is_active.help_text }}</div>
-                  {% else %}
-                    <div class="form-text">Solo las categorías activas aparecen en el frontend</div>
-                  {% endif %}
-                </div>
-                {% if form.is_active.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.is_active.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
+                  <div class="form-text">
+                    {{ form.is_active.help_text|default:"Solo las categorías activas aparecen en el frontend" }}
                   </div>
-                {% endif %}
+                </div>
+                {% for error in form.is_active.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
 
-              <!-- Campos adicionales del formulario -->
+              <!-- Otros campos -->
               {% for field in form %}
                 {% if field.name not in 'name,parent,description,is_active' %}
-                <div class="col-md-6">
-                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
-                    {{ field.label }}
-                    {% if field.field.required %}
-                      <span class="text-danger">*</span>
-                    {% endif %}
-                  </label>
-                  {{ field }}
-                  {% if field.help_text %}
-                    <div class="form-text">{{ field.help_text }}</div>
-                  {% endif %}
-                  {% if field.errors %}
-                    <div class="invalid-feedback d-block">
-                      {% for error in field.errors %}
-                        <div>{{ error }}</div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                </div>
+                  <div class="col-md-6">
+                    <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                      {{ field.label }} {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
                 {% endif %}
               {% endfor %}
             </div>
 
-            <!-- Mensajes de error generales -->
+            <!-- Errores generales -->
             {% if form.non_field_errors %}
               <div class="alert alert-danger mt-3">
                 {% for error in form.non_field_errors %}
@@ -203,11 +166,10 @@
               </div>
             {% endif %}
 
-            <!-- Botones de acción -->
+            <!-- Botones -->
             <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
               <div class="text-muted small">
-                <i class="bi bi-info-circle me-1"></i>
-                Los cambios se aplicarán inmediatamente al guardar
+                <i class="bi bi-info-circle me-1"></i> Los cambios se aplicarán inmediatamente al guardar
               </div>
               <div class="d-flex gap-2">
                 <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary px-4">
@@ -222,38 +184,36 @@
         </div>
       </div>
 
-      <!-- Advertencias si hay subcategorías o productos -->
+      <!-- Advertencias -->
       {% if object.get_children.count > 0 or object.all_products.count > 0 %}
-      <div class="alert alert-warning border-0 shadow-sm mt-4">
-        <div class="d-flex">
-          <div class="flex-shrink-0">
-            <i class="bi bi-exclamation-triangle fs-5"></i>
-          </div>
-          <div class="flex-grow-1 ms-3">
-            <h6 class="alert-heading mb-1">Elementos dependientes</h6>
-            <p class="mb-0 small">
-              Esta categoría tiene
-              {% if object.get_children.count > 0 %}
-                <strong>{{ object.get_children.count }} subcategoría{{ object.get_children.count|pluralize }}</strong>
-              {% endif %}
-              {% if object.get_children.count > 0 and object.all_products.count > 0 %} y {% endif %}
-              {% if object.all_products.count > 0 %}
-                <strong>{{ object.all_products.count }} producto{{ object.all_products.count|pluralize }}</strong>
-              {% endif %}
-              asociado{{ object.get_children.count|add:object.all_products.count|pluralize }}.
-              Los cambios pueden afectar cómo se muestran en el frontend.
-            </p>
+        <div class="alert alert-warning border-0 shadow-sm mt-4">
+          <div class="d-flex">
+            <div class="flex-shrink-0">
+              <i class="bi bi-exclamation-triangle fs-5"></i>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="alert-heading mb-1">Elementos dependientes</h6>
+              <p class="mb-0 small">
+                Esta categoría tiene
+                {% if object.get_children.count > 0 %}
+                  <strong>{{ object.get_children.count }} subcategoría{{ object.get_children.count|pluralize }}</strong>
+                {% endif %}
+                {% if object.get_children.count > 0 and object.all_products.count > 0 %} y {% endif %}
+                {% if object.all_products.count > 0 %}
+                  <strong>{{ object.all_products.count }} producto{{ object.all_products.count|pluralize }}</strong>
+                {% endif %}
+                asociado{{ object.get_children.count|add:object.all_products.count|pluralize }}.
+                Los cambios pueden afectar cómo se muestran en el frontend.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
       {% endif %}
 
       <!-- Acciones adicionales -->
       <div class="card border-0 bg-light mt-4">
         <div class="card-body">
-          <h6 class="mb-3">
-            <i class="bi bi-gear text-primary me-2"></i>Acciones adicionales
-          </h6>
+          <h6 class="mb-3"><i class="bi bi-gear text-primary me-2"></i>Acciones adicionales</h6>
           <div class="row">
             <div class="col-md-4">
               <div class="d-grid">

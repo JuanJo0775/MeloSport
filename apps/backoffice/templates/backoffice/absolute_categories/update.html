@@ -4,7 +4,8 @@
 {% block title %}Editar Deporte - {{ object.nombre }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" "Editar" %}{% endblock %}
+  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" "Editar" %}
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -30,7 +31,7 @@
 
   <div class="row justify-content-center">
     <div class="col-xl-8">
-      <!-- Información del deporte actual -->
+      <!-- Información del deporte -->
       <div class="card border-0 bg-light mb-4">
         <div class="card-body">
           <div class="row align-items-center">
@@ -55,7 +56,7 @@
         </div>
       </div>
 
-      <!-- Formulario de edición -->
+      <!-- Formulario -->
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-bottom">
           <div class="d-flex align-items-center">
@@ -74,35 +75,23 @@
             {% csrf_token %}
 
             <div class="row g-4">
-              <!-- Nombre del deporte -->
+              <!-- Nombre -->
               <div class="col-md-6">
                 <label for="{{ form.nombre.id_for_label }}" class="form-label fw-semibold">
-                  {{ form.nombre.label }}
-                  {% if form.nombre.field.required %}
-                    <span class="text-danger">*</span>
-                  {% endif %}
+                  {{ form.nombre.label }} {% if form.nombre.field.required %}<span class="text-danger">*</span>{% endif %}
                 </label>
                 {{ form.nombre }}
-                {% if form.nombre.help_text %}
-                  <div class="form-text">{{ form.nombre.help_text }}</div>
-                {% endif %}
-                {% if form.nombre.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.nombre.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">{{ form.nombre.help_text|default:"Nombre descriptivo y único para el deporte" }}</div>
+                {% for error in form.nombre.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
 
-              <!-- Slug (si existe) -->
+              <!-- Slug -->
               {% if form.slug %}
               <div class="col-md-6">
                 <label for="{{ form.slug.id_for_label }}" class="form-label fw-semibold">
-                  {{ form.slug.label }}
-                  {% if form.slug.field.required %}
-                    <span class="text-danger">*</span>
-                  {% endif %}
+                  {{ form.slug.label }} {% if form.slug.field.required %}<span class="text-danger">*</span>{% endif %}
                 </label>
                 <div class="input-group">
                   {{ form.slug }}
@@ -110,41 +99,26 @@
                     <i class="bi bi-arrow-clockwise"></i>
                   </button>
                 </div>
-                {% if form.slug.help_text %}
-                  <div class="form-text">{{ form.slug.help_text }}</div>
-                {% endif %}
-                {% if form.slug.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.slug.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">{{ form.slug.help_text|default:"El slug se utiliza en la URL. Puedes regenerarlo desde el nombre." }}</div>
+                {% for error in form.slug.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
               {% endif %}
 
               <!-- Descripción -->
               <div class="col-12">
                 <label for="{{ form.descripcion.id_for_label }}" class="form-label fw-semibold">
-                  {{ form.descripcion.label }}
-                  {% if form.descripcion.field.required %}
-                    <span class="text-danger">*</span>
-                  {% endif %}
+                  {{ form.descripcion.label }} {% if form.descripcion.field.required %}<span class="text-danger">*</span>{% endif %}
                 </label>
                 {{ form.descripcion }}
-                {% if form.descripcion.help_text %}
-                  <div class="form-text">{{ form.descripcion.help_text }}</div>
-                {% endif %}
-                {% if form.descripcion.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.descripcion.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">{{ form.descripcion.help_text|default:"Descripción breve o detallada del deporte" }}</div>
+                {% for error in form.descripcion.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
 
-              <!-- Estado activo -->
+              <!-- Activo -->
               {% if form.activo %}
               <div class="col-md-6">
                 <div class="form-check form-switch">
@@ -152,47 +126,32 @@
                   <label for="{{ form.activo.id_for_label }}" class="form-check-label fw-semibold">
                     {{ form.activo.label }}
                   </label>
-                  {% if form.activo.help_text %}
-                    <div class="form-text">{{ form.activo.help_text }}</div>
-                  {% endif %}
+                  <div class="form-text">{{ form.activo.help_text|default:"Marca esta opción si quieres que el deporte esté visible en el frontend" }}</div>
                 </div>
-                {% if form.activo.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.activo.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                {% for error in form.activo.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
               {% endif %}
 
-              <!-- Campos adicionales del formulario -->
+              <!-- Campos extra -->
               {% for field in form %}
-                {% if field.name not in 'nombre,slug,descripcion,activo' %}
+                {% if field.name not in 'nombre slug descripcion activo' %}
                 <div class="col-md-6">
                   <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
-                    {{ field.label }}
-                    {% if field.field.required %}
-                      <span class="text-danger">*</span>
-                    {% endif %}
+                    {{ field.label }} {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
                   </label>
                   {{ field }}
-                  {% if field.help_text %}
-                    <div class="form-text">{{ field.help_text }}</div>
-                  {% endif %}
-                  {% if field.errors %}
-                    <div class="invalid-feedback d-block">
-                      {% for error in field.errors %}
-                        <div>{{ error }}</div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
+                  {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                  {% for error in field.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
                 </div>
                 {% endif %}
               {% endfor %}
             </div>
 
-            <!-- Mensajes de error generales -->
+            <!-- Errores generales -->
             {% if form.non_field_errors %}
               <div class="alert alert-danger mt-3">
                 {% for error in form.non_field_errors %}
@@ -201,7 +160,7 @@
               </div>
             {% endif %}
 
-            <!-- Botones de acción -->
+            <!-- Botones -->
             <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
               <div class="text-muted small">
                 <i class="bi bi-info-circle me-1"></i>
@@ -220,7 +179,7 @@
         </div>
       </div>
 
-      <!-- Advertencias si hay productos asociados -->
+      <!-- Advertencias -->
       {% if object.get_product_count > 0 %}
       <div class="alert alert-warning border-0 shadow-sm mt-4">
         <div class="d-flex">
@@ -241,9 +200,7 @@
       <!-- Acciones adicionales -->
       <div class="card border-0 bg-light mt-4">
         <div class="card-body">
-          <h6 class="mb-3">
-            <i class="bi bi-gear text-primary me-2"></i>Acciones adicionales
-          </h6>
+          <h6 class="mb-3"><i class="bi bi-gear text-primary me-2"></i>Acciones adicionales</h6>
           <div class="row">
             <div class="col-md-4">
               <div class="d-grid">
@@ -272,7 +229,6 @@
     </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -290,63 +246,44 @@ document.addEventListener('DOMContentLoaded', function () {
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
-        .trim('-');
+        .replace(/^-+|-+$/g, '');
       slugField.value = slug;
 
-      // Mostrar feedback visual
+      // Feedback visual
       slugField.classList.add('is-valid');
-      setTimeout(() => {
-        slugField.classList.remove('is-valid');
-      }, 2000);
+      setTimeout(() => slugField.classList.remove('is-valid'), 2000);
     });
   }
 
-  // Validación en tiempo real
+  // Validación
   const form = document.querySelector('form');
   const requiredFields = form.querySelectorAll('[required]');
-
   requiredFields.forEach(field => {
     field.addEventListener('blur', function() {
-      if (this.value.trim() === '') {
-        this.classList.add('is-invalid');
-      } else {
-        this.classList.remove('is-invalid');
-        this.classList.add('is-valid');
-      }
+      this.classList.toggle('is-invalid', this.value.trim() === '');
+      this.classList.toggle('is-valid', this.value.trim() !== '');
     });
-
     field.addEventListener('input', function() {
-      if (this.value.trim() !== '') {
-        this.classList.remove('is-invalid');
-        this.classList.add('is-valid');
-      }
+      this.classList.toggle('is-invalid', this.value.trim() === '');
+      this.classList.toggle('is-valid', this.value.trim() !== '');
     });
   });
 
-  // Confirmación de cambios no guardados
+  // Confirmación cambios no guardados
   let formChanged = false;
-  const formInputs = form.querySelectorAll('input, textarea, select');
-
-  formInputs.forEach(input => {
-    input.addEventListener('change', () => {
-      formChanged = true;
-    });
+  form.querySelectorAll('input, textarea, select').forEach(input => {
+    input.addEventListener('change', () => { formChanged = true; });
   });
-
   window.addEventListener('beforeunload', function(e) {
     if (formChanged) {
       e.preventDefault();
       e.returnValue = '¿Estás seguro de que quieres salir? Los cambios no guardados se perderán.';
     }
   });
+  form.addEventListener('submit', () => { formChanged = false; });
 
-  form.addEventListener('submit', function() {
-    formChanged = false;
-  });
-
-  // Animación de entrada
-  const cards = document.querySelectorAll('.card');
-  cards.forEach((card, index) => {
+  // Animación
+  document.querySelectorAll('.card').forEach((card, index) => {
     card.style.opacity = '0';
     card.style.transform = 'translateY(20px)';
     setTimeout(() => {

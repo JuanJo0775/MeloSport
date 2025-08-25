@@ -15,7 +15,7 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h1 class="h3 mb-2">Crear Nueva Categoría</h1>
-          <p class="text-muted mb-0">Crea una categoría jerárquica con estructura padre-hijo</p>
+          <p class="text-muted mb-0">Agrega una categoría para organizar productos dentro de un deporte</p>
         </div>
         <div class="d-flex gap-2">
           <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary">
@@ -35,10 +35,11 @@
             <i class="bi bi-info-circle fs-5"></i>
           </div>
           <div class="flex-grow-1 ms-3">
-            <h6 class="alert-heading mb-1">¿Qué es una Categoría Jerárquica?</h6>
+            <h6 class="alert-heading mb-1">¿Qué es una Categoría?</h6>
             <p class="mb-0 small">
-              Las categorías jerárquicas permiten crear estructuras padre-hijo como "Calzado" → "Zapatos de Fútbol".
-              Ideal para organizar productos de manera detallada dentro de cada deporte.
+              Las categorías son jerárquicas: pueden tener un padre y subcategorías.
+              Ayudan a estructurar los productos dentro de un deporte específico.
+              Solo las categorías activas serán visibles en el frontend.
             </p>
           </div>
         </div>
@@ -63,118 +64,90 @@
             {% csrf_token %}
 
             <div class="row g-4">
-              <!-- Nombre de la categoría -->
+              <!-- Nombre -->
               <div class="col-md-6">
                 <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">
-                  {{ form.name.label }}
-                  {% if form.name.field.required %}
-                    <span class="text-danger">*</span>
-                  {% endif %}
+                  {{ form.name.label }}{% if form.name.field.required %}<span class="text-danger">*</span>{% endif %}
                 </label>
                 {{ form.name }}
-                {% if form.name.help_text %}
-                  <div class="form-text">{{ form.name.help_text }}</div>
-                {% else %}
-                  <div class="form-text">Nombre descriptivo y único para la categoría</div>
-                {% endif %}
-                {% if form.name.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.name.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">
+                  {{ form.name.help_text|default:"Nombre descriptivo y único para la categoría" }}
+                </div>
+                {% for error in form.name.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
 
-              <!-- Categoría Padre -->
+              <!-- Categoría padre -->
+              {% if form.parent %}
               <div class="col-md-6">
                 <label for="{{ form.parent.id_for_label }}" class="form-label fw-semibold">
                   {{ form.parent.label }}
                 </label>
                 {{ form.parent }}
-                {% if form.parent.help_text %}
-                  <div class="form-text">{{ form.parent.help_text }}</div>
-                {% else %}
-                  <div class="form-text">Opcional: selecciona una categoría padre para crear jerarquía</div>
-                {% endif %}
-                {% if form.parent.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.parent.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">
+                  {{ form.parent.help_text|default:"Opcional: selecciona una categoría padre para crear jerarquía" }}
+                </div>
+                {% for error in form.parent.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
+              {% endif %}
 
               <!-- Descripción -->
+              {% if form.description %}
               <div class="col-12">
                 <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold">
                   {{ form.description.label }}
                 </label>
                 {{ form.description }}
-                {% if form.description.help_text %}
-                  <div class="form-text">{{ form.description.help_text }}</div>
-                {% else %}
-                  <div class="form-text">Descripción detallada de la categoría (opcional)</div>
-                {% endif %}
-                {% if form.description.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.description.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
-                  </div>
-                {% endif %}
+                <div class="form-text">
+                  {{ form.description.help_text|default:"Descripción detallada de la categoría (opcional)" }}
+                </div>
+                {% for error in form.description.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
+              {% endif %}
 
               <!-- Estado activo -->
+              {% if form.is_active %}
               <div class="col-md-6">
                 <div class="form-check form-switch mt-4">
                   {{ form.is_active }}
                   <label for="{{ form.is_active.id_for_label }}" class="form-check-label fw-semibold">
                     {{ form.is_active.label }}
                   </label>
-                  {% if form.is_active.help_text %}
-                    <div class="form-text">{{ form.is_active.help_text }}</div>
-                  {% else %}
-                    <div class="form-text">Solo las categorías activas se muestran en el frontend</div>
-                  {% endif %}
-                </div>
-                {% if form.is_active.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.is_active.errors %}
-                      <div>{{ error }}</div>
-                    {% endfor %}
+                  <div class="form-text">
+                    {{ form.is_active.help_text|default:"Solo las categorías activas se muestran en el frontend" }}
                   </div>
-                {% endif %}
+                </div>
+                {% for error in form.is_active.errors %}
+                  <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
               </div>
+              {% endif %}
 
               <!-- Campos adicionales dinámicos -->
               {% for field in form %}
-                {% if field.name not in 'name,parent,description,is_active' %}
-                <div class="col-md-6">
-                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
-                    {{ field.label }}
-                    {% if field.field.required %}
-                      <span class="text-danger">*</span>
+                {% if field.name not in 'name parent description is_active' %}
+                  <div class="col-md-6">
+                    <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                      {{ field.label }}{% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}
+                      <div class="form-text">{{ field.help_text }}</div>
                     {% endif %}
-                  </label>
-                  {{ field }}
-                  {% if field.help_text %}
-                    <div class="form-text">{{ field.help_text }}</div>
-                  {% endif %}
-                  {% if field.errors %}
-                    <div class="invalid-feedback d-block">
-                      {% for error in field.errors %}
-                        <div>{{ error }}</div>
-                      {% endfor %}
-                    </div>
-                  {% endif %}
-                </div>
+                    {% for error in field.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
                 {% endif %}
               {% endfor %}
             </div>
 
-            <!-- Mensajes de error generales -->
+            <!-- Errores generales -->
             {% if form.non_field_errors %}
               <div class="alert alert-danger mt-3">
                 {% for error in form.non_field_errors %}
@@ -183,7 +156,7 @@
               </div>
             {% endif %}
 
-            <!-- Botones de acción -->
+            <!-- Botones -->
             <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
               <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary px-4">
                 <i class="bi bi-x-circle me-2"></i>Cancelar
@@ -195,7 +168,6 @@
           </form>
         </div>
       </div>
-
       <!-- Consejos útiles -->
       <div class="card border-0 bg-light mt-4">
         <div class="card-body">
