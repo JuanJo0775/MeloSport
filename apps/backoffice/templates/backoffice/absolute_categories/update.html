@@ -1,25 +1,361 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
-{% block title %}Editar Deporte{% endblock %}
+
+{% block title %}Editar Deporte - {{ object.nombre }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Deportes|categories:absolute_list" "Editar" %}
+  {% breadcrumb "Gestión|categories:home" "Deportes|categories:absolute_list" "Editar" %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-3">
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Editar deporte</h5>
-      <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <div class="d-flex justify-content-end">
-          <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-secondary me-2">Cancelar</a>
-          <button type="submit" class="btn btn-success">Guardar cambios</button>
+<div class="container-fluid py-4">
+  <!-- Encabezado -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="h3 mb-2">Editar Deporte</h1>
+          <p class="text-muted mb-0">Modifica los datos del deporte: <strong>{{ object.nombre }}</strong></p>
         </div>
-      </form>
+        <div class="d-flex gap-2">
+          <a href="{% url 'backoffice:categories:absolute_detail' object.pk %}" class="btn btn-outline-info">
+            <i class="bi bi-eye me-2"></i>Ver Detalles
+          </a>
+          <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver al Listado
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-xl-8">
+      <!-- Información del deporte actual -->
+      <div class="card border-0 bg-light mb-4">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <div class="icon-wrapper bg-success bg-opacity-10 rounded-3 p-3">
+                <i class="bi bi-dribbble text-success fs-2"></i>
+              </div>
+            </div>
+            <div class="col">
+              <h5 class="mb-1">{{ object.nombre }}</h5>
+              <p class="text-muted mb-1">{{ object.descripcion|default:"Sin descripción"|truncatechars:100 }}</p>
+              <div class="d-flex gap-2 align-items-center">
+                {% if object.activo %}
+                  <span class="badge bg-success">Activo</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactivo</span>
+                {% endif %}
+                <small class="text-muted">{{ object.get_product_count }} productos asociados</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulario de edición -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <div class="d-flex align-items-center">
+            <div class="icon-wrapper bg-warning bg-opacity-10 rounded-3 p-2 me-3">
+              <i class="bi bi-pencil text-warning fs-4"></i>
+            </div>
+            <div>
+              <h5 class="card-title mb-0">Editar Información</h5>
+              <p class="text-muted small mb-0">Modifica los datos del deporte según sea necesario</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row g-4">
+              <!-- Nombre del deporte -->
+              <div class="col-md-6">
+                <label for="{{ form.nombre.id_for_label }}" class="form-label fw-semibold">
+                  {{ form.nombre.label }}
+                  {% if form.nombre.field.required %}
+                    <span class="text-danger">*</span>
+                  {% endif %}
+                </label>
+                {{ form.nombre }}
+                {% if form.nombre.help_text %}
+                  <div class="form-text">{{ form.nombre.help_text }}</div>
+                {% endif %}
+                {% if form.nombre.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.nombre.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Slug (si existe) -->
+              {% if form.slug %}
+              <div class="col-md-6">
+                <label for="{{ form.slug.id_for_label }}" class="form-label fw-semibold">
+                  {{ form.slug.label }}
+                  {% if form.slug.field.required %}
+                    <span class="text-danger">*</span>
+                  {% endif %}
+                </label>
+                <div class="input-group">
+                  {{ form.slug }}
+                  <button type="button" class="btn btn-outline-secondary" id="regenerateSlug" title="Regenerar slug desde el nombre">
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+                {% if form.slug.help_text %}
+                  <div class="form-text">{{ form.slug.help_text }}</div>
+                {% endif %}
+                {% if form.slug.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.slug.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              <!-- Descripción -->
+              <div class="col-12">
+                <label for="{{ form.descripcion.id_for_label }}" class="form-label fw-semibold">
+                  {{ form.descripcion.label }}
+                  {% if form.descripcion.field.required %}
+                    <span class="text-danger">*</span>
+                  {% endif %}
+                </label>
+                {{ form.descripcion }}
+                {% if form.descripcion.help_text %}
+                  <div class="form-text">{{ form.descripcion.help_text }}</div>
+                {% endif %}
+                {% if form.descripcion.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.descripcion.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Estado activo -->
+              {% if form.activo %}
+              <div class="col-md-6">
+                <div class="form-check form-switch">
+                  {{ form.activo }}
+                  <label for="{{ form.activo.id_for_label }}" class="form-check-label fw-semibold">
+                    {{ form.activo.label }}
+                  </label>
+                  {% if form.activo.help_text %}
+                    <div class="form-text">{{ form.activo.help_text }}</div>
+                  {% endif %}
+                </div>
+                {% if form.activo.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.activo.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              {% endif %}
+
+              <!-- Campos adicionales del formulario -->
+              {% for field in form %}
+                {% if field.name not in 'nombre,slug,descripcion,activo' %}
+                <div class="col-md-6">
+                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                    {{ field.label }}
+                    {% if field.field.required %}
+                      <span class="text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                  {% endif %}
+                  {% if field.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in field.errors %}
+                        <div>{{ error }}</div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            <!-- Mensajes de error generales -->
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mt-3">
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Botones de acción -->
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+              <div class="text-muted small">
+                <i class="bi bi-info-circle me-1"></i>
+                Los cambios se aplicarán inmediatamente al guardar
+              </div>
+              <div class="d-flex gap-2">
+                <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary px-4">
+                  <i class="bi bi-x-circle me-2"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary px-4">
+                  <i class="bi bi-check-circle me-2"></i>Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Advertencias si hay productos asociados -->
+      {% if object.get_product_count > 0 %}
+      <div class="alert alert-warning border-0 shadow-sm mt-4">
+        <div class="d-flex">
+          <div class="flex-shrink-0">
+            <i class="bi bi-exclamation-triangle fs-5"></i>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h6 class="alert-heading mb-1">Productos asociados</h6>
+            <p class="mb-0 small">
+              Este deporte tiene <strong>{{ object.get_product_count }} producto{{ object.get_product_count|pluralize }}</strong> asociado{{ object.get_product_count|pluralize }}.
+              Los cambios en el nombre o estado pueden afectar cómo se muestran en el frontend.
+            </p>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Acciones adicionales -->
+      <div class="card border-0 bg-light mt-4">
+        <div class="card-body">
+          <h6 class="mb-3">
+            <i class="bi bi-gear text-primary me-2"></i>Acciones adicionales
+          </h6>
+          <div class="row">
+            <div class="col-md-4">
+              <div class="d-grid">
+                <a href="{% url 'backoffice:categories:absolute_detail' object.pk %}" class="btn btn-outline-info">
+                  <i class="bi bi-eye me-2"></i>Ver Detalles Completos
+                </a>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-grid">
+                <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+                  <i class="bi bi-printer me-2"></i>Imprimir Información
+                </button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-grid">
+                <a href="{% url 'backoffice:categories:absolute_delete' object.pk %}" class="btn btn-outline-danger">
+                  <i class="bi bi-trash me-2"></i>Eliminar Deporte
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Regenerar slug
+  const regenerateSlugBtn = document.getElementById('regenerateSlug');
+  const nombreField = document.getElementById('{{ form.nombre.id_for_label }}');
+  const slugField = document.getElementById('{{ form.slug.id_for_label }}');
+
+  if (regenerateSlugBtn && nombreField && slugField) {
+    regenerateSlugBtn.addEventListener('click', function() {
+      const slug = nombreField.value
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim('-');
+      slugField.value = slug;
+
+      // Mostrar feedback visual
+      slugField.classList.add('is-valid');
+      setTimeout(() => {
+        slugField.classList.remove('is-valid');
+      }, 2000);
+    });
+  }
+
+  // Validación en tiempo real
+  const form = document.querySelector('form');
+  const requiredFields = form.querySelectorAll('[required]');
+
+  requiredFields.forEach(field => {
+    field.addEventListener('blur', function() {
+      if (this.value.trim() === '') {
+        this.classList.add('is-invalid');
+      } else {
+        this.classList.remove('is-invalid');
+        this.classList.add('is-valid');
+      }
+    });
+
+    field.addEventListener('input', function() {
+      if (this.value.trim() !== '') {
+        this.classList.remove('is-invalid');
+        this.classList.add('is-valid');
+      }
+    });
+  });
+
+  // Confirmación de cambios no guardados
+  let formChanged = false;
+  const formInputs = form.querySelectorAll('input, textarea, select');
+
+  formInputs.forEach(input => {
+    input.addEventListener('change', () => {
+      formChanged = true;
+    });
+  });
+
+  window.addEventListener('beforeunload', function(e) {
+    if (formChanged) {
+      e.preventDefault();
+      e.returnValue = '¿Estás seguro de que quieres salir? Los cambios no guardados se perderán.';
+    }
+  });
+
+  form.addEventListener('submit', function() {
+    formChanged = false;
+  });
+
+  // Animación de entrada
+  const cards = document.querySelectorAll('.card');
+  cards.forEach((card, index) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      card.style.transition = 'all 0.3s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, index * 100);
+  });
+});
+</script>
 {% endblock %}

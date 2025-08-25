@@ -1,12 +1,15 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.db.models import Q, Count
+from django.db.models.functions import Cast
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.views.generic.base import TemplateView
 from .models import Category, AbsoluteCategory
-
+from ..products.models import Product
+from django.db.models import CharField
 
 class CategoryHomeView(LoginRequiredMixin, TemplateView):
     template_name = 'backoffice/categories/index_categories.html'
@@ -122,6 +125,45 @@ class AbsoluteCategoryListView(LoginRequiredMixin, PermissionRequiredMixin, List
     model = AbsoluteCategory
     template_name = 'backoffice/absolute_categories/list.html'
     context_object_name = 'deportes'
+    paginate_by = 20  # opcional
+
+    def get_queryset(self):
+        qs = AbsoluteCategory.objects.all()
+
+        # 🔎 Búsqueda
+        search = self.request.GET.get('search')
+        if search:
+            qs = qs.annotate(id_str=Cast("id", CharField()))
+            qs = qs.filter(
+                Q(nombre__icontains=search) |
+                Q(descripcion__icontains=search) |
+                Q(id_str__icontains=search)
+            )
+
+        # 🎚️ Filtrado por estado
+        status = self.request.GET.get('status')
+        if status == 'active':
+            qs = qs.filter(activo=True)
+        elif status == 'inactive':
+            qs = qs.filter(activo=False)
+
+        # Prefetch para contar productos sin queries extra
+        return qs.annotate(product_count=Count('products'))
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Totales
+        deportes = AbsoluteCategory.objects.all()
+        context['deportes_activos'] = deportes.filter(activo=True).count()
+        context['deportes_inactivos'] = deportes.filter(activo=False).count()
+
+        # Total productos asociados a deportes
+        context['total_productos'] = Product.objects.filter(
+            absolute_category__in=deportes
+        ).count()
+
+        return context
 
 
 class AbsoluteCategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -197,3 +239,18 @@ class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, De
             return redirect(self.success_url)
 
         return redirect(self.success_url)
+
+def absolute_activate(request, pk):
+    deporte = get_object_or_404(AbsoluteCategory, pk=pk)
+    deporte.activo = True
+    deporte.save()
+    messages.success(request, f"El deporte '{deporte.nombre}' ha sido activado correctamente.")
+    return redirect("backoffice:categories:absolute_detail", pk=pk)
+
+
+def absolute_deactivate(request, pk):
+    deporte = get_object_or_404(AbsoluteCategory, pk=pk)
+    deporte.activo = False
+    deporte.save()
+    messages.warning(request, f"El deporte '{deporte.nombre}' ha sido desactivado.")
+    return redirect("backoffice:categories:absolute_detail", pk=pk)

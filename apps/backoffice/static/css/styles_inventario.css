@@ -277,3 +277,34 @@ body.sidebar-collapsed .breadcrumb-wrapper {
     margin-left: 12px; /* en móviles, alineado normal */
   }
 }
+
+@media print {
+    /* Ocultar navbar, footer, botones y acciones */
+    .btn,
+    .btn-group,
+    .card .dropdown-menu,
+    .card .card-header .btn,
+    .acciones-rapidas,
+    .navbar,
+    .breadcrumb,
+    .sidebar {
+      display: none !important;
+    }
+
+    /* Ajustar márgenes y colores para impresión */
+    body {
+      background: #fff !important;
+      color: #000 !important;
+    }
+
+    .card {
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Expande el contenido a toda la hoja */
+    .container-fluid {
+      max-width: 100% !important;
+    }
+  }
+

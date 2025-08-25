@@ -19,4 +19,7 @@ urlpatterns = [
     path('deportes/<int:pk>/', views.AbsoluteCategoryDetailView.as_view(), name='absolute_detail'),
     path('deportes/<int:pk>/editar/', views.AbsoluteCategoryUpdateView.as_view(), name='absolute_edit'),
     path('deportes/<int:pk>/eliminar/', views.AbsoluteCategoryDeleteView.as_view(), name='absolute_delete'),
+
+    path("deportes/<int:pk>/activar/", views.absolute_activate, name="absolute_activate"),
+    path("deportes/<int:pk>/desactivar/", views.absolute_deactivate, name="absolute_deactivate"),
 ]

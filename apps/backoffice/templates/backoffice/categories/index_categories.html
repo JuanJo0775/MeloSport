@@ -1,87 +1,209 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
 
-{% block title %}Categorías{% endblock %}
+{% block title %}Gestión de Categorías{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|categories:home" %}
+  {% breadcrumb "Gestión de Categorías|categories:home" %}
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3">
-
-  <!-- Atajos globales -->
-  <div class="d-flex justify-content-end mb-3 gap-2">
-    <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-circle me-1"></i> Nueva categoría (padre/hija)
-    </a>
-    <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success btn-sm">
-      <i class="bi bi-plus-circle me-1"></i> Nuevo deporte (absoluta)
-    </a>
+<div class="container-fluid py-4">
+  <!-- Encabezado principal -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="h3 mb-2">Gestión de Categorías</h1>
+          <p class="text-muted mb-0">Administra deportes y categorías jerárquicas para organizar tus productos</p>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Nueva Categoría
+          </a>
+          <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle me-2"></i>Nuevo Deporte
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="row g-3">
-
-    <!-- Tarjeta de Categorías (jerárquicas) -->
-    <div class="col-md-6">
-      <div class="card shadow-sm h-100">
-        <div class="card-body d-flex flex-column">
-          <div class="d-flex align-items-center mb-2">
-            <i class="bi bi-tags-fill text-primary fs-3 me-2"></i>
-            <h5 class="card-title mb-0">Categorías (Padre/Hija)</h5>
-            <span class="ms-2" data-bs-toggle="tooltip" title="Organiza contenidos dentro de cada deporte o sección. Puedes crear categorías padre y sus hijas.">
-              <i class="bi bi-info-circle text-muted"></i>
-            </span>
+  <!-- Información didáctica -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="alert alert-info border-0 shadow-sm">
+        <div class="d-flex">
+          <div class="flex-shrink-0">
+            <i class="bi bi-info-circle fs-4 text-info"></i>
           </div>
-          <p class="text-muted mb-3">Estructura jerárquica para segmentar productos.</p>
-          <div class="mt-auto d-flex gap-2 flex-wrap">
-            <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-primary btn-sm">
-              <i class="bi bi-list-task me-1"></i> Listado / Gestión
+          <div class="flex-grow-1 ms-3">
+            <h5 class="alert-heading mb-2">¿Cuál es la diferencia?</h5>
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Deportes (Categorías Absolutas):</strong></p>
+                <p class="mb-0 small">Contenedores principales como "Fútbol", "Baloncesto". Se muestran como deportes en el frontend y no tienen jerarquía padre-hijo.</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Categorías Jerárquicas:</strong></p>
+                <p class="mb-0 small">Permiten crear estructuras padre-hijo como "Calzado" → "Zapatos de Fútbol" para organizar productos dentro de cada deporte.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjetas principales -->
+  <div class="row g-4">
+    <!-- Deportes (Categorías Absolutas) -->
+    <div class="col-lg-6">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center mb-3">
+            <div class="icon-wrapper bg-success bg-opacity-10 rounded-3 p-3 me-3">
+              <i class="bi bi-dribbble text-success fs-2"></i>
+            </div>
+            <div class="flex-grow-1">
+              <h4 class="card-title mb-1">Deportes</h4>
+              <p class="text-muted mb-0">Categorías Absolutas</p>
+            </div>
+            <span class="badge bg-success rounded-pill">Principal</span>
+          </div>
+
+          <p class="text-muted mb-4">
+            Gestiona los deportes principales de tu inventario. Estas categorías aparecen como deportes en el frontend
+            y sirven como contenedores principales para tus productos.
+          </p>
+
+          <div class="d-flex flex-wrap gap-2 mb-4">
+            <span class="badge bg-light text-dark border">Sin jerarquía</span>
+            <span class="badge bg-light text-dark border">Visibles en frontend</span>
+            <span class="badge bg-light text-dark border">Contenedores principales</span>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-success flex-fill">
+              <i class="bi bi-list-task me-2"></i>Ver Listado
             </a>
-            <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary btn-sm">
-              <i class="bi bi-plus-circle me-1"></i> Nueva categoría
+            <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success flex-fill">
+              <i class="bi bi-plus-circle me-2"></i>Crear Deporte
             </a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Tarjeta de Categorías Absolutas (Deportes) -->
-    <div class="col-md-6">
-      <div class="card shadow-sm h-100">
-        <div class="card-body d-flex flex-column">
-          <div class="d-flex align-items-center mb-2">
-            <i class="bi bi-dribbble text-success fs-3 me-2"></i>
-            <h5 class="card-title mb-0">Deportes (Categorías Absolutas)</h5>
-            <span class="ms-2" data-bs-toggle="tooltip" title="Se muestran como 'deportes' en el frontend y se gestionan como categorías absolutas en el backend. No tienen jerarquía padre/hija.">
-              <i class="bi bi-info-circle text-muted"></i>
-            </span>
+    <!-- Categorías Jerárquicas -->
+    <div class="col-lg-6">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center mb-3">
+            <div class="icon-wrapper bg-primary bg-opacity-10 rounded-3 p-3 me-3">
+              <i class="bi bi-diagram-3 text-primary fs-2"></i>
+            </div>
+            <div class="flex-grow-1">
+              <h4 class="card-title mb-1">Categorías</h4>
+              <p class="text-muted mb-0">Estructura Jerárquica</p>
+            </div>
+            <span class="badge bg-primary rounded-pill">Organización</span>
           </div>
-          <p class="text-muted mb-3">Contenedores principales por deporte o sección.</p>
-          <div class="mt-auto d-flex gap-2 flex-wrap">
-            <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-success btn-sm">
-              <i class="bi bi-list-task me-1"></i> Listado / Gestión
+
+          <p class="text-muted mb-4">
+            Crea estructuras organizadas con categorías padre e hijas. Ideal para segmentar productos
+            dentro de cada deporte con múltiples niveles de clasificación.
+          </p>
+
+          <div class="d-flex flex-wrap gap-2 mb-4">
+            <span class="badge bg-light text-dark border">Padre - Hijo</span>
+            <span class="badge bg-light text-dark border">Múltiples niveles</span>
+            <span class="badge bg-light text-dark border">Organización detallada</span>
+          </div>
+
+          <div class="d-flex gap-2">
+            <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-primary flex-fill">
+              <i class="bi bi-list-task me-2"></i>Ver Listado
             </a>
-            <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success btn-sm">
-              <i class="bi bi-plus-circle me-1"></i> Nuevo deporte
+            <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary flex-fill">
+              <i class="bi bi-plus-circle me-2"></i>Crear Categoría
             </a>
           </div>
         </div>
       </div>
     </div>
-
   </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="row mt-5">
+      <div class="col-12">
+        <h5 class="mb-3">Resumen del Sistema</h5>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card border-0 bg-success bg-opacity-10">
+          <div class="card-body text-center">
+            <i class="bi bi-dribbble text-success fs-2 mb-2"></i>
+            <h3 class="text-success mb-1">{{ deportes_activos|default:"0" }}</h3>
+            <p class="text-muted mb-0">Deportes Activos</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card border-0 bg-primary bg-opacity-10">
+          <div class="card-body text-center">
+            <i class="bi bi-diagram-3 text-primary fs-2 mb-2"></i>
+            <h3 class="text-primary mb-1">{{ categorias_count|default:"0" }}</h3>
+            <p class="text-muted mb-0">Categorías Totales</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card border-0 bg-info bg-opacity-10">
+          <div class="card-body text-center">
+            <i class="bi bi-boxes text-info fs-2 mb-2"></i>
+            <h3 class="text-info mb-1">{{ productos_count|default:"0" }}</h3>
+            <p class="text-muted mb-0">Productos Asociados</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card border-0 bg-warning bg-opacity-10">
+          <div class="card-body text-center">
+            <i class="bi bi-graph-up text-warning fs-2 mb-2"></i>
+            <h3 class="text-warning mb-1">{{ categorias_padre_count|default:"0" }}</h3>
+            <p class="text-muted mb-0">Categorías Padre</p>
+          </div>
+        </div>
+      </div>
+    </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // Activa tooltips Bootstrap
-  document.addEventListener('DOMContentLoaded', function () {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-      new bootstrap.Tooltip(tooltipTriggerEl)
-    })
+document.addEventListener('DOMContentLoaded', function () {
+  // Inicializar tooltips si existen
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
   });
+
+  // Animaciones suaves para las tarjetas
+  const cards = document.querySelectorAll('.card');
+  cards.forEach((card, index) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      card.style.transition = 'all 0.3s ease';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, index * 100);
+  });
+});
 </script>
 {% endblock %}

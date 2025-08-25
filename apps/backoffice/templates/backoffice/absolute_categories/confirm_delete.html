@@ -1,53 +1,84 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
-{% block title %}Confirmar eliminación - Deporte{% endblock %}
+{% block title %}Confirmar eliminación - {{ object.nombre }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Deportes|categories:absolute_list" "Eliminar" %}
+  {% breadcrumb "Gestión|categories:home" "Deportes|categories:absolute_list" "Eliminar" %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Eliminar deporte: {{ object.nombre }}</h5>
-
-      {% if step == 'warn' %}
-        <p class="text-warning">La categoría absoluta tiene productos asociados.</p>
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="confirm_step" value="1">
-          <div class="d-flex justify-content-end">
-            <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-secondary me-2">Cancelar</a>
-            <button type="submit" class="btn btn-danger">Continuar</button>
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 d-flex align-items-center">
+          <i class="bi bi-exclamation-triangle text-danger fs-3 me-3"></i>
+          <div>
+            <h5 class="card-title mb-0">Eliminar Deporte</h5>
+            <small class="text-muted">Acción irreversible para <strong>{{ object.nombre }}</strong></small>
           </div>
-        </form>
+        </div>
+        <div class="card-body">
 
-      {% elif step == 'confirm_password' %}
-        <p class="text-danger"><strong>Advertencia final:</strong> Esta acción eliminará permanentemente la categoría absoluta y sus vínculos.</p>
+          {% if step == 'warn' %}
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+              <i class="bi bi-info-circle me-2"></i>
+              La categoría absoluta <strong>{{ object.nombre }}</strong> tiene productos asociados.
+            </div>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="confirm_step" value="1">
+              <div class="d-flex justify-content-end">
+                <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary me-2">
+                  <i class="bi bi-x-circle me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                  <i class="bi bi-arrow-right-circle me-1"></i>Continuar
+                </button>
+              </div>
+            </form>
 
-        {% if messages %}
-          {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-          {% endfor %}
-        {% endif %}
+          {% elif step == 'confirm_password' %}
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+              <i class="bi bi-shield-exclamation me-2"></i>
+              <div>
+                <strong>Advertencia final:</strong> Esta acción eliminará permanentemente
+                el deporte y todos sus vínculos.
+              </div>
+            </div>
 
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="confirm_step" value="2">
-          <div class="mb-3">
-            <label for="password" class="form-label">Confirma con tu contraseña</label>
-            <input type="password" id="password" name="password" class="form-control" required>
-          </div>
-          <div class="d-flex justify-content-end">
-            <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-secondary me-2">Cancelar</a>
-            <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
-          </div>
-        </form>
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
 
-      {% else %}
-        <p>¿Estás seguro?</p>
-      {% endif %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="confirm_step" value="2">
+              <div class="mb-3">
+                <label for="password" class="form-label">Confirma con tu contraseña</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+                <small class="text-muted">Por seguridad, necesitamos verificar tu identidad.</small>
+              </div>
+              <div class="d-flex justify-content-end">
+                <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary me-2">
+                  <i class="bi bi-x-circle me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                  <i class="bi bi-trash me-1"></i>Confirmar eliminación
+                </button>
+              </div>
+            </form>
+
+          {% else %}
+            <p class="text-muted">¿Estás seguro de que quieres eliminar <strong>{{ object.nombre }}</strong>?</p>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 </div>

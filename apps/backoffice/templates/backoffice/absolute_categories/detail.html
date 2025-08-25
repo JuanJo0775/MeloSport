@@ -1,28 +1,249 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
-{% block title %}Detalle Deporte{% endblock %}
+
+{% block title %}{{ deporte.nombre }} - Detalles{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Deportes|categories:absolute_list" "Detalle" %}
+  {% breadcrumb "Gestión|categories:home" "Deportes|categories:absolute_list" deporte.nombre %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-3">
-  <div class="card">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-          <h4 class="mb-1">{{ deporte.nombre }}</h4>
-          <p class="text-muted mb-0">{{ deporte.descripcion }}</p>
+<div class="container-fluid py-4">
+  <!-- Encabezado con acciones -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex align-items-center">
+          <div class="icon-wrapper bg-success bg-opacity-10 rounded-3 p-3 me-4">
+            <i class="bi bi-dribbble text-success fs-1"></i>
+          </div>
+          <div>
+            <h1 class="h2 mb-2">{{ deporte.nombre }}</h1>
+            <p class="text-muted mb-2">{{ deporte.descripcion|default:"Sin descripción disponible" }}</p>
+            <div class="d-flex gap-2 align-items-center">
+              {% if deporte.activo %}
+                <span class="badge bg-success rounded-pill px-3">
+                  <i class="bi bi-check-circle me-1"></i>Activo
+                </span>
+              {% else %}
+                <span class="badge bg-secondary rounded-pill px-3">
+                  <i class="bi bi-pause-circle me-1"></i>Inactivo
+                </span>
+              {% endif %}
+              <span class="badge bg-light text-dark border">ID: {{ deporte.id }}</span>
+            </div>
+          </div>
         </div>
-        <div class="text-end">
-          <a href="{% url 'backoffice:categories:absolute_edit' deporte.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
-          <a href="{% url 'backoffice:categories:absolute_delete' deporte.pk %}" class="btn btn-sm btn-outline-danger">Eliminar</a>
+
+        <div class="d-flex flex-column gap-2">
+          <div class="btn-group">
+            <a href="{% url 'backoffice:categories:absolute_edit' deporte.pk %}" class="btn btn-primary">
+              <i class="bi bi-pencil me-2"></i>Editar
+            </a>
+            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+              <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="{% url 'backoffice:categories:absolute_edit' deporte.pk %}">
+                  <i class="bi bi-pencil me-2"></i>Editar deporte
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item" onclick="window.print()">
+                  <i class="bi bi-printer me-2"></i>Imprimir detalles
+                </button>
+              </li>
+                <li>
+                  <a class="dropdown-item text-danger" href="{% url 'backoffice:categories:absolute_delete' deporte.pk %}">
+                    <i class="bi bi-trash me-2"></i>Eliminar deporte
+                  </a>
+                </li>
+            </ul>
+          </div>
+          <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver al Listado
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Información básica -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-info-circle text-primary me-2"></i>Información General
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Nombre del Deporte</h6>
+                <p class="mb-0 fw-semibold">{{ deporte.nombre }}</p>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Identificador</h6>
+                <p class="mb-0 font-monospace">ID: {{ deporte.id }}</p>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Descripción</h6>
+                <p class="mb-0">{{ deporte.descripcion|default:"No hay descripción disponible"|linebreaks }}</p>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Estado</h6>
+                <div class="d-flex align-items-center">
+                  {% if deporte.activo %}
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    <span class="text-success fw-semibold">Activo</span>
+                    <small class="text-muted ms-2">- Visible en el frontend</small>
+                  {% else %}
+                    <i class="bi bi-pause-circle text-secondary me-2"></i>
+                    <span class="text-secondary fw-semibold">Inactivo</span>
+                    <small class="text-muted ms-2">- Oculto en el frontend</small>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Fecha de Creación</h6>
+                <p class="mb-0">
+                  {% if deporte.created_at %}
+                    {{ deporte.created_at|date:"d/m/Y H:i" }}
+                  {% else %}
+                    No disponible
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-graph-up text-success me-2"></i>Estadísticas
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="text-center mb-4">
+            <div class="display-4 text-primary mb-2">{{ deporte.get_product_count|default:"0" }}</div>
+            <h6 class="text-muted">Producto{{ deporte.get_product_count|pluralize }} Asociado{{ deporte.get_product_count|pluralize }}</h6>
+          </div>
+
+          <div class="d-grid gap-2">
+            {% if deporte.get_product_count > 0 %}
+              <a href="#" class="btn btn-outline-primary">
+                <i class="bi bi-boxes me-2"></i>Ver Productos
+              </a>
+            {% else %}
+              <button class="btn btn-outline-secondary" disabled>
+                <i class="bi bi-inbox me-2"></i>Sin Productos
+              </button>
+            {% endif %}
+          </div>
         </div>
       </div>
 
-      <p><strong>Productos asociados:</strong> {{ deporte.get_product_count }}</p>
+      <!-- Acciones rápidas -->
+      <div class="card border-0 shadow-sm mt-4 acciones-rapidas">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-lightning text-warning me-2"></i>Acciones Rápidas
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="{% url 'backoffice:categories:absolute_edit' deporte.pk %}" class="btn btn-primary">
+              <i class="bi bi-pencil me-2"></i>Editar Información
+            </a>
+            {% if deporte.activo %}
+              <a href="{% url 'backoffice:categories:absolute_deactivate' deporte.pk %}" class="btn btn-secondary">
+                <i class="bi bi-pause-circle me-2"></i>Desactivar
+              </a>
+            {% else %}
+              <a href="{% url 'backoffice:categories:absolute_activate' deporte.pk %}" class="btn btn-success">
+                <i class="bi bi-check-circle me-2"></i>Activar
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">Confirmar eliminación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        ¿Estás seguro de que deseas eliminar el deporte <strong>{{ deporte.nombre }}</strong>?
+        Esta acción no se puede deshacer.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <a href="{% url 'backoffice:categories:absolute_delete' deporte.pk %}" class="btn btn-danger">
+          <i class="bi bi-trash me-2"></i>Eliminar
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_css %}
+<style>
+  @media print {
+    /* Ocultar navbar, footer, botones y acciones */
+    .btn,
+    .btn-group,
+    .card .dropdown-menu,
+    .card .card-header .btn,
+    .acciones-rapidas,
+    .navbar,
+    .breadcrumb,
+    .sidebar {
+      display: none !important;
+    }
+
+    /* Ajustar márgenes y colores para impresión */
+    body {
+      background: #fff !important;
+      color: #000 !important;
+    }
+
+    .card {
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Expande el contenido a toda la hoja */
+    .container-fluid {
+      max-width: 100% !important;
+    }
+  }
+</style>
 {% endblock %}
