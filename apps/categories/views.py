@@ -1,107 +1,197 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.contrib.auth import authenticate
+from django.views.generic.base import TemplateView
 from .models import Category, AbsoluteCategory
-from django.views.generic import TemplateView
+
 
 class CategoryHomeView(LoginRequiredMixin, TemplateView):
     template_name = 'backoffice/categories/index_categories.html'
 
-# 🔹 Categorías
+
+# ===================== Utilidades =====================
+
+def _has_products(obj):
+    """Detecta productos asociados tolerando distintos related_name."""
+    if hasattr(obj, "products"):
+        return obj.products.exists()
+    if hasattr(obj, "product_set"):
+        return obj.product_set.exists()
+    return False
+
+
+# ===================== Jerárquicas (padre/hija) =====================
+
 class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = 'categories.view_category'
     model = Category
     template_name = 'backoffice/categories/list.html'
     context_object_name = 'categorias'
 
+
+class CategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    permission_required = 'categories.view_category'
+    model = Category
+    template_name = 'backoffice/categories/detail.html'
+    context_object_name = 'categoria'
+
+
 class CategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     permission_required = 'categories.add_category'
     model = Category
     fields = ['name', 'description', 'parent', 'is_active']
-    template_name = 'backoffice/categories/form.html'
+    template_name = 'backoffice/categories/create.html'
     success_url = reverse_lazy('categories:list')
 
-    def form_valid(self, form):
-        form.instance.last_modified_by = self.request.user
-        return super().form_valid(form)
 
 class CategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = 'categories.change_category'
     model = Category
     fields = ['name', 'description', 'parent', 'is_active']
-    template_name = 'backoffice/categories/form.html'
+    template_name = 'backoffice/categories/update.html'
     success_url = reverse_lazy('categories:list')
 
-    def form_valid(self, form):
-        form.instance.last_modified_by = self.request.user
-        return super().form_valid(form)
 
 class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    """
+    Flujo de eliminación seguro:
+      - GET: si tiene hijos o productos => paso 'warn' (aviso 1). Si no, va a 'confirm_password' directamente.
+      - POST step=1: segundo aviso (más enfático) + campo contraseña.
+      - POST step=2: valida contraseña y elimina.
+    """
     permission_required = 'categories.delete_category'
     model = Category
     template_name = 'backoffice/categories/confirm_delete.html'
     success_url = reverse_lazy('categories:list')
 
-    def dispatch(self, request, *args, **kwargs):
-        obj = self.get_object()
-        # Validación: no permitir borrar si tiene hijos o productos
-        if obj.get_children().exists() or obj.product_set.exists():
-            messages.error(request, "No se puede eliminar porque tiene subcategorías o productos.")
-            return redirect('categories:list')
-        return super().dispatch(request, *args, **kwargs)
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        has_children = self.object.get_children().exists()
+        has_products = _has_products(self.object)
+        context = self.get_context_data(
+            object=self.object,
+            has_children=has_children,
+            has_products=has_products,
+            step='warn' if (has_children or has_products) else 'confirm_password'
+        )
+        return self.render_to_response(context)
 
-    def delete(self, request, *args, **kwargs):
-        obj = self.get_object()
-        obj.last_modified_by = request.user
-        obj.save()
-        return super().delete(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        step = request.POST.get('confirm_step')
 
-# 🔹 Deportes (Categorías absolutas)
+        if step == '1':
+            # segundo aviso + password
+            context = self.get_context_data(
+                object=self.object,
+                has_children=self.object.get_children().exists(),
+                has_products=_has_products(self.object),
+                step='confirm_password'
+            )
+            return self.render_to_response(context)
+
+        if step == '2':
+            password = request.POST.get('password') or ''
+            user = request.user
+            if not authenticate(username=user.get_username(), password=password):
+                messages.error(request, "Contraseña incorrecta. No se pudo confirmar la eliminación.")
+                context = self.get_context_data(
+                    object=self.object,
+                    has_children=self.object.get_children().exists(),
+                    has_products=_has_products(self.object),
+                    step='confirm_password'
+                )
+                return self.render_to_response(context)
+
+            messages.success(request, "La categoría fue eliminada correctamente.")
+            self.object.delete()
+            return redirect(self.success_url)
+
+        # Cancelado
+        return redirect(self.success_url)
+
+
+# ===================== Absolutas (deportes) =====================
+
 class AbsoluteCategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = 'categories.view_absolutecategory'
     model = AbsoluteCategory
     template_name = 'backoffice/absolute_categories/list.html'
     context_object_name = 'deportes'
 
+
+class AbsoluteCategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    permission_required = 'categories.view_absolutecategory'
+    model = AbsoluteCategory
+    template_name = 'backoffice/absolute_categories/detail.html'
+    context_object_name = 'deporte'
+
+
 class AbsoluteCategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     permission_required = 'categories.add_absolutecategory'
     model = AbsoluteCategory
     fields = ['nombre', 'descripcion', 'activo']
-    template_name = 'backoffice/absolute_categories/form.html'
+    template_name = 'backoffice/absolute_categories/create.html'
     success_url = reverse_lazy('categories:absolute_list')
 
-    def form_valid(self, form):
-        form.instance.last_modified_by = self.request.user
-        return super().form_valid(form)
 
 class AbsoluteCategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = 'categories.change_absolutecategory'
     model = AbsoluteCategory
     fields = ['nombre', 'descripcion', 'activo']
-    template_name = 'backoffice/absolute_categories/form.html'
+    template_name = 'backoffice/absolute_categories/update.html'
     success_url = reverse_lazy('categories:absolute_list')
 
-    def form_valid(self, form):
-        form.instance.last_modified_by = self.request.user
-        return super().form_valid(form)
 
 class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    """
+    Mismo flujo de 2 avisos + contraseña.
+    """
     permission_required = 'categories.delete_absolutecategory'
     model = AbsoluteCategory
     template_name = 'backoffice/absolute_categories/confirm_delete.html'
     success_url = reverse_lazy('categories:absolute_list')
 
-    def dispatch(self, request, *args, **kwargs):
-        obj = self.get_object()
-        if obj.product_set.exists():
-            messages.error(request, "No se puede eliminar porque tiene productos asociados.")
-            return redirect('categories:absolute_list')
-        return super().dispatch(request, *args, **kwargs)
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # No hay jerarquía aquí; sólo productos
+        has_products = _has_products(self.object)
+        context = self.get_context_data(
+            object=self.object,
+            has_products=has_products,
+            step='warn' if has_products else 'confirm_password'
+        )
+        return self.render_to_response(context)
 
-    def delete(self, request, *args, **kwargs):
-        obj = self.get_object()
-        obj.last_modified_by = request.user
-        obj.save()
-        return super().delete(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        step = request.POST.get('confirm_step')
+
+        if step == '1':
+            context = self.get_context_data(
+                object=self.object,
+                has_products=_has_products(self.object),
+                step='confirm_password'
+            )
+            return self.render_to_response(context)
+
+        if step == '2':
+            password = request.POST.get('password') or ''
+            user = request.user
+            if not authenticate(username=user.get_username(), password=password):
+                messages.error(request, "Contraseña incorrecta. No se pudo confirmar la eliminación.")
+                context = self.get_context_data(
+                    object=self.object,
+                    has_products=_has_products(self.object),
+                    step='confirm_password'
+                )
+                return self.render_to_response(context)
+
+            messages.success(request, "La categoría absoluta fue eliminada correctamente.")
+            self.object.delete()
+            return redirect(self.success_url)
+
+        return redirect(self.success_url)

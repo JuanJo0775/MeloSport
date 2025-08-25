@@ -4,9 +4,8 @@
 {% block title %}Categorías{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Catálogo|categories:home" "Categorías|categories:list" %}
+  {% breadcrumb "Gestión|categories:home" %}
 {% endblock %}
-
 
 {% block content %}
 <div class="container-fluid py-3">
@@ -14,27 +13,30 @@
   <!-- Atajos globales -->
   <div class="d-flex justify-content-end mb-3 gap-2">
     <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary btn-sm">
-      <i class="bi bi-plus-circle me-1"></i> Nueva categoría
+      <i class="bi bi-plus-circle me-1"></i> Nueva categoría (padre/hija)
     </a>
     <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success btn-sm">
-      <i class="bi bi-plus-circle me-1"></i> Nuevo deporte
+      <i class="bi bi-plus-circle me-1"></i> Nuevo deporte (absoluta)
     </a>
   </div>
 
   <div class="row g-3">
 
-    <!-- Tarjeta de Categorías -->
+    <!-- Tarjeta de Categorías (jerárquicas) -->
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
-        <div class="card-body d-flex flex-column justify-content-between">
-          <div class="d-flex align-items-center mb-3">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-2">
             <i class="bi bi-tags-fill text-primary fs-3 me-2"></i>
-            <h5 class="card-title mb-0">Categorías</h5>
+            <h5 class="card-title mb-0">Categorías (Padre/Hija)</h5>
+            <span class="ms-2" data-bs-toggle="tooltip" title="Organiza contenidos dentro de cada deporte o sección. Puedes crear categorías padre y sus hijas.">
+              <i class="bi bi-info-circle text-muted"></i>
+            </span>
           </div>
-          <p class="text-muted">Gestiona las categorías jerárquicas de productos.</p>
-          <div class="mt-auto">
+          <p class="text-muted mb-3">Estructura jerárquica para segmentar productos.</p>
+          <div class="mt-auto d-flex gap-2 flex-wrap">
             <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-primary btn-sm">
-              <i class="bi bi-list-task me-1"></i> Ver categorías
+              <i class="bi bi-list-task me-1"></i> Listado / Gestión
             </a>
             <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary btn-sm">
               <i class="bi bi-plus-circle me-1"></i> Nueva categoría
@@ -44,18 +46,21 @@
       </div>
     </div>
 
-    <!-- Tarjeta de Categorías Absolutas -->
+    <!-- Tarjeta de Categorías Absolutas (Deportes) -->
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
-        <div class="card-body d-flex flex-column justify-content-between">
-          <div class="d-flex align-items-center mb-3">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-center mb-2">
             <i class="bi bi-dribbble text-success fs-3 me-2"></i>
-            <h5 class="card-title mb-0">Deportes</h5>
+            <h5 class="card-title mb-0">Deportes (Categorías Absolutas)</h5>
+            <span class="ms-2" data-bs-toggle="tooltip" title="Se muestran como 'deportes' en el frontend y se gestionan como categorías absolutas en el backend. No tienen jerarquía padre/hija.">
+              <i class="bi bi-info-circle text-muted"></i>
+            </span>
           </div>
-          <p class="text-muted">Gestiona las categorías absolutas de deportes.</p>
-          <div class="mt-auto">
+          <p class="text-muted mb-3">Contenedores principales por deporte o sección.</p>
+          <div class="mt-auto d-flex gap-2 flex-wrap">
             <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-success btn-sm">
-              <i class="bi bi-list-task me-1"></i> Ver deportes
+              <i class="bi bi-list-task me-1"></i> Listado / Gestión
             </a>
             <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success btn-sm">
               <i class="bi bi-plus-circle me-1"></i> Nuevo deporte
@@ -67,4 +72,16 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Activa tooltips Bootstrap
+  document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+      new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
 {% endblock %}

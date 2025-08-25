@@ -263,7 +263,7 @@ canvas.chart-canvas {
 
 /* Ajusta el breadcrumb para no chocar con el botón toggle */
 .breadcrumb-wrapper {
-  margin-left: 96px;   /* lo corre un poco a la derecha */
+  margin-left: 80px;   /* lo corre un poco a la derecha */
   margin-top: 12px;
   transition: margin-left 0.25s ease;
 }
