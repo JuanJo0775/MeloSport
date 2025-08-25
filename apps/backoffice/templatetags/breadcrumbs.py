@@ -17,9 +17,16 @@ def breadcrumb(*args):
         label = parts[0].strip()
         url = None
         if len(parts) > 1:
-            try:
-                url = reverse(parts[1].strip())
-            except NoReverseMatch:
-                url = None
+            name = parts[1].strip()
+            candidatos = [name]
+            # si no empieza con "backoffice:", probamos también con ese prefijo
+            if not name.startswith("backoffice:"):
+                candidatos.insert(0, f"backoffice:{name}")
+            for cand in candidatos:
+                try:
+                    url = reverse(cand)
+                    break
+                except NoReverseMatch:
+                    url = None
         items.append({"label": label, "url": url})
     return {"items": items}

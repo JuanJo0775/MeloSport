@@ -4,8 +4,7 @@
 {% block title %}{{ deporte.nombre }} - Detalles{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|categories:home" "Deportes|categories:absolute_list" deporte.nombre %}
-{% endblock %}
+  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" deporte.nombre %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
