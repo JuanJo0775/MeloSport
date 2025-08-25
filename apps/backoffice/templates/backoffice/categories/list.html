@@ -1,68 +1,220 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
 
-{% block title %}Listado de Categorías{% endblock %}
+{% block title %}Categorías - Listado{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Categorías|categories:list" %}
+  {% breadcrumb "Gestión|categories:home" "Categorías|categories:list" %}
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h1 class="h4 mb-1">Categorías (Padre / Hija)</h1>
-      <p class="text-muted mb-0">Gestiona la estructura jerárquica de categorías</p>
-    </div>
-    <div class="d-flex gap-2">
-      <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary" role="button">
-        <i class="bi bi-plus-lg me-1"></i>Nueva categoría
-      </a>
+  <!-- Encabezado con acciones -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="h3 mb-2">Categorías Jerárquicas</h1>
+          <p class="text-muted mb-0">Gestiona la estructura padre-hijo de categorías para organizar productos</p>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'backoffice:categories:home' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver al Inicio
+          </a>
+          <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>Nueva Categoría
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="card shadow-sm">
+  <!-- Filtros y búsqueda -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <form method="get" class="row g-3">
+            <div class="col-md-4">
+              <label for="search" class="form-label">Buscar categoría</label>
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input type="text" id="search" name="search" class="form-control"
+                       placeholder="Nombre de la categoría..." value="{{ request.GET.search }}">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label for="parent" class="form-label">Categoría Padre</label>
+              <select id="parent" name="parent" class="form-select">
+                <option value="">Todas las categorías</option>
+                <option value="null" {% if request.GET.parent == 'null' %}selected{% endif %}>Solo categorías raíz</option>
+                {% for categoria in categorias_padre %}
+                  <option value="{{ categoria.pk }}" {% if request.GET.parent == categoria.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ categoria.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label for="status" class="form-label">Estado</label>
+              <select id="status" name="status" class="form-select">
+                <option value="">Todos los estados</option>
+                <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Activas</option>
+                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactivas</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">&nbsp;</label>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-funnel me-2"></i>Filtrar
+                </button>
+              </div>
+            </div>
+            <div class="col-md-1">
+              <label class="form-label">&nbsp;</label>
+              <div class="d-grid">
+                <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary">
+                  <i class="bi bi-x-circle"></i>
+                </a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estadísticas rápidas -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 bg-success bg-opacity-10">
+        <div class="card-body text-center">
+          <h4 class="text-success mb-1">{{ categorias_activas|default:"0" }}</h4>
+          <p class="text-muted mb-0">Categorías Activas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 bg-secondary bg-opacity-10">
+        <div class="card-body text-center">
+          <h4 class="text-secondary mb-1">{{ categorias_inactivas|default:"0" }}</h4>
+          <p class="text-muted mb-0">Categorías Inactivas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 bg-primary bg-opacity-10">
+        <div class="card-body text-center">
+          <h4 class="text-primary mb-1">{{ categorias_padre_count|default:"0" }}</h4>
+          <p class="text-muted mb-0">Categorías Padre</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 bg-info bg-opacity-10">
+        <div class="card-body text-center">
+          <h4 class="text-info mb-1">{{ total_productos|default:"0" }}</h4>
+          <p class="text-muted mb-0">Productos Asociados</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla principal -->
+  <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" role="grid">
+        <table class="table table-hover align-middle mb-0">
           <thead class="bg-light">
             <tr>
-              <th scope="col">Nombre</th>
-              <th scope="col">Padre</th>
-              <th scope="col">Estado</th>
-              <th scope="col" class="text-end">Acciones</th>
+              <th class="border-0 ps-4">
+                <input type="checkbox" class="form-check-input" id="selectAll" title="Seleccionar todo">
+              </th>
+              <th class="border-0">Categoría</th>
+              <th class="border-0">Padre</th>
+              <th class="border-0">Estado</th>
+              <th class="border-0">Subcategorías</th>
+              <th class="border-0">Productos</th>
+              <th class="border-0 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
-          {% for c in categorias %}
+          {% for categoria in categorias %}
             <tr>
-              <td class="text-nowrap">
-                {% for anc in c.get_ancestors %}
-                  <span class="text-muted ms-3"></span>
-                {% endfor %}
-                {{ c.name }}
+              <td class="ps-4">
+                <input type="checkbox" class="form-check-input row-checkbox" value="{{ categoria.pk }}">
               </td>
-              <td>{% if c.parent %}{{ c.parent.name }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
               <td>
-                <span class="badge {% if c.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                  {{ c.is_active|yesno:"Activo,Inactivo" }}
+                <div class="d-flex align-items-center">
+                  <div class="me-3">
+                    {% for ancestor in categoria.get_ancestors %}
+                      <span class="text-muted me-1">→</span>
+                    {% endfor %}
+                    <div class="icon-wrapper bg-primary bg-opacity-10 rounded-circle p-2 d-inline-flex">
+                      <i class="bi bi-diagram-3 text-primary"></i>
+                    </div>
+                  </div>
+                  <div>
+                    <h6 class="mb-0">{{ categoria.name }}</h6>
+                    <small class="text-muted">
+                      {% if categoria.description %}
+                        {{ categoria.description|truncatechars:40 }}
+                      {% else %}
+                        Sin descripción
+                      {% endif %}
+                    </small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if categoria.parent %}
+                  <span class="badge bg-light text-dark border">{{ categoria.parent.name }}</span>
+                {% else %}
+                  <span class="text-muted">Categoría raíz</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if categoria.is_active %}
+                  <span class="badge bg-success rounded-pill">
+                    <i class="bi bi-check-circle me-1"></i>Activa
+                  </span>
+                {% else %}
+                  <span class="badge bg-secondary rounded-pill">
+                    <i class="bi bi-pause-circle me-1"></i>Inactiva
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge bg-info rounded-pill">
+                  {{ categoria.get_children.count }}
                 </span>
               </td>
-              <td class="text-end">
-                <div class="btn-group" role="group" aria-label="Acciones de categoría">
-                  <a href="{% url 'backoffice:categories:detail' c.pk %}"
+              <td>
+                <span class="badge bg-warning rounded-pill">
+                  {{ categoria.all_products.count|default:"0" }}
+                </span>
+              </td>
+              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <a href="{% url 'backoffice:categories:detail' categoria.pk %}"
                      class="btn btn-sm btn-outline-primary"
-                     aria-label="Ver detalles de {{ c.name }}">
+                     data-bs-toggle="tooltip"
+                     title="Ver detalles">
                     <i class="bi bi-eye"></i>
                   </a>
-                  <a href="{% url 'backoffice:categories:edit' c.pk %}"
+                  <a href="{% url 'backoffice:categories:edit' categoria.pk %}"
                      class="btn btn-sm btn-outline-secondary"
-                     aria-label="Editar {{ c.name }}">
+                     data-bs-toggle="tooltip"
+                     title="Editar categoría">
                     <i class="bi bi-pencil"></i>
                   </a>
-                  <a href="{% url 'backoffice:categories:delete' c.pk %}"
+                  <a href="{% url 'backoffice:categories:delete' categoria.pk %}"
                      class="btn btn-sm btn-outline-danger"
-                     aria-label="Eliminar {{ c.name }}">
+                     data-bs-toggle="tooltip"
+                     title="Eliminar categoría">
                     <i class="bi bi-trash"></i>
                   </a>
                 </div>
@@ -70,17 +222,51 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="4" class="text-center py-4">
+              <td colspan="7" class="text-center py-5">
                 <div class="text-muted">
-                  <i class="bi bi-emoji-frown fs-4 d-block mb-2"></i>
-                  No hay categorías registradas
+                  <i class="bi bi-diagram-3 fs-1 d-block mb-3 text-secondary"></i>
+                  <h5>No hay categorías registradas</h5>
+                  <p class="mb-3">Comienza creando tu primera categoría jerárquica para organizar productos.</p>
+                  <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Crear Primera Categoría
+                  </a>
                 </div>
               </td>
             </tr>
           {% endfor %}
           </tbody>
         </table>
+      </div>
     </div>
   </div>
+
+  <!-- Acciones masivas -->
+  {% if categorias %}
+  <div class="row mt-3">
+    <div class="col-12">
+      <div class="card border-0 bg-light">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <strong>Acciones masivas:</strong>
+              <span class="text-muted ms-2" id="selectedCount">0 elementos seleccionados</span>
+            </div>
+            <div class="btn-group">
+              <button type="button" class="btn btn-sm btn-success" id="activateSelected" disabled>
+                <i class="bi bi-check-circle me-2"></i>Activar
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="deactivateSelected" disabled>
+                <i class="bi bi-pause-circle me-2"></i>Desactivar
+              </button>
+              <button type="button" class="btn btn-sm btn-danger" id="deleteSelected" disabled>
+                <i class="bi bi-trash me-2"></i>Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

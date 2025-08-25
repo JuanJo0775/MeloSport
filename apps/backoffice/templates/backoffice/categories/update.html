@@ -1,24 +1,284 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
-{% block title %}Editar Categoría{% endblock %}
+
+{% block title %}Editar Categoría - {{ object.name }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Categorías|categories:list" "Editar" %}
+  {% breadcrumb "Gestión|categories:home" "Categorías|categories:list" "Editar" %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-3">
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Editar categoría</h5>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {{ form.as_p }}
-        <div class="d-flex justify-content-end">
-          <a href="{% url 'backoffice:categories:list' %}" class="btn btn-secondary me-2">Cancelar</a>
-          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+<div class="container-fluid py-4">
+  <!-- Encabezado -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="h3 mb-2">Editar Categoría</h1>
+          <p class="text-muted mb-0">Modifica los datos de la categoría: <strong>{{ object.name }}</strong></p>
         </div>
-      </form>
+        <div class="d-flex gap-2">
+          <a href="{% url 'backoffice:categories:detail' object.pk %}" class="btn btn-outline-info">
+            <i class="bi bi-eye me-2"></i>Ver Detalles
+          </a>
+          <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver al Listado
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-xl-8">
+      <!-- Información de la categoría actual -->
+      <div class="card border-0 bg-light mb-4">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <div class="icon-wrapper bg-primary bg-opacity-10 rounded-3 p-3">
+                <i class="bi bi-diagram-3 text-primary fs-2"></i>
+              </div>
+            </div>
+            <div class="col">
+              <div class="mb-2">
+                {% for ancestor in object.get_ancestors %}
+                  <span class="text-muted">{{ ancestor.name }} → </span>
+                {% endfor %}
+              </div>
+              <h5 class="mb-1">{{ object.name }}</h5>
+              {% if object.description %}
+                <p class="text-muted mb-1">{{ object.description|truncatechars:100 }}</p>
+              {% endif %}
+              <div class="d-flex gap-2 align-items-center">
+                {% if object.is_active %}
+                  <span class="badge bg-success">Activa</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactiva</span>
+                {% endif %}
+                <small class="text-muted">{{ object.get_children.count }} subcategorías</small>
+                <small class="text-muted">{{ object.all_products.count }} productos</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulario de edición -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <div class="d-flex align-items-center">
+            <div class="icon-wrapper bg-warning bg-opacity-10 rounded-3 p-2 me-3">
+              <i class="bi bi-pencil text-warning fs-4"></i>
+            </div>
+            <div>
+              <h5 class="card-title mb-0">Editar Información</h5>
+              <p class="text-muted small mb-0">Modifica los datos de la categoría según sea necesario</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row g-4">
+              <!-- Nombre de la categoría -->
+              <div class="col-md-6">
+                <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">
+                  {{ form.name.label }}
+                  {% if form.name.field.required %}
+                    <span class="text-danger">*</span>
+                  {% endif %}
+                </label>
+                {{ form.name }}
+                {% if form.name.help_text %}
+                  <div class="form-text">{{ form.name.help_text }}</div>
+                {% else %}
+                  <div class="form-text">Nombre descriptivo y único para la categoría</div>
+                {% endif %}
+                {% if form.name.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.name.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Categoría Padre -->
+              <div class="col-md-6">
+                <label for="{{ form.parent.id_for_label }}" class="form-label fw-semibold">
+                  {{ form.parent.label }}
+                </label>
+                {{ form.parent }}
+                {% if form.parent.help_text %}
+                  <div class="form-text">{{ form.parent.help_text }}</div>
+                {% else %}
+                  <div class="form-text">Cambia la categoría padre para reorganizar la jerarquía</div>
+                {% endif %}
+                {% if form.parent.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.parent.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Descripción -->
+              <div class="col-12">
+                <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold">
+                  {{ form.description.label }}
+                </label>
+                {{ form.description }}
+                {% if form.description.help_text %}
+                  <div class="form-text">{{ form.description.help_text }}</div>
+                {% else %}
+                  <div class="form-text">Descripción detallada de la categoría (opcional)</div>
+                {% endif %}
+                {% if form.description.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.description.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Estado activo -->
+              <div class="col-md-6">
+                <div class="form-check form-switch">
+                  {{ form.is_active }}
+                  <label for="{{ form.is_active.id_for_label }}" class="form-check-label fw-semibold">
+                    {{ form.is_active.label }}
+                  </label>
+                  {% if form.is_active.help_text %}
+                    <div class="form-text">{{ form.is_active.help_text }}</div>
+                  {% else %}
+                    <div class="form-text">Solo las categorías activas aparecen en el frontend</div>
+                  {% endif %}
+                </div>
+                {% if form.is_active.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.is_active.errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Campos adicionales del formulario -->
+              {% for field in form %}
+                {% if field.name not in 'name,parent,description,is_active' %}
+                <div class="col-md-6">
+                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                    {{ field.label }}
+                    {% if field.field.required %}
+                      <span class="text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                  {% endif %}
+                  {% if field.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in field.errors %}
+                        <div>{{ error }}</div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            <!-- Mensajes de error generales -->
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mt-3">
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Botones de acción -->
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+              <div class="text-muted small">
+                <i class="bi bi-info-circle me-1"></i>
+                Los cambios se aplicarán inmediatamente al guardar
+              </div>
+              <div class="d-flex gap-2">
+                <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary px-4">
+                  <i class="bi bi-x-circle me-2"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary px-4">
+                  <i class="bi bi-check-circle me-2"></i>Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Advertencias si hay subcategorías o productos -->
+      {% if object.get_children.count > 0 or object.all_products.count > 0 %}
+      <div class="alert alert-warning border-0 shadow-sm mt-4">
+        <div class="d-flex">
+          <div class="flex-shrink-0">
+            <i class="bi bi-exclamation-triangle fs-5"></i>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h6 class="alert-heading mb-1">Elementos dependientes</h6>
+            <p class="mb-0 small">
+              Esta categoría tiene
+              {% if object.get_children.count > 0 %}
+                <strong>{{ object.get_children.count }} subcategoría{{ object.get_children.count|pluralize }}</strong>
+              {% endif %}
+              {% if object.get_children.count > 0 and object.all_products.count > 0 %} y {% endif %}
+              {% if object.all_products.count > 0 %}
+                <strong>{{ object.all_products.count }} producto{{ object.all_products.count|pluralize }}</strong>
+              {% endif %}
+              asociado{{ object.get_children.count|add:object.all_products.count|pluralize }}.
+              Los cambios pueden afectar cómo se muestran en el frontend.
+            </p>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Acciones adicionales -->
+      <div class="card border-0 bg-light mt-4">
+        <div class="card-body">
+          <h6 class="mb-3">
+            <i class="bi bi-gear text-primary me-2"></i>Acciones adicionales
+          </h6>
+          <div class="row">
+            <div class="col-md-4">
+              <div class="d-grid">
+                <a href="{% url 'backoffice:categories:detail' object.pk %}" class="btn btn-outline-info">
+                  <i class="bi bi-eye me-2"></i>Ver Detalles Completos
+                </a>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-grid">
+                <a href="{% url 'backoffice:categories:create' %}?parent={{ object.pk }}" class="btn btn-outline-success">
+                  <i class="bi bi-plus-circle me-2"></i>Crear Subcategoría
+                </a>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-grid">
+                <a href="{% url 'backoffice:categories:delete' object.pk %}" class="btn btn-outline-danger">
+                  <i class="bi bi-trash me-2"></i>Eliminar Categoría
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

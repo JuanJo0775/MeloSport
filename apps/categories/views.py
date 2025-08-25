@@ -11,9 +11,32 @@ from .models import Category, AbsoluteCategory
 from ..products.models import Product
 from django.db.models import CharField
 
+
 class CategoryHomeView(LoginRequiredMixin, TemplateView):
     template_name = 'backoffice/categories/index_categories.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Estadísticas deportes (AbsoluteCategory)
+        deportes = AbsoluteCategory.objects.all()
+        context['deportes_activos'] = deportes.filter(activo=True).count()
+        context['deportes_inactivos'] = deportes.filter(activo=False).count()
+
+        # Estadísticas categorías
+        todas = Category.objects.all()
+        context['categorias_count'] = todas.count()
+        context['categorias_padre_count'] = todas.filter(parent__isnull=True).count()
+        context['categorias_activas'] = todas.filter(is_active=True).count()
+        context['categorias_inactivas'] = todas.filter(is_active=False).count()
+
+        # Total de productos asociados
+        context['productos_count'] = Product.objects.count()
+        context['total_productos'] = Product.objects.filter(
+            categories__in=todas
+        ).distinct().count()  # si quieres contar solo productos asociados a categorías
+
+        return context
 
 # ===================== Utilidades =====================
 
@@ -33,7 +56,55 @@ class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Category
     template_name = 'backoffice/categories/list.html'
     context_object_name = 'categorias'
-    queryset = Category.objects.all().prefetch_related('children').order_by('tree_id', 'lft')
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = Category.objects.all().prefetch_related('children', 'parent')
+
+        # 🔎 Búsqueda
+        search = self.request.GET.get('search')
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) |
+                Q(description__icontains=search)
+            )
+
+        # 🎚️ Filtro por categoría padre
+        parent = self.request.GET.get('parent')
+        if parent == "null":
+            qs = qs.filter(parent__isnull=True)
+        elif parent:
+            qs = qs.filter(parent_id=parent)
+
+        # 🎚️ Filtro por estado
+        status = self.request.GET.get('status')
+        if status == 'active':
+            qs = qs.filter(is_active=True)
+        elif status == 'inactive':
+            qs = qs.filter(is_active=False)
+
+        return qs.order_by('tree_id', 'lft')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        todas = Category.objects.all()
+
+        # Estadísticas
+        context['categorias_activas'] = todas.filter(is_active=True).count()
+        context['categorias_inactivas'] = todas.filter(is_active=False).count()
+        context['categorias_padre_count'] = todas.filter(parent__isnull=True).count()  # número
+
+        # Lista de categorías padre para el select (iterable)
+        context['categorias_padre'] = todas.filter(parent__isnull=True).order_by('name')
+
+        # Total productos asociados a cualquier categoría
+        context['total_productos'] = Product.objects.filter(
+            categories__in=todas
+        ).distinct().count()
+
+        return context
+
 
 
 class CategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -48,7 +119,7 @@ class CategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView
     model = Category
     fields = ['name', 'description', 'parent', 'is_active']
     template_name = 'backoffice/categories/create.html'
-    success_url = reverse_lazy('categories:list')
+    success_url = reverse_lazy('backoffice:categories:list')
 
 
 class CategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -56,7 +127,7 @@ class CategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView
     model = Category
     fields = ['name', 'description', 'parent', 'is_active']
     template_name = 'backoffice/categories/update.html'
-    success_url = reverse_lazy('categories:list')
+    success_url = reverse_lazy('backoffice:categories:list')
 
 
 class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
@@ -69,7 +140,14 @@ class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView
     permission_required = 'categories.delete_category'
     model = Category
     template_name = 'backoffice/categories/confirm_delete.html'
-    success_url = reverse_lazy('categories:list')
+    success_url = reverse_lazy('backoffice:categories:list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.setdefault("step", "warn")
+        context.setdefault("has_children", False)
+        context.setdefault("has_products", False)
+        return context
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -88,7 +166,6 @@ class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView
         step = request.POST.get('confirm_step')
 
         if step == '1':
-            # segundo aviso + password
             context = self.get_context_data(
                 object=self.object,
                 has_children=self.object.get_children().exists(),
@@ -114,7 +191,6 @@ class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView
             self.object.delete()
             return redirect(self.success_url)
 
-        # Cancelado
         return redirect(self.success_url)
 
 
@@ -125,12 +201,10 @@ class AbsoluteCategoryListView(LoginRequiredMixin, PermissionRequiredMixin, List
     model = AbsoluteCategory
     template_name = 'backoffice/absolute_categories/list.html'
     context_object_name = 'deportes'
-    paginate_by = 20  # opcional
+    paginate_by = 20
 
     def get_queryset(self):
         qs = AbsoluteCategory.objects.all()
-
-        # 🔎 Búsqueda
         search = self.request.GET.get('search')
         if search:
             qs = qs.annotate(id_str=Cast("id", CharField()))
@@ -140,29 +214,22 @@ class AbsoluteCategoryListView(LoginRequiredMixin, PermissionRequiredMixin, List
                 Q(id_str__icontains=search)
             )
 
-        # 🎚️ Filtrado por estado
         status = self.request.GET.get('status')
         if status == 'active':
             qs = qs.filter(activo=True)
         elif status == 'inactive':
             qs = qs.filter(activo=False)
 
-        # Prefetch para contar productos sin queries extra
         return qs.annotate(product_count=Count('products'))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        # Totales
         deportes = AbsoluteCategory.objects.all()
         context['deportes_activos'] = deportes.filter(activo=True).count()
         context['deportes_inactivos'] = deportes.filter(activo=False).count()
-
-        # Total productos asociados a deportes
         context['total_productos'] = Product.objects.filter(
             absolute_category__in=deportes
         ).count()
-
         return context
 
 
@@ -179,7 +246,7 @@ class AbsoluteCategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, Cr
     model = AbsoluteCategory
     fields = ['nombre', 'descripcion', 'activo']
     template_name = 'backoffice/absolute_categories/create.html'
-    success_url = reverse_lazy('categories:absolute_list')
+    success_url = reverse_lazy('backoffice:categories:absolute_list')
 
 
 class AbsoluteCategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -187,7 +254,7 @@ class AbsoluteCategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, Up
     model = AbsoluteCategory
     fields = ['nombre', 'descripcion', 'activo']
     template_name = 'backoffice/absolute_categories/update.html'
-    success_url = reverse_lazy('categories:absolute_list')
+    success_url = reverse_lazy('backoffice:categories:absolute_list')
 
 
 class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
@@ -197,11 +264,16 @@ class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, De
     permission_required = 'categories.delete_absolutecategory'
     model = AbsoluteCategory
     template_name = 'backoffice/absolute_categories/confirm_delete.html'
-    success_url = reverse_lazy('categories:absolute_list')
+    success_url = reverse_lazy('backoffice:categories:absolute_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.setdefault("step", "warn")
+        context.setdefault("has_products", False)
+        return context
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        # No hay jerarquía aquí; sólo productos
         has_products = _has_products(self.object)
         context = self.get_context_data(
             object=self.object,
@@ -239,6 +311,7 @@ class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, De
             return redirect(self.success_url)
 
         return redirect(self.success_url)
+
 
 def absolute_activate(request, pk):
     deporte = get_object_or_404(AbsoluteCategory, pk=pk)

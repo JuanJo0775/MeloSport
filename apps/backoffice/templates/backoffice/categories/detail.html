@@ -1,47 +1,352 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
-{% block title %}Detalle de Categoría{% endblock %}
+
+{% block title %}{{ categoria.name }} - Detalles{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Categorías|categories:list" "Detalle" %}
+  {% breadcrumb "Gestión|categories:home" "Categorías|categories:list" categoria.name %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-3">
-  <div class="card">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-start mb-3">
-        <div>
-          <h4 class="mb-1">{{ categoria.name }}</h4>
-          <p class="text-muted mb-0">{{ categoria.description }}</p>
+<div class="container-fluid py-4">
+  <!-- Encabezado con acciones -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex align-items-center">
+          <div class="icon-wrapper bg-primary bg-opacity-10 rounded-3 p-3 me-4">
+            <i class="bi bi-diagram-3 text-primary fs-1"></i>
+          </div>
+          <div>
+            <div class="mb-2">
+              {% for ancestor in categoria.get_ancestors %}
+                <span class="text-muted">{{ ancestor.name }} → </span>
+              {% endfor %}
+            </div>
+            <h1 class="h2 mb-2">{{ categoria.name }}</h1>
+            {% if categoria.description %}
+              <p class="text-muted mb-2">{{ categoria.description }}</p>
+            {% endif %}
+            <div class="d-flex gap-2 align-items-center">
+              {% if categoria.is_active %}
+                <span class="badge bg-success rounded-pill px-3">
+                  <i class="bi bi-check-circle me-1"></i>Activa
+                </span>
+              {% else %}
+                <span class="badge bg-secondary rounded-pill px-3">
+                  <i class="bi bi-pause-circle me-1"></i>Inactiva
+                </span>
+              {% endif %}
+              <span class="badge bg-light text-dark border">ID: {{ categoria.id }}</span>
+              {% if categoria.parent %}
+                <span class="badge bg-light text-dark border">Subcategoría</span>
+              {% else %}
+                <span class="badge bg-primary text-white border">Categoría Raíz</span>
+              {% endif %}
+            </div>
+          </div>
         </div>
-        <div class="text-end">
-          <a href="{% url 'backoffice:categories:edit' categoria.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
-          <a href="{% url 'backoffice:categories:delete' categoria.pk %}" class="btn btn-sm btn-outline-danger">Eliminar</a>
+
+        <div class="d-flex flex-column gap-2">
+          <div class="btn-group">
+            <a href="{% url 'backoffice:categories:edit' categoria.pk %}" class="btn btn-primary">
+              <i class="bi bi-pencil me-2"></i>Editar
+            </a>
+            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+              <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="{% url 'backoffice:categories:edit' categoria.pk %}">
+                  <i class="bi bi-pencil me-2"></i>Editar categoría
+                </a>
+              </li>
+              {% if categoria.get_children %}
+              <li>
+                <a class="dropdown-item" href="{% url 'backoffice:categories:create' %}?parent={{ categoria.pk }}">
+                  <i class="bi bi-plus-circle me-2"></i>Crear subcategoría
+                </a>
+              </li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <button class="dropdown-item" onclick="window.print()">
+                  <i class="bi bi-printer me-2"></i>Imprimir detalles
+                </button>
+              </li>
+              <li>
+                <a class="dropdown-item text-danger" href="{% url 'backoffice:categories:delete' categoria.pk %}">
+                  <i class="bi bi-trash me-2"></i>Eliminar categoría
+                </a>
+              </li>
+            </ul>
+          </div>
+          <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Volver al Listado
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Información básica -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-info-circle text-primary me-2"></i>Información General
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Nombre de la Categoría</h6>
+                <p class="mb-0 fw-semibold">{{ categoria.name }}</p>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Categoría Padre</h6>
+                {% if categoria.parent %}
+                  <p class="mb-0">
+                    <a href="{% url 'backoffice:categories:detail' categoria.parent.pk %}"
+                       class="text-decoration-none">
+                      {{ categoria.parent.name }}
+                    </a>
+                  </p>
+                {% else %}
+                  <p class="mb-0 text-muted">Es una categoría raíz</p>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if categoria.description %}
+            <div class="col-12">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Descripción</h6>
+                <p class="mb-0">{{ categoria.description|linebreaks }}</p>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Estado</h6>
+                <div class="d-flex align-items-center">
+                  {% if categoria.is_active %}
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    <span class="text-success fw-semibold">Activa</span>
+                    <small class="text-muted ms-2">- Visible en el frontend</small>
+                  {% else %}
+                    <i class="bi bi-pause-circle text-secondary me-2"></i>
+                    <span class="text-secondary fw-semibold">Inactiva</span>
+                    <small class="text-muted ms-2">- Oculta en el frontend</small>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="border rounded-3 p-3 bg-light">
+                <h6 class="text-muted mb-2">Nivel en Jerarquía</h6>
+                <p class="mb-0">
+                  Nivel {{ categoria.get_level|add:"1" }}
+                  {% if categoria.get_ancestors %}
+                    <small class="text-muted d-block">
+                      Ruta:
+                      {% for ancestor in categoria.get_ancestors %}
+                        {{ ancestor.name }}{% if not forloop.last %} → {% endif %}
+                      {% endfor %}
+                      → {{ categoria.name }}
+                    </small>
+                  {% endif %}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="row">
-        <div class="col-md-6">
-          <p><strong>Padre:</strong> {% if categoria.parent %}{{ categoria.parent.name }}{% else %}-{% endif %}</p>
-          <p><strong>Estado:</strong> {% if categoria.is_active %}<span class="badge bg-success">Activo</span>{% else %}<span class="badge bg-secondary">Inactivo</span>{% endif %}</p>
+      <!-- Subcategorías -->
+      {% if categoria.get_children %}
+      <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-diagram-2 text-info me-2"></i>Subcategorías ({{ categoria.get_children.count }})
+          </h5>
         </div>
-
-        <div class="col-md-6">
-          <p><strong>Subcategorías:</strong></p>
-          <ul>
+        <div class="card-body">
+          <div class="row g-3">
             {% for child in categoria.get_children %}
-              <li>{{ child.name }}</li>
-            {% empty %}
-              <li class="text-muted">No tiene subcategorías</li>
+            <div class="col-md-6">
+              <div class="card border">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="card-title mb-1">{{ child.name }}</h6>
+                      {% if child.description %}
+                        <p class="card-text small text-muted mb-2">{{ child.description|truncatechars:80 }}</p>
+                      {% endif %}
+                      <div class="d-flex gap-1">
+                        {% if child.is_active %}
+                          <span class="badge bg-success rounded-pill small">Activa</span>
+                        {% else %}
+                          <span class="badge bg-secondary rounded-pill small">Inactiva</span>
+                        {% endif %}
+                        <span class="badge bg-info rounded-pill small">{{ child.all_products.count }} productos</span>
+                      </div>
+                    </div>
+                    <div class="btn-group-vertical btn-group-sm">
+                      <a href="{% url 'backoffice:categories:detail' child.pk %}"
+                         class="btn btn-outline-primary btn-sm" title="Ver detalles">
+                        <i class="bi bi-eye"></i>
+                      </a>
+                      <a href="{% url 'backoffice:categories:edit' child.pk %}"
+                         class="btn btn-outline-secondary btn-sm" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             {% endfor %}
-          </ul>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Estadísticas y acciones -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-graph-up text-success me-2"></i>Estadísticas
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="text-center mb-4">
+            <div class="display-4 text-primary mb-2">{{ categoria.all_products.count|default:"0" }}</div>
+            <h6 class="text-muted">Producto{{ categoria.all_products.count|pluralize }} Asociado{{ categoria.all_products.count|pluralize }}</h6>
+            <small class="text-muted">(Incluye subcategorías)</small>
+          </div>
+
+          <div class="row text-center mb-4">
+            <div class="col-6">
+              <h5 class="text-info mb-1">{{ categoria.get_children.count }}</h5>
+              <small class="text-muted">Subcategorías</small>
+            </div>
+            <div class="col-6">
+              <h5 class="text-warning mb-1">{{ categoria.get_level|add:"1" }}</h5>
+              <small class="text-muted">Nivel</small>
+            </div>
+          </div>
+
+          <div class="d-grid gap-2">
+            {% if categoria.all_products.count > 0 %}
+              <a href="#" class="btn btn-outline-primary">
+                <i class="bi bi-boxes me-2"></i>Ver Productos
+              </a>
+            {% else %}
+              <button class="btn btn-outline-secondary" disabled>
+                <i class="bi bi-inbox me-2"></i>Sin Productos
+              </button>
+            {% endif %}
+            <a href="{% url 'backoffice:categories:create' %}?parent={{ categoria.pk }}" class="btn btn-outline-info">
+              <i class="bi bi-plus-circle me-2"></i>Crear Subcategoría
+            </a>
+          </div>
         </div>
       </div>
 
-      <hr>
-      <p><strong>Productos asociados (incluye descendientes):</strong> {{ categoria.all_products.count }}</p>
+      <!-- Acciones rápidas -->
+      <div class="card border-0 shadow-sm mt-4 acciones-rapidas">
+        <div class="card-header bg-white border-bottom-0">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-lightning text-warning me-2"></i>Acciones Rápidas
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="{% url 'backoffice:categories:edit' categoria.pk %}" class="btn btn-primary">
+              <i class="bi bi-pencil me-2"></i>Editar Categoría
+            </a>
+            {% if categoria.is_active %}
+              <button class="btn btn-secondary" onclick="toggleStatus('{{ categoria.pk }}', false)">
+                <i class="bi bi-pause-circle me-2"></i>Desactivar
+              </button>
+            {% else %}
+              <button class="btn btn-success" onclick="toggleStatus('{{ categoria.pk }}', true)">
+                <i class="bi bi-check-circle me-2"></i>Activar
+              </button>
+            {% endif %}
+            <a href="{% url 'backoffice:categories:create' %}?parent={{ categoria.pk }}" class="btn btn-outline-info">
+              <i class="bi bi-plus-circle me-2"></i>Crear Subcategoría
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información adicional -->
+      {% if categoria.created_at or categoria.updated_at %}
+      <div class="card border-0 bg-light mt-4">
+        <div class="card-body">
+          <h6 class="mb-3">
+            <i class="bi bi-clock text-muted me-2"></i>Información de Fechas
+          </h6>
+          {% if categoria.created_at %}
+          <div class="d-flex justify-content-between mb-2">
+            <small class="text-muted">Creado:</small>
+            <small>{{ categoria.created_at|date:"d/m/Y H:i" }}</small>
+          </div>
+          {% endif %}
+          {% if categoria.updated_at %}
+          <div class="d-flex justify-content-between">
+            <small class="text-muted">Modificado:</small>
+            <small>{{ categoria.updated_at|date:"d/m/Y H:i" }}</small>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>
+{% endblock %}
+{% block extra_css %}
+<style>
+  @media print {
+    /* Ocultar navbar, footer, botones y acciones */
+    .btn,
+    .btn-group,
+    .card .dropdown-menu,
+    .card .card-header .btn,
+    .acciones-rapidas,
+    .navbar,
+    .breadcrumb,
+    .sidebar {
+      display: none !important;
+    }
+
+    /* Ajustar márgenes y colores para impresión */
+    body {
+      background: #fff !important;
+      color: #000 !important;
+    }
+
+    .card {
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Expande el contenido a toda la hoja */
+    .container-fluid {
+      max-width: 100% !important;
+    }
+  }
+</style>
 {% endblock %}

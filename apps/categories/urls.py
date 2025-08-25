@@ -22,4 +22,6 @@ urlpatterns = [
 
     path("deportes/<int:pk>/activar/", views.absolute_activate, name="absolute_activate"),
     path("deportes/<int:pk>/desactivar/", views.absolute_deactivate, name="absolute_deactivate"),
+
+
 ]

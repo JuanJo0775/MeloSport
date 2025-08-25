@@ -1,62 +1,109 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
-{% block title %}Confirmar eliminación{% endblock %}
+
+{% block title %}Confirmar eliminación - {{ object.nombre }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Categorías|categories:list" "Eliminar" %}
+  {% breadcrumb "Gestión|categories:home" "Categorías|categories:list" "Eliminar" %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Eliminar categoría: {{ object.name }}</h5>
-
-      {% if step == 'warn' %}
-        <p class="text-warning">
-          Esta categoría contiene {% if has_children %}subcategorías{% endif %}{% if has_children and has_products %} y {% endif %}{% if has_products %}productos asociados{% endif %}.
-        </p>
-        <p>¿Deseas continuar? (Se pedirá confirmación adicional).</p>
-
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="confirm_step" value="1">
-          <div class="d-flex justify-content-end">
-            <a href="{% url 'backoffice:categories:list' %}" class="btn btn-secondary me-2">Cancelar</a>
-            <button type="submit" class="btn btn-danger">Continuar</button>
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom-0 d-flex align-items-center">
+          <i class="bi bi-exclamation-triangle text-danger fs-3 me-3"></i>
+          <div>
+            <h5 class="card-title mb-0">Eliminar categoría</h5>
+            <small class="text-muted">Acción irreversible para <strong>{{ object.nombre }}</strong></small>
           </div>
-        </form>
-
-      {% elif step == 'confirm_password' %}
-        <p class="text-danger"><strong>Advertencia final:</strong> Esta acción eliminará permanentemente la categoría y sus vínculos.</p>
-
-        {% if messages %}
-          {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-          {% endfor %}
-        {% endif %}
-
-        <form method="post" class="mt-3">
-          {% csrf_token %}
-          <input type="hidden" name="confirm_step" value="2">
-          <div class="mb-3">
-            <label for="password" class="form-label">Confirma con tu contraseña</label>
-            <input type="password" id="password" name="password" class="form-control" required>
-          </div>
-          <div class="d-flex justify-content-end">
-            <a href="{% url 'backoffice:categories:list' %}" class="btn btn-secondary me-2">Cancelar</a>
-            <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
-          </div>
-        </form>
-
-      {% else %}
-        <p>¿Estás seguro de eliminar esta categoría?</p>
-        <div class="d-flex justify-content-end">
-          <a href="{% url 'backoffice:categories:list' %}" class="btn btn-secondary me-2">Cancelar</a>
-          <a href="{% url 'backoffice:categories:delete' object.pk %}" class="btn btn-danger">Eliminar</a>
         </div>
-      {% endif %}
+        <div class="card-body">
 
+          {% if step == 'warn' %}
+            <!-- Paso 1: Advertencia -->
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+              <i class="bi bi-info-circle me-2"></i>
+              La categoría <strong>{{ object.nombre }}</strong>
+              {% if has_children and has_products %}
+                tiene subcategorías y productos asociados.
+              {% elif has_children %}
+                tiene subcategorías asociadas.
+              {% elif has_products %}
+                tiene productos asociados.
+              {% endif %}
+            </div>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="confirm_step" value="1">
+              <div class="d-flex justify-content-end">
+                <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary me-2">
+                  <i class="bi bi-x-circle me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                  <i class="bi bi-arrow-right-circle me-1"></i>Continuar
+                </button>
+              </div>
+            </form>
+
+          {% elif step == 'confirm_password' %}
+            <!-- Paso 2: Confirmación final -->
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+              <i class="bi bi-shield-exclamation me-2"></i>
+              <div>
+                <strong>Advertencia final:</strong> Esta acción eliminará permanentemente la categoría y sus vínculos.
+                <br><small class="text-muted">No se puede deshacer.</small>
+              </div>
+            </div>
+
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="confirm_step" value="2">
+              <div class="mb-3">
+                <label for="password" class="form-label">Confirma con tu contraseña</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+              </div>
+              <div class="d-flex justify-content-end">
+                <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary me-2">
+                  <i class="bi bi-x-circle me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                  <i class="bi bi-trash me-1"></i>Confirmar eliminación
+                </button>
+              </div>
+            </form>
+
+          {% else %}
+            <!-- Paso inicial: Confirmación simple -->
+            <p class="text-muted">
+              ¿Estás seguro de que quieres eliminar la categoría
+              <strong>{{ object.nombre }}</strong>?
+            </p>
+            <div class="d-flex justify-content-end">
+              <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-x-circle me-1"></i>Cancelar
+              </a>
+              <form method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                  <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+              </form>
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
     </div>
   </div>
 </div>
