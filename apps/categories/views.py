@@ -30,6 +30,7 @@ class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Category
     template_name = 'backoffice/categories/list.html'
     context_object_name = 'categorias'
+    queryset = Category.objects.all().prefetch_related('children').order_by('tree_id', 'lft')
 
 
 class CategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -128,6 +129,7 @@ class AbsoluteCategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, De
     model = AbsoluteCategory
     template_name = 'backoffice/absolute_categories/detail.html'
     context_object_name = 'deporte'
+    queryset = AbsoluteCategory.objects.filter(activo=True).order_by('nombre')
 
 
 class AbsoluteCategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):

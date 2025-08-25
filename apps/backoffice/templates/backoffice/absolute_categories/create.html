@@ -1,0 +1,25 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+{% block title %}Crear Deporte{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Deportes|categories:absolute_list" "Crear" %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Crear nueva categoría absoluta (Deporte)</h5>
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="d-flex justify-content-end">
+          <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-secondary me-2">Cancelar</a>
+          <button type="submit" class="btn btn-success">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
