@@ -1,10 +1,9 @@
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import Group, Permission, User
-from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Group, Permission
 from django.contrib.auth import get_user_model
-from django.conf import settings
 
-User = get_user_model()  # 👈 Esto usa tu modelo custom
+User = get_user_model()
+
 
 class Command(BaseCommand):
     help = "Crea roles iniciales y superusuario admin"
@@ -14,16 +13,26 @@ class Command(BaseCommand):
         admin_group, _ = Group.objects.get_or_create(name="Administrador")
         vendedor_group, _ = Group.objects.get_or_create(name="Vendedor")
 
-        # Permisos base
-        # Admin: todos
-        for perm in Permission.objects.all():
-            admin_group.permissions.add(perm)
+        # --- Admin: todos los permisos ---
+        admin_group.permissions.set(Permission.objects.all())
 
-        # Vendedor: solo productos e inventario
-        allowed = Permission.objects.filter(content_type__app_label__in=["productos", "inventario", 'categories'])
+        # --- Vendedor: permisos específicos ---
+        allowed = []
+
+        # Solo lectura de productos y categorías
+        allowed += list(Permission.objects.filter(codename__startswith="view_", content_type__app_label="products"))
+        allowed += list(Permission.objects.filter(codename__startswith="view_", content_type__app_label="categories"))
+
+        # Gestión completa de movimientos de inventario
+        allowed += list(Permission.objects.filter(content_type__app_label="products", codename__icontains="inventorymovement"))
+
         vendedor_group.permissions.set(allowed)
 
-        # Superusuario admin
+        # --- Superusuario por defecto ---
         if not User.objects.filter(username="admin").exists():
-            User.objects.create_superuser("admin", "admin@melosport.com", "Bocato0731@")
-            self.stdout.write(self.style.SUCCESS("Superusuario creado: admin / Bocato0731@"))
+            User.objects.create_superuser(
+                "admin", "admin@melosport.com", "Bocato0731@"
+            )
+            self.stdout.write(self.style.SUCCESS("✅ Superusuario creado: admin / Bocato0731@"))
+
+        self.stdout.write(self.style.SUCCESS("✅ Roles y permisos iniciales configurados"))

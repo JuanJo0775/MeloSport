@@ -205,18 +205,22 @@
                      title="Ver detalles">
                     <i class="bi bi-eye"></i>
                   </a>
+                  {% if perms.categories.change_category %}
                   <a href="{% url 'backoffice:categories:edit' categoria.pk %}"
                      class="btn btn-sm btn-outline-secondary"
                      data-bs-toggle="tooltip"
                      title="Editar categoría">
                     <i class="bi bi-pencil"></i>
                   </a>
+                  {% endif %}
+                  {% if perms.categories.delete_category %}
                   <a href="{% url 'backoffice:categories:delete' categoria.pk %}"
                      class="btn btn-sm btn-outline-danger"
                      data-bs-toggle="tooltip"
                      title="Eliminar categoría">
                     <i class="bi bi-trash"></i>
                   </a>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -227,9 +231,11 @@
                   <i class="bi bi-diagram-3 fs-1 d-block mb-3 text-secondary"></i>
                   <h5>No hay categorías registradas</h5>
                   <p class="mb-3">Comienza creando tu primera categoría jerárquica para organizar productos.</p>
+                  {% if perms.categories.add_category %}
                   <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle me-2"></i>Crear Primera Categoría
                   </a>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -252,15 +258,19 @@
               <span class="text-muted ms-2" id="selectedCount">0 elementos seleccionados</span>
             </div>
             <div class="btn-group">
+              {% if perms.categories.change_category %}
               <button type="button" class="btn btn-sm btn-success" id="activateSelected" disabled>
                 <i class="bi bi-check-circle me-2"></i>Activar
               </button>
               <button type="button" class="btn btn-sm btn-secondary" id="deactivateSelected" disabled>
                 <i class="bi bi-pause-circle me-2"></i>Desactivar
               </button>
+              {% endif %}
+              {% if perms.categories.delete_category %}
               <button type="button" class="btn btn-sm btn-danger" id="deleteSelected" disabled>
                 <i class="bi bi-trash me-2"></i>Eliminar
               </button>
+              {% endif %}
             </div>
           </div>
         </div>

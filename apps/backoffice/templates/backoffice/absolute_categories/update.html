@@ -9,6 +9,8 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+
+  {% if perms.categories.change_absolutecategory %}
   <!-- Encabezado -->
   <div class="row mb-4">
     <div class="col-12">
@@ -18,9 +20,11 @@
           <p class="text-muted mb-0">Modifica los datos del deporte: <strong>{{ object.nombre }}</strong></p>
         </div>
         <div class="d-flex gap-2">
+          {% if perms.categories.view_absolutecategory %}
           <a href="{% url 'backoffice:categories:absolute_detail' object.pk %}" class="btn btn-outline-info">
             <i class="bi bi-eye me-2"></i>Ver Detalles
           </a>
+          {% endif %}
           <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-2"></i>Volver al Listado
           </a>
@@ -202,6 +206,7 @@
         <div class="card-body">
           <h6 class="mb-3"><i class="bi bi-gear text-primary me-2"></i>Acciones adicionales</h6>
           <div class="row">
+            {% if perms.categories.view_absolutecategory %}
             <div class="col-md-4">
               <div class="d-grid">
                 <a href="{% url 'backoffice:categories:absolute_detail' object.pk %}" class="btn btn-outline-info">
@@ -209,6 +214,7 @@
                 </a>
               </div>
             </div>
+            {% endif %}
             <div class="col-md-4">
               <div class="d-grid">
                 <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
@@ -216,6 +222,7 @@
                 </button>
               </div>
             </div>
+            {% if perms.categories.delete_absolutecategory %}
             <div class="col-md-4">
               <div class="d-grid">
                 <a href="{% url 'backoffice:categories:absolute_delete' object.pk %}" class="btn btn-outline-danger">
@@ -223,11 +230,19 @@
                 </a>
               </div>
             </div>
+            {% endif %}
           </div>
         </div>
       </div>
     </div>
   </div>
+  {% else %}
+  <div class="alert alert-warning text-center border-0 shadow-sm">
+    <i class="bi bi-lock fs-4 me-2"></i>
+    No tienes permisos para editar deportes.
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
 
@@ -249,49 +264,39 @@ document.addEventListener('DOMContentLoaded', function () {
         .replace(/^-+|-+$/g, '');
       slugField.value = slug;
 
-      // Feedback visual
       slugField.classList.add('is-valid');
       setTimeout(() => slugField.classList.remove('is-valid'), 2000);
     });
   }
 
-  // Validación
+  // Validación campos requeridos
   const form = document.querySelector('form');
-  const requiredFields = form.querySelectorAll('[required]');
-  requiredFields.forEach(field => {
-    field.addEventListener('blur', function() {
-      this.classList.toggle('is-invalid', this.value.trim() === '');
-      this.classList.toggle('is-valid', this.value.trim() !== '');
+  if (form) {
+    const requiredFields = form.querySelectorAll('[required]');
+    requiredFields.forEach(field => {
+      field.addEventListener('blur', function() {
+        this.classList.toggle('is-invalid', this.value.trim() === '');
+        this.classList.toggle('is-valid', this.value.trim() !== '');
+      });
+      field.addEventListener('input', function() {
+        this.classList.toggle('is-invalid', this.value.trim() === '');
+        this.classList.toggle('is-valid', this.value.trim() !== '');
+      });
     });
-    field.addEventListener('input', function() {
-      this.classList.toggle('is-invalid', this.value.trim() === '');
-      this.classList.toggle('is-valid', this.value.trim() !== '');
+
+    // Confirmación cambios no guardados
+    let formChanged = false;
+    form.querySelectorAll('input, textarea, select').forEach(input => {
+      input.addEventListener('change', () => { formChanged = true; });
     });
-  });
-
-  // Confirmación cambios no guardados
-  let formChanged = false;
-  form.querySelectorAll('input, textarea, select').forEach(input => {
-    input.addEventListener('change', () => { formChanged = true; });
-  });
-  window.addEventListener('beforeunload', function(e) {
-    if (formChanged) {
-      e.preventDefault();
-      e.returnValue = '¿Estás seguro de que quieres salir? Los cambios no guardados se perderán.';
-    }
-  });
-  form.addEventListener('submit', () => { formChanged = false; });
-
-  // Animación
-  document.querySelectorAll('.card').forEach((card, index) => {
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(20px)';
-    setTimeout(() => {
-      card.style.transition = 'all 0.3s ease';
-      card.style.opacity = '1';
-      card.style.transform = 'translateY(0)';
-    }, index * 100);
-  });
+    window.addEventListener('beforeunload', function(e) {
+      if (formChanged) {
+        e.preventDefault();
+        e.returnValue = '¿Estás seguro de que quieres salir? Los cambios no guardados se perderán.';
+      }
+    });
+    form.addEventListener('submit', () => { formChanged = false; });
+  }
 });
 </script>
 {% endblock %}

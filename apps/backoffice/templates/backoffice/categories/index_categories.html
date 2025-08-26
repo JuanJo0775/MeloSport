@@ -18,12 +18,16 @@
           <p class="text-muted mb-0">Administra deportes y categorías jerárquicas para organizar tus productos</p>
         </div>
         <div class="d-flex gap-2">
+          {% if perms.categories.add_absolutecategory %}
           <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success">
             <i class="bi bi-plus-circle me-2"></i>Nuevo Deporte
           </a>
+          {% endif %}
+          {% if perms.categories.add_category %}
           <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle me-2"></i>Nueva Categoría
           </a>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -84,12 +88,14 @@
           </div>
 
           <div class="d-flex gap-2">
-            <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-success flex-fill">
-              <i class="bi bi-list-task me-2"></i>Ver Listado
-            </a>
-            <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success flex-fill">
-              <i class="bi bi-plus-circle me-2"></i>Crear Deporte
-            </a>
+              <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-success flex-fill">
+                <i class="bi bi-list-task me-2"></i>Ver Listado
+              </a>
+              {% if perms.categories.add_absolutecategory %}
+              <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success flex-fill">
+                <i class="bi bi-plus-circle me-2"></i>Crear Deporte
+              </a>
+              {% endif %}
           </div>
         </div>
       </div>
@@ -122,12 +128,14 @@
           </div>
 
           <div class="d-flex gap-2">
-            <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-primary flex-fill">
-              <i class="bi bi-list-task me-2"></i>Ver Listado
-            </a>
-            <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary flex-fill">
-              <i class="bi bi-plus-circle me-2"></i>Crear Categoría
-            </a>
+              <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-primary flex-fill">
+                <i class="bi bi-list-task me-2"></i>Ver Listado
+              </a>
+              {% if perms.categories.add_category %}
+              <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary flex-fill">
+                <i class="bi bi-plus-circle me-2"></i>Crear Categoría
+              </a>
+              {% endif %}
           </div>
         </div>
       </div>

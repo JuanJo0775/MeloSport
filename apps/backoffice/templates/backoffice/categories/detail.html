@@ -48,20 +48,25 @@
         </div>
 
         <div class="d-flex flex-column gap-2">
+          {% if perms.categories.change_category or perms.categories.add_category or perms.categories.delete_category %}
           <div class="btn-group">
+            {% if perms.categories.change_category %}
             <a href="{% url 'backoffice:categories:edit' categoria.pk %}" class="btn btn-primary">
               <i class="bi bi-pencil me-2"></i>Editar
             </a>
+            {% endif %}
             <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
               <span class="visually-hidden">Toggle Dropdown</span>
             </button>
             <ul class="dropdown-menu">
+              {% if perms.categories.change_category %}
               <li>
                 <a class="dropdown-item" href="{% url 'backoffice:categories:edit' categoria.pk %}">
                   <i class="bi bi-pencil me-2"></i>Editar categoría
                 </a>
               </li>
-              {% if categoria.get_children %}
+              {% endif %}
+              {% if perms.categories.add_category %}
               <li>
                 <a class="dropdown-item" href="{% url 'backoffice:categories:create' %}?parent={{ categoria.pk }}">
                   <i class="bi bi-plus-circle me-2"></i>Crear subcategoría
@@ -74,13 +79,16 @@
                   <i class="bi bi-printer me-2"></i>Imprimir detalles
                 </button>
               </li>
+              {% if perms.categories.delete_category %}
               <li>
                 <a class="dropdown-item text-danger" href="{% url 'backoffice:categories:delete' categoria.pk %}">
                   <i class="bi bi-trash me-2"></i>Eliminar categoría
                 </a>
               </li>
+              {% endif %}
             </ul>
           </div>
+          {% endif %}
           <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-2"></i>Volver al Listado
           </a>
@@ -112,8 +120,7 @@
                 <h6 class="text-muted mb-2">Categoría Padre</h6>
                 {% if categoria.parent %}
                   <p class="mb-0">
-                    <a href="{% url 'backoffice:categories:detail' categoria.parent.pk %}"
-                       class="text-decoration-none">
+                    <a href="{% url 'backoffice:categories:detail' categoria.parent.pk %}" class="text-decoration-none">
                       {{ categoria.parent.name }}
                     </a>
                   </p>
@@ -200,14 +207,14 @@
                       </div>
                     </div>
                     <div class="btn-group-vertical btn-group-sm">
-                      <a href="{% url 'backoffice:categories:detail' child.pk %}"
-                         class="btn btn-outline-primary btn-sm" title="Ver detalles">
+                      <a href="{% url 'backoffice:categories:detail' child.pk %}" class="btn btn-outline-primary btn-sm" title="Ver detalles">
                         <i class="bi bi-eye"></i>
                       </a>
-                      <a href="{% url 'backoffice:categories:edit' child.pk %}"
-                         class="btn btn-outline-secondary btn-sm" title="Editar">
+                      {% if perms.categories.change_category %}
+                      <a href="{% url 'backoffice:categories:edit' child.pk %}" class="btn btn-outline-secondary btn-sm" title="Editar">
                         <i class="bi bi-pencil"></i>
                       </a>
+                      {% endif %}
                     </div>
                   </div>
                 </div>
@@ -256,14 +263,17 @@
                 <i class="bi bi-inbox me-2"></i>Sin Productos
               </button>
             {% endif %}
+            {% if perms.categories.add_category %}
             <a href="{% url 'backoffice:categories:create' %}?parent={{ categoria.pk }}" class="btn btn-outline-info">
               <i class="bi bi-plus-circle me-2"></i>Crear Subcategoría
             </a>
+            {% endif %}
           </div>
         </div>
       </div>
 
       <!-- Acciones rápidas -->
+      {% if perms.categories.change_category or perms.categories.add_category %}
       <div class="card border-0 shadow-sm mt-4 acciones-rapidas">
         <div class="card-header bg-white border-bottom-0">
           <h5 class="card-title mb-0">
@@ -272,24 +282,33 @@
         </div>
         <div class="card-body">
           <div class="d-grid gap-2">
+            {% if perms.categories.change_category %}
             <a href="{% url 'backoffice:categories:edit' categoria.pk %}" class="btn btn-primary">
               <i class="bi bi-pencil me-2"></i>Editar Categoría
             </a>
+            {% endif %}
             {% if categoria.is_active %}
+              {% if perms.categories.change_category %}
               <button class="btn btn-secondary" onclick="toggleStatus('{{ categoria.pk }}', false)">
                 <i class="bi bi-pause-circle me-2"></i>Desactivar
               </button>
+              {% endif %}
             {% else %}
+              {% if perms.categories.change_category %}
               <button class="btn btn-success" onclick="toggleStatus('{{ categoria.pk }}', true)">
                 <i class="bi bi-check-circle me-2"></i>Activar
               </button>
+              {% endif %}
             {% endif %}
+            {% if perms.categories.add_category %}
             <a href="{% url 'backoffice:categories:create' %}?parent={{ categoria.pk }}" class="btn btn-outline-info">
               <i class="bi bi-plus-circle me-2"></i>Crear Subcategoría
             </a>
+            {% endif %}
           </div>
         </div>
       </div>
+      {% endif %}
 
       <!-- Información adicional -->
       {% if categoria.created_at or categoria.updated_at %}
@@ -317,10 +336,10 @@
   </div>
 </div>
 {% endblock %}
+
 {% block extra_css %}
 <style>
   @media print {
-    /* Ocultar navbar, footer, botones y acciones */
     .btn,
     .btn-group,
     .card .dropdown-menu,
@@ -331,19 +350,14 @@
     .sidebar {
       display: none !important;
     }
-
-    /* Ajustar márgenes y colores para impresión */
     body {
       background: #fff !important;
       color: #000 !important;
     }
-
     .card {
       border: none !important;
       box-shadow: none !important;
     }
-
-    /* Expande el contenido a toda la hoja */
     .container-fluid {
       max-width: 100% !important;
     }

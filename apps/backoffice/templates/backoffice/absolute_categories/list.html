@@ -4,10 +4,13 @@
 {% block title %}Deportes - Listado{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" %}{% endblock %}
+  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" %}
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+
+  {% if perms.categories.view_absolutecategory %}
   <!-- Encabezado con acciones -->
   <div class="row mb-4">
     <div class="col-12">
@@ -20,9 +23,11 @@
           <a href="{% url 'backoffice:categories:home' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-2"></i>Volver al Inicio
           </a>
+          {% if perms.categories.add_absolutecategory %}
           <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success">
             <i class="bi bi-plus-circle me-2"></i>Nuevo Deporte
           </a>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -34,16 +39,17 @@
       <div class="card border-0 shadow-sm">
         <div class="card-body">
           <form method="get" class="row g-3">
+            <!-- Buscar -->
             <div class="col-md-4">
               <label for="search" class="form-label">Buscar deporte</label>
               <div class="input-group">
-                <span class="input-group-text">
-                  <i class="bi bi-search"></i>
-                </span>
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="search" name="search" class="form-control"
                        placeholder="Nombre del deporte..." value="{{ request.GET.search }}">
               </div>
             </div>
+
+            <!-- Estado -->
             <div class="col-md-3">
               <label for="status" class="form-label">Estado</label>
               <select id="status" name="status" class="form-select">
@@ -52,6 +58,8 @@
                 <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactivos</option>
               </select>
             </div>
+
+            <!-- Botones -->
             <div class="col-md-2">
               <label class="form-label">&nbsp;</label>
               <div class="d-grid">
@@ -167,30 +175,26 @@
                 </span>
               </td>
               <td>
-                <small class="text-muted">
-                  {{ deporte.created_at|date:"d/m/Y" }}
-                </small>
+                <small class="text-muted">{{ deporte.created_at|date:"d/m/Y" }}</small>
               </td>
               <td class="text-center">
                 <div class="btn-group" role="group">
                   <a href="{% url 'backoffice:categories:absolute_detail' deporte.pk %}"
-                     class="btn btn-sm btn-outline-primary"
-                     data-bs-toggle="tooltip"
-                     title="Ver detalles">
+                     class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Ver detalles">
                     <i class="bi bi-eye"></i>
                   </a>
+                  {% if perms.categories.change_absolutecategory %}
                   <a href="{% url 'backoffice:categories:absolute_edit' deporte.pk %}"
-                     class="btn btn-sm btn-outline-secondary"
-                     data-bs-toggle="tooltip"
-                     title="Editar deporte">
+                     class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Editar deporte">
                     <i class="bi bi-pencil"></i>
                   </a>
+                  {% endif %}
+                  {% if perms.categories.delete_absolutecategory %}
                   <a href="{% url 'backoffice:categories:absolute_delete' deporte.pk %}"
-                     class="btn btn-sm btn-outline-danger"
-                     data-bs-toggle="tooltip"
-                     title="Eliminar deporte">
+                     class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Eliminar deporte">
                     <i class="bi bi-trash"></i>
                   </a>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -201,9 +205,11 @@
                   <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary"></i>
                   <h5>No hay deportes registrados</h5>
                   <p class="mb-3">Comienza creando tu primer deporte para organizar tus productos.</p>
+                  {% if perms.categories.add_absolutecategory %}
                   <a href="{% url 'backoffice:categories:absolute_create' %}" class="btn btn-success">
                     <i class="bi bi-plus-circle me-2"></i>Crear Primer Deporte
                   </a>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -214,102 +220,79 @@
     </div>
   </div>
 
-  <!-- Acciones masivas -->
-  {% if deportes %}
-  <div class="row mt-3">
-    <div class="col-12">
-      <div class="card border-0 bg-light">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <strong>Acciones masivas:</strong>
-              <span class="text-muted ms-2" id="selectedCount">0 elementos seleccionados</span>
-            </div>
-            <div class="btn-group">
-              <button type="button" class="btn btn-sm btn-success" id="activateSelected" disabled>
-                <i class="bi bi-check-circle me-2"></i>Activar
-              </button>
-              <button type="button" class="btn btn-sm btn-secondary" id="deactivateSelected" disabled>
-                <i class="bi bi-pause-circle me-2"></i>Desactivar
-              </button>
-              <button type="button" class="btn btn-sm btn-danger" id="deleteSelected" disabled>
-                <i class="bi bi-trash me-2"></i>Eliminar
-              </button>
+ <!-- Acciones masivas -->
+{% if deportes %}
+  {% if perms.categories.change_absolutecategory or perms.categories.delete_absolutecategory %}
+    <div class="row mt-3">
+      <div class="col-12">
+        <div class="card border-0 bg-light">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <strong>Acciones masivas:</strong>
+                <span class="text-muted ms-2" id="selectedCount">0 elementos seleccionados</span>
+              </div>
+              <div class="btn-group">
+                {% if perms.categories.change_absolutecategory %}
+                  <button type="button" class="btn btn-sm btn-success" id="activateSelected" disabled>
+                    <i class="bi bi-check-circle me-2"></i>Activar
+                  </button>
+                  <button type="button" class="btn btn-sm btn-secondary" id="deactivateSelected" disabled>
+                    <i class="bi bi-pause-circle me-2"></i>Desactivar
+                  </button>
+                {% endif %}
+                {% if perms.categories.delete_absolutecategory %}
+                  <button type="button" class="btn btn-sm btn-danger" id="deleteSelected" disabled>
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                  </button>
+                {% endif %}
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+  {% endif %}
+{% endif %}
+
+
+  {% else %}
+  <div class="alert alert-warning text-center border-0 shadow-sm">
+    <i class="bi bi-lock fs-4 me-2"></i>
+    No tienes permisos para ver la lista de deportes.
   </div>
   {% endif %}
-</div>
 
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
   // Inicializar tooltips
-  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-  });
+  [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].forEach(el => new bootstrap.Tooltip(el));
 
-  // Funcionalidad de selección masiva
   const selectAllCheckbox = document.getElementById('selectAll');
   const rowCheckboxes = document.querySelectorAll('.row-checkbox');
   const selectedCountSpan = document.getElementById('selectedCount');
   const massActionButtons = document.querySelectorAll('#activateSelected, #deactivateSelected, #deleteSelected');
 
-  // Función para actualizar contador y botones
   function updateSelection() {
-    const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-    const count = selectedCheckboxes.length;
-
-    selectedCountSpan.textContent = `${count} elemento${count !== 1 ? 's' : ''} seleccionado${count !== 1 ? 's' : ''}`;
-
-    massActionButtons.forEach(button => {
-      button.disabled = count === 0;
-    });
-
-    // Actualizar estado del checkbox "Seleccionar todo"
-    if (count === 0) {
-      selectAllCheckbox.indeterminate = false;
-      selectAllCheckbox.checked = false;
-    } else if (count === rowCheckboxes.length) {
-      selectAllCheckbox.indeterminate = false;
-      selectAllCheckbox.checked = true;
-    } else {
-      selectAllCheckbox.indeterminate = true;
-    }
+    const selected = document.querySelectorAll('.row-checkbox:checked').length;
+    selectedCountSpan.textContent = `${selected} elemento${selected !== 1 ? 's' : ''} seleccionado${selected !== 1 ? 's' : ''}`;
+    massActionButtons.forEach(btn => btn.disabled = selected === 0);
+    selectAllCheckbox.indeterminate = selected > 0 && selected < rowCheckboxes.length;
+    selectAllCheckbox.checked = selected === rowCheckboxes.length;
   }
 
-  // Event listener para "Seleccionar todo"
   if (selectAllCheckbox) {
     selectAllCheckbox.addEventListener('change', function() {
-      rowCheckboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-      });
+      rowCheckboxes.forEach(cb => cb.checked = this.checked);
       updateSelection();
     });
   }
 
-  // Event listeners para checkboxes individuales
-  rowCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', updateSelection);
-  });
-
-  // Animaciones de entrada
-  const tableRows = document.querySelectorAll('tbody tr');
-  tableRows.forEach((row, index) => {
-    row.style.opacity = '0';
-    row.style.transform = 'translateY(10px)';
-    setTimeout(() => {
-      row.style.transition = 'all 0.3s ease';
-      row.style.opacity = '1';
-      row.style.transform = 'translateY(0)';
-    }, index * 50);
-  });
+  rowCheckboxes.forEach(cb => cb.addEventListener('change', updateSelection));
 });
 </script>
 {% endblock %}

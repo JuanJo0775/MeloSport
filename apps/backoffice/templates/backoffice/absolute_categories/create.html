@@ -17,15 +17,14 @@
           <h1 class="h3 mb-2">Crear Nuevo Deporte</h1>
           <p class="text-muted mb-0">Agrega una nueva categoría absoluta que aparecerá como deporte en el frontend</p>
         </div>
-        <div class="d-flex gap-2">
-          <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>Volver al Listado
-          </a>
-        </div>
+        <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-2"></i>Volver al Listado
+        </a>
       </div>
     </div>
   </div>
 
+  {% if perms.categories.add_absolutecategory %}
   <div class="row justify-content-center">
     <div class="col-xl-8">
       <!-- Información contextual -->
@@ -158,7 +157,9 @@
       <!-- Consejos -->
       <div class="card border-0 bg-light mt-4">
         <div class="card-body">
-          <h6 class="mb-3"><i class="bi bi-lightbulb text-warning me-2"></i>Consejos útiles</h6>
+          <h6 class="mb-3">
+            <i class="bi bi-lightbulb text-warning me-2"></i>Consejos útiles
+          </h6>
           <div class="row">
             <div class="col-md-6">
               <ul class="list-unstyled small mb-0">
@@ -177,6 +178,12 @@
       </div>
     </div>
   </div>
+  {% else %}
+  <div class="alert alert-warning border-0 shadow-sm text-center">
+    <i class="bi bi-lock fs-4 me-2"></i>
+    No tienes permisos para crear deportes.
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
 
@@ -205,19 +212,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Validación en vivo
   const form = document.querySelector('form');
-  const requiredFields = form.querySelectorAll('[required]');
-  requiredFields.forEach(field => {
-    field.addEventListener('blur', function() {
-      this.classList.toggle('is-invalid', this.value.trim() === '');
-      this.classList.toggle('is-valid', this.value.trim() !== '');
+  if (form) {
+    const requiredFields = form.querySelectorAll('[required]');
+    requiredFields.forEach(field => {
+      field.addEventListener('blur', function() {
+        this.classList.toggle('is-invalid', this.value.trim() === '');
+        this.classList.toggle('is-valid', this.value.trim() !== '');
+      });
+      field.addEventListener('input', function() {
+        this.classList.toggle('is-invalid', this.value.trim() === '');
+        this.classList.toggle('is-valid', this.value.trim() !== '');
+      });
     });
-    field.addEventListener('input', function() {
-      this.classList.toggle('is-invalid', this.value.trim() === '');
-      this.classList.toggle('is-valid', this.value.trim() !== '');
-    });
-  });
+  }
 
-  // Animación
+  // Animación de aparición
   const card = document.querySelector('.card');
   if (card) {
     card.style.opacity = '0';

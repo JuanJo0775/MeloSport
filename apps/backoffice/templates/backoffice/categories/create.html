@@ -26,6 +26,7 @@
     </div>
   </div>
 
+  {% if perms.categories.add_category %}
   <div class="row justify-content-center">
     <div class="col-xl-8">
       <!-- Información contextual -->
@@ -168,6 +169,7 @@
           </form>
         </div>
       </div>
+
       <!-- Consejos útiles -->
       <div class="card border-0 bg-light mt-4">
         <div class="card-body">
@@ -204,5 +206,11 @@
       </div>
     </div>
   </div>
+  {% else %}
+  <div class="alert alert-warning border-0 shadow-sm text-center">
+    <i class="bi bi-lock fs-4 me-2"></i>
+    No tienes permisos para crear categorías.
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

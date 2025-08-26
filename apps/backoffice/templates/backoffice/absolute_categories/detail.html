@@ -4,14 +4,18 @@
 {% block title %}{{ deporte.nombre }} - Detalles{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" deporte.nombre %}{% endblock %}
+  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" deporte.nombre %}
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
+
+  {% if perms.categories.view_absolutecategory %}
   <!-- Encabezado con acciones -->
   <div class="row mb-4">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-start">
+        <!-- Información del deporte -->
         <div class="d-flex align-items-center">
           <div class="icon-wrapper bg-success bg-opacity-10 rounded-3 p-3 me-4">
             <i class="bi bi-dribbble text-success fs-1"></i>
@@ -34,33 +38,44 @@
           </div>
         </div>
 
+        <!-- Acciones -->
         <div class="d-flex flex-column gap-2">
+          {% if perms.categories.change_absolutecategory or perms.categories.delete_absolutecategory %}
           <div class="btn-group">
+            {% if perms.categories.change_absolutecategory %}
             <a href="{% url 'backoffice:categories:absolute_edit' deporte.pk %}" class="btn btn-primary">
               <i class="bi bi-pencil me-2"></i>Editar
             </a>
+            {% endif %}
+            {% if perms.categories.change_absolutecategory or perms.categories.delete_absolutecategory %}
             <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
               <span class="visually-hidden">Toggle Dropdown</span>
             </button>
             <ul class="dropdown-menu">
+              {% if perms.categories.change_absolutecategory %}
               <li>
                 <a class="dropdown-item" href="{% url 'backoffice:categories:absolute_edit' deporte.pk %}">
                   <i class="bi bi-pencil me-2"></i>Editar deporte
                 </a>
               </li>
               <li><hr class="dropdown-divider"></li>
+              {% endif %}
               <li>
                 <button class="dropdown-item" onclick="window.print()">
                   <i class="bi bi-printer me-2"></i>Imprimir detalles
                 </button>
               </li>
-                <li>
-                  <a class="dropdown-item text-danger" href="{% url 'backoffice:categories:absolute_delete' deporte.pk %}">
-                    <i class="bi bi-trash me-2"></i>Eliminar deporte
-                  </a>
-                </li>
+              {% if perms.categories.delete_absolutecategory %}
+              <li>
+                <a class="dropdown-item text-danger" href="{% url 'backoffice:categories:absolute_delete' deporte.pk %}">
+                  <i class="bi bi-trash me-2"></i>Eliminar deporte
+                </a>
+              </li>
+              {% endif %}
             </ul>
+            {% endif %}
           </div>
+          {% endif %}
           <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-2"></i>Volver al Listado
           </a>
@@ -146,7 +161,9 @@
         <div class="card-body">
           <div class="text-center mb-4">
             <div class="display-4 text-primary mb-2">{{ deporte.get_product_count|default:"0" }}</div>
-            <h6 class="text-muted">Producto{{ deporte.get_product_count|pluralize }} Asociado{{ deporte.get_product_count|pluralize }}</h6>
+            <h6 class="text-muted">
+              Producto{{ deporte.get_product_count|pluralize }} Asociado{{ deporte.get_product_count|pluralize }}
+            </h6>
           </div>
 
           <div class="d-grid gap-2">
@@ -164,6 +181,7 @@
       </div>
 
       <!-- Acciones rápidas -->
+      {% if perms.categories.change_absolutecategory %}
       <div class="card border-0 shadow-sm mt-4 acciones-rapidas">
         <div class="card-header bg-white border-bottom-0">
           <h5 class="card-title mb-0">
@@ -187,11 +205,21 @@
           </div>
         </div>
       </div>
+      {% endif %}
     </div>
   </div>
+
+  {% else %}
+  <!-- Sin permisos -->
+  <div class="alert alert-warning border-0 shadow-sm text-center">
+    <i class="bi bi-lock fs-4 me-2"></i>
+    No tienes permisos para ver detalles de deportes.
+  </div>
+  {% endif %}
 </div>
 
 <!-- Modal Confirmar Eliminación -->
+{% if perms.categories.delete_absolutecategory %}
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -200,7 +228,7 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body">
-        ¿Estás seguro de que deseas eliminar el deporte <strong>{{ deporte.nombre }}</strong>?
+        ¿Estás seguro de que deseas eliminar el deporte <strong>{{ deporte.nombre }}</strong>?<br>
         Esta acción no se puede deshacer.
       </div>
       <div class="modal-footer">
@@ -212,15 +240,16 @@
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}
+
 {% block extra_css %}
 <style>
   @media print {
-    /* Ocultar navbar, footer, botones y acciones */
+    /* Ocultar elementos no deseados en impresión */
     .btn,
     .btn-group,
-    .card .dropdown-menu,
-    .card .card-header .btn,
+    .dropdown-menu,
     .acciones-rapidas,
     .navbar,
     .breadcrumb,
@@ -228,7 +257,6 @@
       display: none !important;
     }
 
-    /* Ajustar márgenes y colores para impresión */
     body {
       background: #fff !important;
       color: #000 !important;
@@ -239,7 +267,6 @@
       box-shadow: none !important;
     }
 
-    /* Expande el contenido a toda la hoja */
     .container-fluid {
       max-width: 100% !important;
     }

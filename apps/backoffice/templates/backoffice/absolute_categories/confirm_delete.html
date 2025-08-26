@@ -1,14 +1,18 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
+
 {% block title %}Confirmar eliminación - {{ object.nombre }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" "Eliminar" %}{% endblock %}
+  {% breadcrumb "Gestión|backoffice:categories:home" "Deportes|backoffice:categories:absolute_list" "Eliminar" %}
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
   <div class="row justify-content-center">
     <div class="col-lg-8 col-xl-6">
+
+      {% if perms.categories.delete_absolutecategory %}
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-bottom-0 d-flex align-items-center">
           <i class="bi bi-exclamation-triangle text-danger fs-3 me-3"></i>
@@ -74,10 +78,31 @@
             </form>
 
           {% else %}
-            <p class="text-muted">¿Estás seguro de que quieres eliminar <strong>{{ object.nombre }}</strong>?</p>
+            <p class="text-muted">
+              ¿Estás seguro de que quieres eliminar <strong>{{ object.nombre }}</strong>?
+            </p>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="confirm_step" value="start">
+              <div class="d-flex justify-content-end">
+                <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary me-2">
+                  <i class="bi bi-x-circle me-1"></i>Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                  <i class="bi bi-trash me-1"></i>Eliminar
+                </button>
+              </div>
+            </form>
           {% endif %}
         </div>
       </div>
+      {% else %}
+      <div class="alert alert-warning text-center border-0 shadow-sm">
+        <i class="bi bi-lock fs-4 me-2"></i>
+        No tienes permisos para eliminar deportes.
+      </div>
+      {% endif %}
+
     </div>
   </div>
 </div>

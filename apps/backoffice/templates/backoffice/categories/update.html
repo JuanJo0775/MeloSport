@@ -29,6 +29,7 @@
     </div>
   </div>
 
+  {% if perms.categories.change_category %}
   <div class="row justify-content-center">
     <div class="col-xl-8">
       <!-- Info categoría actual -->
@@ -241,5 +242,11 @@
       </div>
     </div>
   </div>
+  {% else %}
+  <div class="alert alert-warning border-0 shadow-sm text-center">
+    <i class="bi bi-lock fs-4 me-2"></i>
+    No tienes permisos para editar esta categoría.
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
