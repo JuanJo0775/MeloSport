@@ -1,0 +1,34 @@
+{% extends "backoffice/base_backoffice.html" %}
+
+{% block title %}Detalle Auditoría{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Detalle del Registro</h3>
+    <dl class="row">
+        <dt class="col-sm-3">Usuario</dt>
+        <dd class="col-sm-9">{{ log.user|default:"Sistema" }}</dd>
+
+        <dt class="col-sm-3">Acción</dt>
+        <dd class="col-sm-9">{{ log.action }}</dd>
+
+        <dt class="col-sm-3">Modelo</dt>
+        <dd class="col-sm-9">{{ log.model }}</dd>
+
+        <dt class="col-sm-3">Objeto ID</dt>
+        <dd class="col-sm-9">{{ log.object_id }}</dd>
+
+        <dt class="col-sm-3">IP</dt>
+        <dd class="col-sm-9">{{ log.ip_address }}</dd>
+
+        <dt class="col-sm-3">Fecha</dt>
+        <dd class="col-sm-9">{{ log.created_at|date:"d/m/Y H:i" }}</dd>
+
+        <dt class="col-sm-3">Datos</dt>
+        <dd class="col-sm-9">
+            <pre>{{ log.get_data_display }}</pre>
+        </dd>
+    </dl>
+    <a href="{% url 'users:audit_list' %}" class="btn btn-secondary">Volver</a>
+</div>
+{% endblock %}

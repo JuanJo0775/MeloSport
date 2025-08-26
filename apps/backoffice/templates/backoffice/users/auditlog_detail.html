@@ -1,0 +1,84 @@
+{% extends "backoffice/base_backoffice.html" %}
+
+{% block title %}Auditoría - Usuarios{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h3 class="mb-4">Registros de Auditoría</h3>
+
+    <!-- Filtros -->
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <input type="number" name="user" class="form-control" placeholder="ID de Usuario"
+                   value="{{ request.GET.user }}">
+        </div>
+        <div class="col-md-3">
+            <select name="period" class="form-select">
+                <option value="">-- Periodo --</option>
+                <option value="day" {% if request.GET.period == "day" %}selected{% endif %}>Hoy</option>
+                <option value="week" {% if request.GET.period == "week" %}selected{% endif %}>Esta semana</option>
+                <option value="month" {% if request.GET.period == "month" %}selected{% endif %}>Este mes</option>
+                <option value="year" {% if request.GET.period == "year" %}selected{% endif %}>Este año</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+    </form>
+
+    <!-- Tabla de logs -->
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Acción</th>
+                    <th>Modelo</th>
+                    <th>IP</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in logs %}
+                <tr>
+                    <td>{{ log.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ log.user|default:"Sistema" }}</td>
+                    <td>{{ log.action }}</td>
+                    <td>{{ log.model }}</td>
+                    <td>{{ log.ip_address }}</td>
+                    <td>
+                        <a href="{% url 'users:audit_detail' log.pk %}" class="btn btn-sm btn-outline-primary">
+                            Ver
+                        </a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">No hay registros</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if is_paginated %}
+    <nav>
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}">Anterior</a>
+            </li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}">Siguiente</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

@@ -18,4 +18,7 @@ urlpatterns = [
     path("<int:pk>/toggle-active/", views.UserToggleActiveView.as_view(), name="toggle_active"),
     path("<int:pk>/password/set/", views.UserSetPasswordView.as_view(), name="password_set"),
 
+    path("audit/", views.AuditLogListView.as_view(), name="audit_list"),
+    path("audit/<int:pk>/", views.AuditLogDetailView.as_view(), name="audit_detail"),
+
 ]

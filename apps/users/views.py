@@ -2,6 +2,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .models import AuditLog
 from .serializers import EmailTokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -10,6 +12,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.contrib import messages
+from django.utils.timezone import now, timedelta
 
 
 User = get_user_model()
@@ -128,3 +131,47 @@ class UserSetPasswordView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVie
         form.save()
         messages.success(self.request, "Contraseña actualizada correctamente.")
         return super().form_valid(form)
+
+
+# ======== AUDITORIA ========
+
+class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    model = AuditLog
+    template_name = "backoffice/users/auditlog_list.html"
+    context_object_name = "logs"
+    paginate_by = 20
+    permission_required = "users.view_auditlog"
+
+    def get_queryset(self):
+        queryset = AuditLog.objects.select_related("user").all()
+
+        # Filtros desde GET
+        user_id = self.request.GET.get("user")
+        period = self.request.GET.get("period")  # day, week, month, year
+
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+
+        if period:
+            now_ = now()
+            if period == "day":
+                queryset = queryset.filter(created_at__date=now_.date())
+            elif period == "week":
+                start_week = now_ - timedelta(days=now_.weekday())
+                queryset = queryset.filter(created_at__date__gte=start_week.date())
+            elif period == "month":
+                queryset = queryset.filter(
+                    created_at__year=now_.year,
+                    created_at__month=now_.month
+                )
+            elif period == "year":
+                queryset = queryset.filter(created_at__year=now_.year)
+
+        return queryset
+
+
+class AuditLogDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    model = AuditLog
+    template_name = "backoffice/users/auditlog_detail.html"
+    context_object_name = "log"
+    permission_required = "users.view_auditlog"
