@@ -1,0 +1,13 @@
+{% extends "backoffice/base_backoffice.html" %}
+
+{% block title %}Página no encontrada{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+  <h1 class="display-4 text-danger">404</h1>
+  <p class="lead">La página que buscas no existe o tu sesión ha expirado.</p>
+  <a href="{% url 'backoffice:login' %}" class="btn btn-primary mt-3">
+    Ir al login
+  </a>
+</div>
+{% endblock %}

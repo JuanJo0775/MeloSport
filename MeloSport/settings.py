@@ -122,6 +122,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+LOGIN_URL = '/backoffice/login/'
+LOGIN_REDIRECT_URL = '/backoffice/dashboard/'
+LOGOUT_REDIRECT_URL = '/backoffice/login/'
+
 ROOT_URLCONF = 'MeloSport.urls'
 
 TEMPLATES = [

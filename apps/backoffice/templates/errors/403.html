@@ -1,0 +1,13 @@
+{% extends "backoffice/base_backoffice.html" %}
+
+{% block title %}Acceso denegado{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+  <h1 class="display-4 text-danger">403</h1>
+  <p class="lead">No tienes permisos para acceder a esta sección.</p>
+  <a href="{% url 'backoffice:dashboard' %}" class="btn btn-outline-primary mt-3">
+    Ir al inicio
+  </a>
+</div>
+{% endblock %}

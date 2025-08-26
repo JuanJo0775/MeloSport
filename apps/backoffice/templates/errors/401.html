@@ -1,0 +1,13 @@
+{% extends "backoffice/base_backoffice.html" %}
+
+{% block title %}Sesión expirada{% endblock %}
+
+{% block content %}
+<div class="container text-center py-5">
+  <h1 class="display-4 text-danger">401</h1>
+  <p class="lead">Tu sesión ha expirado. Por favor vuelve a iniciar sesión.</p>
+  <a href="{% url 'backoffice:login' %}" class="btn btn-primary mt-3">
+    Iniciar sesión
+  </a>
+</div>
+{% endblock %}

@@ -41,7 +41,9 @@ def login_view(request):
 @login_required(login_url="/backoffice/login/")
 def logout_view(request):
     logout(request)
+    request.session.flush()
     return redirect("backoffice:login")
+
 
 
 # Ejemplo de vista protegida por permisos
@@ -61,8 +63,9 @@ def configuraciones_view(request):
     return render(request, "perfil/configuraciones.html")
 
 
-
-
 @login_required(login_url="/backoffice/login/")
 def placeholder_view(request):
     return render(request, "backoffice/placeholder.html")
+
+def custom_401(request, exception=None):
+    return render(request, "errors/401.html", status=401)

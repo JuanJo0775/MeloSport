@@ -61,3 +61,8 @@ urlpatterns = [
     path("reportes/lista/", views.placeholder_view, name="report-list"),
     path("respaldos/crear/", views.placeholder_view, name="backup-create"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+handler401 = "MeloSport.views.custom_401"
+handler403 = "django.views.defaults.permission_denied"
+handler404 = "django.views.defaults.page_not_found"
+handler500 = "django.views.defaults.server_error"
