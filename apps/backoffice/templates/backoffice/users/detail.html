@@ -17,7 +17,7 @@
       <p><strong>Email:</strong> {{ user_obj.email }}</p>
       <p><strong>Activo:</strong> {{ user_obj.is_active|yesno:"Sí,No" }}</p>
       <p><strong>Último acceso:</strong> {{ user_obj.last_login|date:"d/m/Y H:i" }}</p>
-      <p><strong>Grupos:</strong> 
+      <p><strong>Grupos:</strong>
         {% for g in user_obj.groups.all %}<span class="badge bg-primary">{{ g.name }}</span>{% empty %}<em>Sin grupos</em>{% endfor %}
       </p>
     </div>
