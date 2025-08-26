@@ -1,0 +1,26 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Crear Usuario{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Gestión|backoffice:users:list" "Usuarios|backoffice:users:list" "Crear" %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0"><i class="bi bi-person-plus"></i> Crear Usuario</h5>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Guardar</button>
+        <a href="{% url 'backoffice:users:list' %}" class="btn btn-secondary">Cancelar</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

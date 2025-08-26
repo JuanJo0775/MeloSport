@@ -1,0 +1,194 @@
+/* Estilos generales */
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    padding-bottom: 0; /* Para que el footer no se superponga con el contenido */
+}
+
+/* Navbar */
+.navbar {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Footer */
+footer {
+    margin-top: 50px;
+}
+
+/* Estilos de tarjetas (tipo Pinterest) */
+.masonry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    grid-gap: 20px;
+}
+
+.producto-card {
+    transition: transform 0.3s ease;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.producto-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-img-top {
+    height: 220px;
+    object-fit: cover;
+}
+
+/* Estilo para ratings (estrellas) */
+.rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+.rating input {
+    display: none;
+}
+
+.rating label {
+    font-size: 30px;
+    color: #ddd;
+    cursor: pointer;
+    margin: 0 5px;
+}
+
+.rating label:hover,
+.rating label:hover ~ label,
+.rating input:checked ~ label {
+    color: #f8c01d;
+}
+
+.estrellitas {
+    color: #f8c01d;
+}
+
+/* Botones interactivos (likes, dislikes, favoritos) */
+.interaction-btn {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.interaction-btn:hover {
+    transform: scale(1.2);
+}
+
+.active-like {
+    color: #0d6efd;
+}
+
+.active-dislike {
+    color: #dc3545;
+}
+
+.active-favorite {
+    color: #f8c01d;
+}
+
+/* Estilo para admin */
+.admin-container {
+    background-color: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.nav-admin {
+    background-color: #343a40;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.nav-admin .nav-link {
+    color: #fff;
+    padding: 10px 15px;
+}
+
+.nav-admin .nav-link.active {
+    background-color: #0d6efd;
+    border-radius: 5px;
+}
+
+.nav-admin .nav-link:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
+
+/* Botones */
+.btn {
+    border-radius: 5px;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+    transform: translateY(-2px);
+}
+
+/* Formularios */
+.form-control, .form-select {
+    border-radius: 8px;
+    padding: 10px 15px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Alertas */
+.alert {
+    border-radius: 10px;
+    padding: 15px 20px;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 767.98px) {
+    .masonry-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+
+    .card-img-top {
+        height: 180px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .masonry-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card-img-top {
+        height: 150px;
+    }
+}

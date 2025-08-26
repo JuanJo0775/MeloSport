@@ -1,0 +1,24 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Eliminar Usuario{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Gestión|backoffice:users:list" "Usuarios|backoffice:users:list" "Eliminar" %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle"></i> 
+    ¿Estás seguro que deseas eliminar al usuario <strong>{{ object.username }}</strong>?
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">
+      <i class="bi bi-trash"></i> Confirmar
+    </button>
+    <a href="{% url 'backoffice:users:list' %}" class="btn btn-secondary">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

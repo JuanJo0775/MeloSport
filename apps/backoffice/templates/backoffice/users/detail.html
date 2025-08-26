@@ -1,0 +1,31 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Detalle de Usuario{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Gestión|backoffice:users:list" "Usuarios|backoffice:users:list" "Detalle" %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0"><i class="bi bi-person-circle"></i> {{ user_obj.username }}</h5>
+    </div>
+    <div class="card-body">
+      <p><strong>Email:</strong> {{ user_obj.email }}</p>
+      <p><strong>Activo:</strong> {{ user_obj.is_active|yesno:"Sí,No" }}</p>
+      <p><strong>Último acceso:</strong> {{ user_obj.last_login|date:"d/m/Y H:i" }}</p>
+      <p><strong>Grupos:</strong> 
+        {% for g in user_obj.groups.all %}<span class="badge bg-primary">{{ g.name }}</span>{% empty %}<em>Sin grupos</em>{% endfor %}
+      </p>
+    </div>
+    <div class="card-footer">
+      <a href="{% url 'backoffice:users:list' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Volver
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

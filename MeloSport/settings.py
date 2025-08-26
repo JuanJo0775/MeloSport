@@ -145,12 +145,7 @@ TEMPLATES = [
     },
 ]
 
-# Para los archivos estáticos
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),  # Carpeta global (opcional)
-]
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Para collectstatic
+
 
 # Esto permite que Django busque en cada app
 
