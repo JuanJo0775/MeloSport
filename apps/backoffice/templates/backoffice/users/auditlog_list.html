@@ -1,34 +1,297 @@
 {% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
 
-{% block title %}Detalle Auditoría{% endblock %}
+{% block title %}Auditoría de Usuarios{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Gestión|backoffice:users:list" "Usuarios|backoffice:users:list" "Auditoría" %}
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h3>Detalle del Registro</h3>
-    <dl class="row">
-        <dt class="col-sm-3">Usuario</dt>
-        <dd class="col-sm-9">{{ log.user|default:"Sistema" }}</dd>
+<div class="container-fluid py-4">
+  <!-- Header con estadísticas rápidas -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">
+          <i class="bi bi-clipboard-data stats-icon me-2"></i>
+          Registros de Auditoría
+        </h3>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Imprimir
+          </button>
+          <a href="{% url 'backoffice:users:list' %}" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Volver a Usuarios
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <dt class="col-sm-3">Acción</dt>
-        <dd class="col-sm-9">{{ log.action }}</dd>
+  <!-- Tarjetas de estadísticas rápidas -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stats-card border-left-primary">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="stats-icon me-3">
+              <i class="bi bi-activity"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Total Registros</div>
+              <div class="fw-bold h5 mb-0">{{ logs|length }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card border-left-success">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="stats-icon me-3" style="color: #28a745;">
+              <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Acciones Exitosas</div>
+              <div class="fw-bold h5 mb-0">{{ logs|length }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card border-left-info">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="stats-icon me-3" style="color: #17a2b8;">
+              <i class="bi bi-calendar-event"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Periodo</div>
+              <div class="fw-bold h5 mb-0">
+                {% if request.GET.period == "day" %}Hoy
+                {% elif request.GET.period == "week" %}Esta Semana
+                {% elif request.GET.period == "month" %}Este Mes
+                {% elif request.GET.period == "year" %}Este Año
+                {% else %}Todos{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card border-left-warning">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="stats-icon me-3" style="color: #ffc107;">
+              <i class="bi bi-people"></i>
+            </div>
+            <div>
+              <div class="text-muted small">Usuarios Únicos</div>
+              <div class="fw-bold h5 mb-0">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <dt class="col-sm-3">Modelo</dt>
-        <dd class="col-sm-9">{{ log.model }}</dd>
+  <!-- Filtros -->
+  <div class="card mb-4">
+    <div class="card-header bg-white">
+      <h6 class="mb-0">
+        <i class="bi bi-funnel me-2"></i>
+        Filtros de Búsqueda
+      </h6>
+    </div>
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-3">
+          <label for="user" class="form-label">ID de Usuario</label>
+          <input type="number" name="user" id="user" class="form-control"
+                 placeholder="Ingrese ID del usuario" value="{{ request.GET.user }}">
+        </div>
+        <div class="col-md-3">
+          <label for="period" class="form-label">Periodo</label>
+          <select name="period" id="period" class="form-select">
+            <option value="">-- Todos los periodos --</option>
+            <option value="day" {% if request.GET.period == "day" %}selected{% endif %}>Hoy</option>
+            <option value="week" {% if request.GET.period == "week" %}selected{% endif %}>Esta semana</option>
+            <option value="month" {% if request.GET.period == "month" %}selected{% endif %}>Este mes</option>
+            <option value="year" {% if request.GET.period == "year" %}selected{% endif %}>Este año</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="date" class="form-label">Fecha Específica</label>
+          <input type="date" name="date" id="date" class="form-control" value="{{ request.GET.date }}">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="btn-group w-100">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-search me-1"></i> Filtrar
+            </button>
+            <a href="{% url 'backoffice:users:audit_list' %}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-clockwise me-1"></i> Limpiar
+            </a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
 
-        <dt class="col-sm-3">Objeto ID</dt>
-        <dd class="col-sm-9">{{ log.object_id }}</dd>
+  <!-- Tabla de registros de auditoría -->
+  <div class="card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <h6 class="mb-0">
+        <i class="bi bi-table me-2"></i>
+        Registros de Auditoría
+      </h6>
+      <small class="text-muted">
+        Mostrando {{ logs|length }} registros
+      </small>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th class="border-0">
+                <i class="bi bi-calendar3 me-1"></i>
+                Fecha y Hora
+              </th>
+              <th class="border-0">
+                <i class="bi bi-person me-1"></i>
+                Usuario
+              </th>
+              <th class="border-0">
+                <i class="bi bi-activity me-1"></i>
+                Acción
+              </th>
+              <th class="border-0">
+                <i class="bi bi-database me-1"></i>
+                Modelo
+              </th>
+              <th class="border-0">
+                <i class="bi bi-globe me-1"></i>
+                Dirección IP
+              </th>
+              <th class="border-0 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <td>
+                <div class="fw-medium">{{ log.created_at|date:"d/m/Y" }}</div>
+                <small class="text-muted">{{ log.created_at|date:"H:i:s" }}</small>
+              </td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2"
+                       style="width: 32px; height: 32px;">
+                    <i class="bi bi-person text-white"></i>
+                  </div>
+                  <div>
+                    <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username|default:"Sistema" }}</div>
+                    {% if log.user %}
+                    <small class="text-muted">@{{ log.user.username }}</small>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge
+                  {% if log.action == 'CREATE' %}badge-success
+                  {% elif log.action == 'UPDATE' %}badge-warning
+                  {% elif log.action == 'DELETE' %}badge-danger
+                  {% else %}bg-secondary{% endif %}">
+                  {% if log.action == 'CREATE' %}
+                    <i class="bi bi-plus-circle me-1"></i> Creado
+                  {% elif log.action == 'UPDATE' %}
+                    <i class="bi bi-pencil me-1"></i> Actualizado
+                  {% elif log.action == 'DELETE' %}
+                    <i class="bi bi-trash me-1"></i> Eliminado
+                  {% else %}
+                    <i class="bi bi-gear me-1"></i> {{ log.action }}
+                  {% endif %}
+                </span>
+              </td>
+              <td>
+                <span class="bg-light px-2 py-1 rounded small">
+                  <i class="bi bi-box me-1"></i>
+                  {{ log.model }}
+                </span>
+              </td>
+              <td>
+                <code class="text-muted">{{ log.ip_address|default:"-" }}</code>
+              </td>
+              <td class="text-center">
+                <a href="{% url 'backoffice:users:audit_detail' log.pk %}"
+                   class="btn btn-sm btn-outline-primary"
+                   title="Ver detalles del registro">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center py-4">
+                <div class="d-flex flex-column align-items-center">
+                  <i class="bi bi-inbox stats-icon text-muted mb-2"></i>
+                  <h6 class="text-muted">No hay registros de auditoría</h6>
+                  <p class="text-muted small mb-0">No se encontraron registros con los filtros aplicados</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-        <dt class="col-sm-3">IP</dt>
-        <dd class="col-sm-9">{{ log.ip_address }}</dd>
+    <!-- Paginación -->
+    {% if is_paginated %}
+    <div class="card-footer bg-white">
+      <nav aria-label="Paginación de registros de auditoría">
+        <ul class="pagination justify-content-center mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+              <i class="bi bi-chevron-double-left"></i>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+              <i class="bi bi-chevron-left"></i> Anterior
+            </a>
+          </li>
+          {% endif %}
 
-        <dt class="col-sm-3">Fecha</dt>
-        <dd class="col-sm-9">{{ log.created_at|date:"d/m/Y H:i" }}</dd>
+          <li class="page-item active">
+            <span class="page-link">
+              Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+          </li>
 
-        <dt class="col-sm-3">Datos</dt>
-        <dd class="col-sm-9">
-            <pre>{{ log.get_data_display }}</pre>
-        </dd>
-    </dl>
-    <a href="{% url 'users:audit_list' %}" class="btn btn-secondary">Volver</a>
+          {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+              Siguiente <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.period %}&period={{ request.GET.period }}{% endif %}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}">
+              <i class="bi bi-chevron-double-right"></i>
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

@@ -4,22 +4,223 @@
 {% block title %}Crear Usuario{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Gestión|backoffice:users:list" "Usuarios|backoffice:users:list" "Crear" %}
+  {% breadcrumb  "Usuarios|backoffice:users:list" "Crear" %}
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
-  <div class="card shadow-sm">
-    <div class="card-header bg-white">
-      <h5 class="mb-0"><i class="bi bi-person-plus"></i> Crear Usuario</h5>
-    </div>
-    <div class="card-body">
-      <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-success">Guardar</button>
-        <a href="{% url 'backoffice:users:list' %}" class="btn btn-secondary">Cancelar</a>
-      </form>
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <!-- Header -->
+      <div class="d-flex align-items-center mb-4">
+        <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary me-3">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="h3 mb-1">Crear Nuevo Usuario</h1>
+          <p class="text-muted mb-0">Completa la información del nuevo usuario del sistema</p>
+        </div>
+      </div>
+
+      <!-- Formulario -->
+      <div class="card shadow-sm">
+        <div class="card-header bg-white">
+          <div class="d-flex align-items-center">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                 style="width: 40px; height: 40px;">
+              <i class="bi bi-person-plus"></i>
+            </div>
+            <div>
+              <h5 class="mb-0">Información del Usuario</h5>
+              <small class="text-muted">Todos los campos marcados con * son obligatorios</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Información personal -->
+            <div class="row g-3 mb-4">
+              <div class="col-12">
+                <h6 class="text-muted text-uppercase fw-bold mb-3">
+                  <i class="bi bi-person me-2"></i>Información Personal
+                </h6>
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                  Nombre *
+                </label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.first_name.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                  Apellido *
+                </label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.last_name.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.email.id_for_label }}" class="form-label">
+                  Correo Electrónico *
+                </label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.email.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                <div class="form-text">
+                  <i class="bi bi-info-circle me-1"></i>Se utilizará para notificaciones y recuperación de contraseña
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.phone.id_for_label }}" class="form-label">
+                  Teléfono
+                </label>
+                {{ form.phone }}
+                {% if form.phone.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.phone.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Información de acceso -->
+            <div class="row g-3 mb-4">
+              <div class="col-12">
+                <h6 class="text-muted text-uppercase fw-bold mb-3">
+                  <i class="bi bi-key me-2"></i>Información de Acceso
+                </h6>
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.username.id_for_label }}" class="form-label">
+                  Nombre de Usuario *
+                </label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.username.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                <div class="form-text">
+                  <i class="bi bi-info-circle me-1"></i>Será utilizado para iniciar sesión en el sistema
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.role.id_for_label }}" class="form-label">
+                  Rol del Usuario
+                </label>
+                {{ form.role }}
+                {% if form.role.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.role.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.password1.id_for_label }}" class="form-label">
+                  Contraseña *
+                </label>
+                {{ form.password1 }}
+                {% if form.password1.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.password1.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.password2.id_for_label }}" class="form-label">
+                  Confirmar Contraseña *
+                </label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.password2.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Errores generales del formulario -->
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Botones de acción -->
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle me-2"></i>Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-2"></i>Crear Usuario
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Información adicional -->
+      <div class="card mt-4">
+        <div class="card-body">
+          <div class="d-flex">
+            <div class="text-primary me-3">
+              <i class="bi bi-info-circle-fill fs-4"></i>
+            </div>
+            <div>
+              <h6 class="mb-2">Información importante</h6>
+              <ul class="mb-0 small text-muted">
+                <li>El usuario recibirá sus credenciales por correo electrónico</li>
+                <li>Podrá cambiar su contraseña en el primer acceso</li>
+                <li>Los roles determinan los permisos en el sistema</li>
+                <li>Un usuario inactivo no podrá acceder al sistema</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
