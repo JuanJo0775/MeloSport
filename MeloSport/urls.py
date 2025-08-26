@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.conf.urls import handler404, handler500, handler403, handler400
+from django.shortcuts import render
 
 admin.site.site_header = "Administración de MeloSport"
 admin.site.site_title = "MeloSport Admin"
@@ -27,3 +29,21 @@ urlpatterns = [
     path('api/', include('apps.api.urls')),
     path('backoffice/', include(('apps.backoffice.urls', 'backoffice'), namespace='backoffice')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+def error_404_view(request, exception):
+    return render(request, 'errors/404.html', status=404)
+
+def error_500_view(request):
+    return render(request, 'errors/500.html', status=500)
+
+def error_403_view(request, exception):
+    return render(request, 'errors/403.html', status=403)
+
+def error_400_view(request, exception):
+    return render(request, 'errors/400.html', status=400)
+
+handler404 = error_404_view
+handler500 = error_500_view
+handler403 = error_403_view
+handler400 = error_400_view
