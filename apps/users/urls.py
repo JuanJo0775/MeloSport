@@ -25,6 +25,6 @@ urlpatterns = [
     path("<int:pk>/password/set/", UserSetPasswordView.as_view(), name="set_password"),
 
     # Auditoría
-    path("audit/", AuditLogListView.as_view(), name="audit_list"),
+    path("auditlogs/", AuditLogListView.as_view(), name="auditlog_list"),
     path("audit/<int:pk>/", AuditLogDetailView.as_view(), name="audit_detail"),
 ]

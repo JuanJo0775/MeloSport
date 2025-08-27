@@ -10,7 +10,6 @@ from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, View, FormView
 )
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth import get_user_model
 
 from rest_framework.permissions import IsAuthenticated
@@ -20,7 +19,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import EmailTokenObtainPairSerializer
 from .models import AuditLog
-from .forms import CustomUserCreationForm, CustomUserChangeForm
+from .forms import CustomUserCreationForm, CustomUserChangeForm, CustomPasswordChangeForm
 
 User = get_user_model()
 
@@ -160,8 +159,6 @@ class UserToggleActiveView(LoginRequiredMixin, PermissionRequiredMixin, View):
         return redirect("backoffice:users:list")
 
 
-from .forms import CustomPasswordChangeForm
-
 class UserSetPasswordView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
     template_name = "backoffice/users/set_password.html"
     form_class = CustomPasswordChangeForm
@@ -185,7 +182,6 @@ class UserSetPasswordView(LoginRequiredMixin, PermissionRequiredMixin, FormView)
         return super().form_valid(form)
 
 
-
 # ========== AUDITORÍA ==========
 
 class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
@@ -197,14 +193,22 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = AuditLog.objects.select_related("user").all()
-        user_id = self.request.GET.get("user")
+        search = self.request.GET.get("q")
         period = self.request.GET.get("period")  # day, week, month, year
         date = self.request.GET.get("date")      # formato YYYY-MM-DD
 
-        if user_id:
-            queryset = queryset.filter(user_id=user_id)
+        # 🔎 búsqueda flexible por usuario
+        if search:
+            queryset = queryset.filter(
+                Q(user__username__icontains=search) |
+                Q(user__email__icontains=search) |
+                Q(user__first_name__icontains=search) |
+                Q(user__last_name__icontains=search)
+            )
+
         if date:
             queryset = queryset.filter(created_at__date=date)
+
         if period:
             now_ = now()
             if period == "day":
@@ -213,10 +217,32 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 start_week = now_ - timedelta(days=now_.weekday())
                 queryset = queryset.filter(created_at__date__gte=start_week.date())
             elif period == "month":
-                queryset = queryset.filter(created_at__year=now_.year, created_at__month=now_.month)
+                queryset = queryset.filter(
+                    created_at__year=now_.year,
+                    created_at__month=now_.month
+                )
             elif period == "year":
                 queryset = queryset.filter(created_at__year=now_.year)
-        return queryset
+
+        return queryset.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # Último modelo afectado (seguro, sin problemas con paginación)
+        last_log = AuditLog.objects.order_by("-created_at").first()
+        ctx["last_model"] = last_log.model if last_log else "-"
+
+        # Total usuarios únicos
+        ctx["unique_users"] = AuditLog.objects.values("user").distinct().count()
+
+        # Total modelos distintos
+        ctx["unique_models"] = AuditLog.objects.values("model").distinct().count()
+
+        # Total de registros de auditoría (sin paginación)
+        ctx["total_logs"] = AuditLog.objects.count()
+
+        return ctx
 
 
 class AuditLogDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -224,3 +250,6 @@ class AuditLogDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
     template_name = "backoffice/users/auditlog_detail.html"
     context_object_name = "log"
     permission_required = "users.view_auditlog"
+
+    def get_queryset(self):
+        return AuditLog.objects.select_related("user")

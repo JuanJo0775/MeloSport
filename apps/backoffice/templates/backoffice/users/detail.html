@@ -337,10 +337,10 @@
         <div class="card-body">
           <div class="d-grid gap-2">
             {% if perms.users.view_auditlog %}
-              <a href="{% url 'backoffice:users:audit_list' %}?user={{ user_obj.pk }}"
-                 class="btn btn-outline-info btn-sm">
-                <i class="bi bi-clock-history me-2"></i> Ver Auditoría
-              </a>
+                <a href="{% url 'backoffice:users:auditlog_list' %}?user={{ user_obj.pk }}"
+                   class="btn btn-outline-info btn-sm">
+                  <i class="bi bi-clock-history me-2"></i> Ver Auditoría
+                </a>
             {% endif %}
 
             <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary btn-sm">
