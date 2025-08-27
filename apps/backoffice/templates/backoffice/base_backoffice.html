@@ -79,7 +79,7 @@
 
                 <!-- Productos -->
                 {% if perms.products.view_product %}
-                <a href="#" class="sidebar-link">
+                <a href="{% url 'backoffice:products:product_list' %}" class="sidebar-link">
                     <i class="bi bi-box"></i> Productos
                 </a>
                 {% endif %}
