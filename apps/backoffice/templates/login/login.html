@@ -1,75 +1,73 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Login - Panel administrativo Melosport">
-    <title>Iniciar sesión - Melosport</title>
+{% extends "login/base_login.html" %}
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Estilos personalizados -->
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'css/styles_inventario.css' %}">
-</head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+{% block title %}Iniciar sesión - Melosport{% endblock %}
+{% block description %}Accede al panel administrativo de Melosport{% endblock %}
 
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card shadow-lg border-0 rounded-4">
-                    <div class="card-body p-4">
-                        <div class="text-center mb-4">
-                            <img src="{% static 'img/Logo sin fondo azul.png' %}" alt="Melosport Logo" height="60" class="mb-2">
-                            <h3 class="fw-bold mt-2">Melosport Admin</h3>
-                            <p class="text-muted">Accede a tu panel de gestión</p>
-                        </div>
-
-                        {% if messages %}
-                            <div class="alert alert-danger">
-                                {% for message in messages %}
-                                    <p class="mb-0">{{ message }}</p>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-
-                        <!-- ✅ Usamos el namespace backoffice -->
-                        <form method="post" action="{% url 'backoffice:login' %}">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Usuario o Correo</label>
-                                <input type="text" class="form-control" id="username" name="username" required placeholder="ej: admin o admin@melosport.com">
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Contraseña</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
-                            </div>
-
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-box-arrow-in-right me-1"></i> Acceder
-                                </button>
-                            </div>
-                        </form>
-
-                        <div class="mt-3 text-center">
-                            <!-- ✅ También con namespace -->
-                            <a href="{% url 'backoffice:password_reset' %}" class="text-decoration-none">
-                                <i class="bi bi-key me-1"></i> ¿Olvidaste tu contraseña?
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <p class="text-center text-muted mt-3 small">© {{ now|date:"Y" }} Melosport - Todos los derechos reservados</p>
-            </div>
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card shadow border-0 rounded-4">
+      <div class="card-body p-5">
+        
+        <!-- Logo y título -->
+        <div class="text-center mb-4">
+          {% load static %}
+          <img src="{% static 'img/Logo sin fondo azul.png' %}" alt="Melosport Logo" height="60" class="mb-3">
+          <h2 class="fw-bold text-dark">Bienvenido</h2>
+          <p class="text-muted mb-0">Accede a tu panel de gestión</p>
         </div>
+
+        <!-- Mensajes de error -->
+        {% if messages %}
+          <div class="alert alert-danger rounded-3 mb-4">
+            {% for message in messages %}
+              <i class="bi bi-exclamation-triangle me-2"></i>{{ message }}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- Formulario de login -->
+        <form method="post" action="{% url 'backoffice:login' %}" novalidate>
+          {% csrf_token %}
+          
+          <div class="mb-3">
+            <label for="username" class="form-label fw-semibold">
+              <i class="bi bi-person-circle me-2"></i>Usuario o Correo
+            </label>
+            <input type="text" class="form-control form-control-lg rounded-3" 
+                   id="username" name="username" required 
+                   placeholder="admin o admin@melosport.com">
+          </div>
+
+          <div class="mb-4">
+            <label for="password" class="form-label fw-semibold">
+              <i class="bi bi-shield-lock me-2"></i>Contraseña
+            </label>
+            <input type="password" class="form-control form-control-lg rounded-3" 
+                   id="password" name="password" required 
+                   placeholder="••••••••">
+          </div>
+
+          <div class="d-grid mb-3">
+            <button type="submit" class="btn btn-primary btn-lg rounded-3">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+            </button>
+          </div>
+        </form>
+
+        <!-- Enlace recuperar contraseña -->
+        <div class="text-center">
+          <a href="{% url 'backoffice:password_reset' %}" class="text-decoration-none">
+            <i class="bi bi-key me-1"></i>¿Olvidaste tu contraseña?
+          </a>
+        </div>
+      </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <!-- Footer -->
+    <p class="text-center text-muted mt-4 small">
+      © {% now "Y" %} Melosport - Todos los derechos reservados
+    </p>
+  </div>
+</div>
+{% endblock %}

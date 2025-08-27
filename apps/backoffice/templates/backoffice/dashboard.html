@@ -1,6 +1,7 @@
 {% extends "backoffice/base_backoffice.html" %}
 
 {% block title %}Dashboard - Panel Administrativo - Melosport{% endblock %}
+{% load friendly_datetime %}
 
 {% load breadcrumbs %}
 {% block breadcrumb %}
@@ -11,22 +12,33 @@
 <div class="container-fluid">
     <!-- Bienvenida y resumen rápido -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="card-title h4 mb-1">¡Bienvenido de vuelta!</h2>
-                            <p class="text-muted mb-0">Aquí tienes un resumen de tu inventario</p>
-                        </div>
-                        <div class="text-end">
-                            <small class="text-muted">Última actualización: </small>
-                            <strong class="text-primary">Hoy, 14:30</strong>
-                        </div>
-                    </div>
-                </div>
+      <div class="col-12">
+        <div class="card shadow-sm border-0 rounded-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h2 class="card-title h4 mb-1">
+                  ¡Bienvenido de vuelta {{ request.user.first_name|default:request.user.username }}!
+                </h2>
+                <p class="text-muted mb-0">
+                  {% if last_login %}
+                    Tu último inicio de sesión fue
+                    <strong>{{ last_login|friendly_datetime }}</strong>.
+                  {% else %}
+                    <strong>Esta es tu primera vez en el sistema 🎉</strong>
+                  {% endif %}
+                </p>
+              </div>
+              <div class="text-end">
+                <small class="text-muted">Sesión actual:</small>
+                <strong class="text-primary">
+                  {{ current_login|friendly_datetime }}
+                </strong>
+              </div>
             </div>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- Tarjetas de estadísticas principales -->

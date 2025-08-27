@@ -1,73 +1,170 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
 
-{% block title %}Configuraciones{% endblock %}
+{% block title %}Configuraciones - Melosport{% endblock %}
 
 {% block breadcrumb %}
   {% breadcrumb "Configuraciones" %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid">
+
   <!-- Título principal -->
-  <h2 class="fw-bold mb-4">
-    <i class="bi bi-gear-fill text-primary me-2"></i> Configuraciones
-  </h2>
+  <div class="d-flex align-items-center mb-4">
+    <i class="bi bi-gear-fill text-primary me-3" style="font-size: 2rem;"></i>
+    <div>
+      <h2 class="fw-bold mb-0">Configuraciones</h2>
+      <p class="text-muted mb-0">Gestiona tu cuenta y preferencias de seguridad</p>
+    </div>
+  </div>
 
+  <!-- Grid de opciones -->
   <div class="row g-4">
+
     <!-- Cambiar contraseña -->
-    <div class="col-md-6 col-lg-4">
-      <div class="card shadow-sm border-0 rounded-4 h-100">
-        <div class="card-body p-4 d-flex flex-column">
-          <div class="mb-3 text-center">
-            <i class="bi bi-key-fill text-primary" style="font-size:2rem;"></i>
+    <div class="col-lg-4 col-md-6">
+      <div class="card shadow border-0 rounded-4 h-100 hover-lift">
+        <div class="card-body p-4 text-center">
+          <div class="mb-3">
+            <div class="bg-warning bg-opacity-10 rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+              <i class="bi bi-shield-lock text-warning" style="font-size: 2rem;"></i>
+            </div>
           </div>
-          <h5 class="fw-bold mb-2 text-center">Cambiar contraseña</h5>
-          <p class="text-muted small text-center flex-grow-1">
-            Introduce tu contraseña actual y una nueva de forma segura.
+          <h5 class="fw-bold mb-2">Cambiar Contraseña</h5>
+          <p class="text-muted small mb-4">
+            Actualiza tu contraseña actual por una nueva y más segura. Recuerdala siempre
           </p>
-          <a href="{% url 'backoffice:cambiar_password' %}" class="btn btn-outline-primary w-100 mt-auto">
-            <i class="bi bi-shield-lock"></i> Actualizar contraseña
+          <a href="{% url 'backoffice:cambiar_password' %}" class="btn btn-outline-warning w-100 py-2">
+            <i class="bi bi-key-fill me-2"></i>Cambiar Contraseña
           </a>
         </div>
       </div>
     </div>
 
-    <!-- Recuperar mediante correo -->
-    <div class="col-md-6 col-lg-4">
-      <div class="card shadow-sm border-0 rounded-4 h-100">
-        <div class="card-body p-4 d-flex flex-column">
-          <div class="mb-3 text-center">
-            <i class="bi bi-envelope-fill text-success" style="font-size:2rem;"></i>
+    <!-- Recuperar por correo -->
+    <div class="col-lg-4 col-md-6">
+      <div class="card shadow border-0 rounded-4 h-100 hover-lift">
+        <div class="card-body p-4 text-center">
+          <div class="mb-3">
+            <div class="bg-success bg-opacity-10 rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+              <i class="bi bi-envelope-paper text-success" style="font-size: 2rem;"></i>
+            </div>
           </div>
-          <h5 class="fw-bold mb-2 text-center">Recuperar acceso</h5>
-          <p class="text-muted small text-center flex-grow-1">
-            Te enviaremos un enlace de recuperación a tu correo electrónico.
+          <h5 class="fw-bold mb-2">Recuperar Acceso</h5>
+          <p class="text-muted small mb-4">
+            Solicita un enlace de recuperación enviado a tu correo electrónico
           </p>
-          <a href="{% url 'backoffice:password_reset' %}" class="btn btn-outline-success w-100 mt-auto">
-            <i class="bi bi-envelope"></i> Enviar enlace
+          <a href="{% url 'backoffice:password_reset' %}" class="btn btn-outline-success w-100 py-2">
+            <i class="bi bi-send me-2"></i>Enviar Enlace
           </a>
         </div>
       </div>
     </div>
 
-    <!-- Actualizar información personal -->
-    <div class="col-md-6 col-lg-4">
-      <div class="card shadow-sm border-0 rounded-4 h-100">
-        <div class="card-body p-4 d-flex flex-column">
-          <div class="mb-3 text-center">
-            <i class="bi bi-person-badge-fill text-info" style="font-size:2rem;"></i>
+    <!-- Actualizar información -->
+    <div class="col-lg-4 col-md-6">
+      <div class="card shadow border-0 rounded-4 h-100 hover-lift">
+        <div class="card-body p-4 text-center">
+          <div class="mb-3">
+            <div class="bg-info bg-opacity-10 rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+              <i class="bi bi-person-lines-fill text-info" style="font-size: 2rem;"></i>
+            </div>
           </div>
-          <h5 class="fw-bold mb-2 text-center">Actualizar información</h5>
-          <p class="text-muted small text-center flex-grow-1">
-            Modifica tu nombre, apellido, teléfono o correo electrónico.
+          <h5 class="fw-bold mb-2">Actualizar Información</h5>
+          <p class="text-muted small mb-4">
+            Modifica tus datos personales como nombre, apellido y teléfono
           </p>
-          <a href="{% url 'backoffice:users:actualizar_informacion_personal' %}" class="btn btn-outline-info w-100 mt-auto">
-            <i class="bi bi-pencil-square"></i> Editar perfil
+          <a href="{% url 'backoffice:users:actualizar_informacion_personal' %}" class="btn btn-outline-info w-100 py-2">
+            <i class="bi bi-pencil-square me-2"></i>Editar Perfil
           </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vista del perfil -->
+    <div class="col-lg-4 col-md-6">
+      <div class="card shadow border-0 rounded-4 h-100 hover-lift">
+        <div class="card-body p-4 text-center">
+          <div class="mb-3">
+            <div class="bg-primary bg-opacity-10 rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+              <i class="bi bi-person-circle text-primary" style="font-size: 2rem;"></i>
+            </div>
+          </div>
+          <h5 class="fw-bold mb-2">Mi Perfil</h5>
+          <p class="text-muted small mb-4">
+            Visualiza toda tu información personal y actividad de la cuenta
+          </p>
+          <a href="{% url 'backoffice:perfil' %}" class="btn btn-outline-primary w-100 py-2">
+            <i class="bi bi-eye me-2"></i>Ver Perfil
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="col-lg-4 col-md-6">
+      <div class="card shadow border-0 rounded-4 h-100 hover-lift">
+        <div class="card-body p-4 text-center">
+          <div class="mb-3">
+            <div class="bg-secondary bg-opacity-10 rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+              <i class="bi bi-speedometer2 text-secondary" style="font-size: 2rem;"></i>
+            </div>
+          </div>
+          <h5 class="fw-bold mb-2">Dashboard</h5>
+          <p class="text-muted small mb-4">
+            Regresa al panel principal de administración del sistema
+          </p>
+          <a href="{% url 'backoffice:dashboard' %}" class="btn btn-outline-secondary w-100 py-2">
+            <i class="bi bi-house me-2"></i>Ir al Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cerrar sesión -->
+    <div class="col-lg-4 col-md-6">
+      <div class="card shadow border-0 rounded-4 h-100 hover-lift border-danger border-opacity-25">
+        <div class="card-body p-4 text-center">
+          <div class="mb-3">
+            <div class="bg-danger bg-opacity-10 rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
+              <i class="bi bi-box-arrow-right text-danger" style="font-size: 2rem;"></i>
+            </div>
+          </div>
+          <h5 class="fw-bold mb-2">Cerrar Sesión</h5>
+          <p class="text-muted small mb-4">
+            Finaliza tu sesión actual de forma segura
+          </p>
+          <form method="post" action="{% url 'backoffice:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger w-100 py-2">
+              <i class="bi bi-power me-2"></i>Cerrar Sesión
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Información adicional -->
+  <div class="row mt-5">
+    <div class="col-12">
+      <div class="alert alert-light border rounded-4 p-4">
+        <div class="row align-items-center">
+          <div class="col-auto">
+            <i class="bi bi-info-circle text-primary" style="font-size: 2rem;"></i>
+          </div>
+          <div class="col">
+            <h6 class="fw-bold mb-1">Consejos de Seguridad</h6>
+            <p class="mb-0 text-muted small">
+              Mantén tu cuenta segura cambiando tu contraseña regularmente y nunca compartas tus credenciales con terceros.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
 </div>
 {% endblock %}

@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django_ratelimit.decorators import ratelimit
 from django.contrib import messages
+from django.utils import timezone
 
 from apps.categories.models import Category, AbsoluteCategory
 from apps.users.models import AuditLog
@@ -14,7 +15,12 @@ from apps.users.models import AuditLog
 # ==========================
 @login_required(login_url="/backoffice/login/")
 def dashboard(request):
+    last_login = request.user.last_login
+    current_login = timezone.localtime(timezone.now())  # 👈 convierte UTC → local
+
     context = {
+        "last_login": timezone.localtime(last_login) if last_login else None,
+        "current_login": current_login,
         "stats": {
             "categories_count": Category.objects.count(),
             "absolute_categories_count": AbsoluteCategory.objects.count(),
