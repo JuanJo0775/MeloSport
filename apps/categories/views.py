@@ -9,6 +9,10 @@ from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.views.generic.base import TemplateView
 from django.db.models import CharField
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
 
 from .models import Category, AbsoluteCategory
 from ..products.models import Product
@@ -90,6 +94,8 @@ class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         context['categorias_inactivas'] = todas.filter(is_active=False).count()
         context['categorias_padre_count'] = todas.filter(parent__isnull=True).count()
         context['categorias_padre'] = todas.filter(parent__isnull=True).order_by('name')
+        context['bulk_action_url'] = reverse_lazy(
+            'backoffice:categories:bulk_action')  # o absolute_bulk_action según corresponda
 
         context['total_productos'] = Product.objects.filter(
             categories__in=todas
@@ -245,6 +251,7 @@ class AbsoluteCategoryListView(LoginRequiredMixin, PermissionRequiredMixin, List
         context['total_productos'] = Product.objects.filter(
             absolute_category__in=deportes
         ).count()
+        context['bulk_action_url'] = reverse_lazy('backoffice:categories:absolute_bulk_action')
         return context
 
 
@@ -385,3 +392,68 @@ def absolute_deactivate(request, pk):
     )
     messages.warning(request, f"El deporte '{deporte.nombre}' ha sido desactivado.")
     return redirect("backoffice:categories:absolute_detail", pk=pk)
+
+@require_POST
+def category_bulk_action(request):
+    try:
+        data = json.loads(request.body)
+        action = data.get('action')
+        ids = data.get('ids', [])
+
+        if not ids or action not in ['activate', 'deactivate', 'delete']:
+            return JsonResponse({'success': False, 'message': 'Parámetros inválidos'}, status=400)
+
+        qs = Category.objects.filter(pk__in=ids)
+
+        if action == 'activate':
+            qs.update(is_active=True)
+        elif action == 'deactivate':
+            qs.update(is_active=False)
+        elif action == 'delete':
+            qs.delete()
+
+        # Auditoría
+        AuditLog.log_action(
+            request=request,
+            action=action,
+            model=Category,
+            obj=None,
+            description=f"Acción masiva '{action}' en {len(ids)} categorías"
+        )
+
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@require_POST
+def absolute_bulk_action(request):
+    try:
+        data = json.loads(request.body)
+        action = data.get('action')
+        ids = data.get('ids', [])
+
+        if not ids or action not in ['activate', 'deactivate', 'delete']:
+            return JsonResponse({'success': False, 'message': 'Parámetros inválidos'}, status=400)
+
+        qs = AbsoluteCategory.objects.filter(pk__in=ids)
+
+        if action == 'activate':
+            qs.update(activo=True)
+        elif action == 'deactivate':
+            qs.update(activo=False)
+        elif action == 'delete':
+            qs.delete()
+
+        # Auditoría
+        AuditLog.log_action(
+            request=request,
+            action=action,
+            model=AbsoluteCategory,
+            obj=None,
+            description=f"Acción masiva '{action}' en {len(ids)} categorías absolutas"
+        )
+
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

@@ -223,30 +223,38 @@
  <!-- Acciones masivas -->
 {% if deportes %}
   {% if perms.categories.change_absolutecategory or perms.categories.delete_absolutecategory %}
-    <div class="row mt-3">
+    <div class="row mt-4">
       <div class="col-12">
-        <div class="card border-0 bg-light">
+        <div class="card border-0 shadow-sm">
           <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between">
-              <div>
-                <strong>Acciones masivas:</strong>
-                <span class="text-muted ms-2" id="selectedCount">0 elementos seleccionados</span>
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+
+              <!-- Info de selección -->
+              <div class="mb-3 mb-md-0">
+                <h6 class="mb-1">
+                  <i class="bi bi-list-check me-2 text-primary"></i>
+                  Acciones masivas
+                </h6>
+                <small class="text-muted" id="selectedCount">0 elementos seleccionados</small>
               </div>
-              <div class="btn-group">
+
+              <!-- Botones -->
+              <div class="d-flex flex-wrap gap-2">
                 {% if perms.categories.change_absolutecategory %}
-                  <button type="button" class="btn btn-sm btn-success" id="activateSelected" disabled>
-                    <i class="bi bi-check-circle me-2"></i>Activar
+                  <button type="button" class="btn btn-outline-success d-flex align-items-center" id="activateSelected" disabled>
+                    <i class="bi bi-check-circle me-2"></i> Activar
                   </button>
-                  <button type="button" class="btn btn-sm btn-secondary" id="deactivateSelected" disabled>
-                    <i class="bi bi-pause-circle me-2"></i>Desactivar
+                  <button type="button" class="btn btn-outline-secondary d-flex align-items-center" id="deactivateSelected" disabled>
+                    <i class="bi bi-pause-circle me-2"></i> Desactivar
                   </button>
                 {% endif %}
                 {% if perms.categories.delete_absolutecategory %}
-                  <button type="button" class="btn btn-sm btn-danger" id="deleteSelected" disabled>
-                    <i class="bi bi-trash me-2"></i>Eliminar
+                  <button type="button" class="btn btn-outline-danger d-flex align-items-center" id="deleteSelected" disabled>
+                    <i class="bi bi-trash me-2"></i> Eliminar
                   </button>
                 {% endif %}
               </div>
+
             </div>
           </div>
         </div>
@@ -293,6 +301,65 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   rowCheckboxes.forEach(cb => cb.addEventListener('change', updateSelection));
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const selectAll = document.getElementById('selectAll');
+  const checkboxes = document.querySelectorAll('.row-checkbox');
+  const selectedCount = document.getElementById('selectedCount');
+  const activateBtn = document.getElementById('activateSelected');
+  const deactivateBtn = document.getElementById('deactivateSelected');
+  const deleteBtn = document.getElementById('deleteSelected');
+
+  const endpoint = "{{ bulk_action_url }}";  // Se inyecta desde la vista
+
+  function updateSelection() {
+    const selected = document.querySelectorAll('.row-checkbox:checked').length;
+    selectedCount.textContent = selected + ' elementos seleccionados';
+    const disabled = selected === 0;
+    [activateBtn, deactivateBtn, deleteBtn].forEach(btn => {
+      if (btn) btn.disabled = disabled;
+    });
+  }
+
+  selectAll?.addEventListener('change', function () {
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    updateSelection();
+  });
+
+  checkboxes.forEach(cb => cb.addEventListener('change', updateSelection));
+
+  function sendAction(action) {
+    const ids = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    if (!ids.length) return;
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ action: action, ids: ids })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + (data.message || 'No se pudo procesar la acción.'));
+      }
+    })
+    .catch(err => console.error(err));
+  }
+
+  activateBtn?.addEventListener('click', () => sendAction('activate'));
+  deactivateBtn?.addEventListener('click', () => sendAction('deactivate'));
+  deleteBtn?.addEventListener('click', () => {
+    if (confirm('¿Seguro que deseas eliminar los elementos seleccionados?')) {
+      sendAction('delete');
+    }
+  });
 });
 </script>
 {% endblock %}

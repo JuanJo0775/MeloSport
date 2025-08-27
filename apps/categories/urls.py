@@ -23,5 +23,6 @@ urlpatterns = [
     path("deportes/<int:pk>/activar/", views.absolute_activate, name="absolute_activate"),
     path("deportes/<int:pk>/desactivar/", views.absolute_deactivate, name="absolute_deactivate"),
 
-
+    path('categorias/bulk-action/', views.category_bulk_action, name='bulk_action'),
+    path('deportes/bulk-action/', views.absolute_bulk_action, name='absolute_bulk_action'),
 ]
