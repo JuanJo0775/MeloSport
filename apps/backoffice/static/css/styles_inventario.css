@@ -308,3 +308,22 @@ body.sidebar-collapsed .breadcrumb-wrapper {
     }
   }
 
+.btn-ghost-primary { background-color:#fff; border:1px solid rgba(13,110,253,.15); color:#0d6efd; }
+  .btn-ghost-primary:hover, .btn-ghost-primary:focus { background-color:#0d6efd; color:#fff; }
+
+  .btn-ghost-success { background-color:#fff; border:1px solid rgba(25,135,84,.15); color:#198754; }
+  .btn-ghost-success:hover, .btn-ghost-success:focus { background-color:#198754; color:#fff; }
+
+  .btn-ghost-danger { background-color:#fff; border:1px solid rgba(220,53,69,.15); color:#dc3545; }
+  .btn-ghost-danger:hover, .btn-ghost-danger:focus { background-color:#dc3545; color:#fff; }
+
+  .btn-ghost-secondary { background-color:#fff; border:1px solid rgba(108,117,125,.15); color:#6c757d; }
+  .btn-ghost-secondary:hover, .btn-ghost-secondary:focus { background-color:#6c757d; color:#fff; }
+
+  /* Badges suaves (fallback si no se usa BS 5.3 con *-subtle) */
+  .badge-soft-success { color:#198754; background-color: rgba(25,135,84,.1); border:1px solid rgba(25,135,84,.15); }
+  .badge-soft-secondary { color:#6c757d; background-color: rgba(108,117,125,.1); border:1px solid rgba(108,117,125,.15); }
+
+  .text-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+  .gallery-thumb { aspect-ratio: 1 / 1; object-fit: cover; border-radius: .75rem; }

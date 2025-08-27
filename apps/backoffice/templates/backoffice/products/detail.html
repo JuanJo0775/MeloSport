@@ -1,10 +1,266 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
 
-</body>
-</html>
+{% block title %}Detalle de Producto{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Productos|products:product_list" "Detalle" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Encabezado -->
+  <div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="h3 mb-1">{{ product.name }}</h1>
+        <p class="text-muted mb-0">SKU: <code>{{ product.sku }}</code></p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'backoffice:products:product_list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-2"></i> Volver al listado
+        </a>
+        {% if perms.products.change_product %}
+        <a href="{% url 'backoffice:products:product_update' product.pk %}" class="btn btn-outline-primary">
+          <i class="bi bi-pencil me-2"></i> Editar
+        </a>
+        {% endif %}
+        {% if perms.products.delete_product %}
+        <a href="{% url 'backoffice:products:product_delete' product.pk %}" class="btn btn-outline-danger">
+          <i class="bi bi-trash me-2"></i> Eliminar
+        </a>
+        {% endif %}
+        {% if product.has_variants %}
+          {% if perms.products.view_productvariant %}
+          <a href="{% url 'backoffice:products:variant_list' product.pk %}" class="btn btn-outline-info">
+            <i class="bi bi-layers me-2"></i> Gestionar variantes
+          </a>
+          {% endif %}
+          {% if perms.products.add_productvariant %}
+          <a href="{% url 'backoffice:products:variant_create' product.pk %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i> Agregar variante
+          </a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Galería -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          {% with images=product.images.all %}
+            {% with total=images|length %}
+              {% if total > 0 %}
+                {% with carousel_id="productCarousel-"|add:product.pk %}
+                <div id="{{ carousel_id }}" class="carousel slide mb-3" data-bs-ride="false">
+                  <div class="carousel-inner rounded-3 overflow-hidden">
+                    {% for img in images %}
+                      <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                        <img src="{{ img.image.url }}" class="d-block w-100" alt="Imagen {{ forloop.counter }} de {{ product.name }}">
+                      </div>
+                    {% endfor %}
+                  </div>
+
+                  {% if total > 2 %}
+                  <button class="carousel-control-prev" type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Anterior</span>
+                  </button>
+                  <button class="carousel-control-next" type="button" data-bs-target="#{{ carousel_id }}" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Siguiente</span>
+                  </button>
+                  {% endif %}
+                </div>
+
+                <!-- Tiras de miniaturas -->
+                <div class="d-flex gap-2 flex-wrap">
+                  {% for img in images %}
+                    <button type="button"
+                            class="btn p-0 border-0"
+                            data-bs-target="#{{ carousel_id }}"
+                            data-bs-slide-to="{{ forloop.counter0 }}"
+                            aria-label="Ir a imagen {{ forloop.counter }}">
+                      <img src="{{ img.image.url }}" class="rounded border" style="width:72px;height:72px;object-fit:cover" alt="Miniatura {{ forloop.counter }}">
+                    </button>
+                  {% endfor %}
+                </div>
+                {% endwith %}
+              {% else %}
+                <div class="ratio ratio-1x1 bg-light rounded-3 d-flex align-items-center justify-content-center">
+                  <div class="text-center text-muted">
+                    <i class="bi bi-image fs-1 d-block mb-2"></i>
+                    <span>No hay imágenes asociadas</span>
+                  </div>
+                </div>
+              {% endif %}
+            {% endwith %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Información principal -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <h5 class="mb-2">Información</h5>
+              <p class="mb-2 text-muted">{{ product.description|default:"Sin descripción" }}</p>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                {% if product.status == 'active' %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Activo</span>
+                {% elif product.status == 'inactive' %}
+                  <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i> Inactivo</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark"><i class="bi bi-file-earmark-text me-1"></i> Borrador</span>
+                {% endif %}
+                <span class="badge bg-info">{{ product.variants.count }} variantes</span>
+                <span class="badge bg-light text-dark">{{ product.images.count }} imágenes</span>
+              </div>
+
+              <div class="mb-2">
+                <small class="text-muted d-block">Categorías</small>
+                <div class="d-flex flex-wrap gap-1">
+                  {% if product.categories.all %}
+                    {% for cat in product.categories.all %}
+                      <span class="badge bg-light text-dark border">{{ cat.nombre|default:cat.name }}</span>
+                    {% empty %}
+                      <span class="text-muted">Sin categorías</span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="text-muted">Sin categorías</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              {% if product.absolute_category %}
+              <div class="mb-2">
+                <small class="text-muted d-block">Categoría Absoluta</small>
+                <span class="badge bg-primary-subtle text-primary border">{{ product.absolute_category.nombre|default:product.absolute_category }}</span>
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-4">
+              <h5 class="mb-2">Inventario</h5>
+              <ul class="list-unstyled mb-0 small">
+                <li class="d-flex justify-content-between"><span>Stock:</span> <strong>{{ product.stock_display|default:product.stock }}</strong></li>
+                <li class="d-flex justify-content-between"><span>Mínimo:</span> <strong>{{ product.min_stock }}</strong></li>
+                <li class="d-flex justify-content-between"><span>Creado:</span> <span>{{ product.created_at|date:"d/m/Y H:i" }}</span></li>
+                <li class="d-flex justify-content-between"><span>Actualizado:</span> <span>{{ product.updated_at|date:"d/m/Y H:i" }}</span></li>
+              </ul>
+            </div>
+
+            <div class="col-12">
+              <div class="row g-3 mt-1">
+                <div class="col-sm-6">
+                  <div class="border rounded-3 p-3 h-100">
+                    <small class="text-muted d-block">Precio Base</small>
+                    <div class="fs-5 fw-semibold">${{ product.price|floatformat:2 }}</div>
+                    {% if product.tax_percentage %}
+                      <small class="text-muted">IVA: {{ product.tax_percentage }}%</small>
+                    {% endif %}
+                    {% if product.markup_percentage %}
+                      <small class="text-muted ms-2">Ganancia: {{ product.markup_percentage }}%</small>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="border rounded-3 p-3 h-100 bg-light">
+                    <small class="text-muted d-block">Precio Final</small>
+                    <div class="fs-4 fw-bold">${{ product.get_final_price|floatformat:2 }}</div>
+                    {% if product.cost %}
+                      <small class="text-muted">Costo neto: ${{ product.cost|floatformat:2 }}</small>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Variantes (solo si el producto maneja variantes) -->
+  {% if product.has_variants %}
+  <div class="row g-4 mt-1">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-layers me-2"></i> Variantes</h5>
+          <div class="d-flex gap-2">
+            {% if perms.products.view_productvariant %}
+            <a href="{% url 'backoffice:products:variant_list' product.pk %}" class="btn btn-outline-info btn-sm">
+              Ver todas
+            </a>
+            {% endif %}
+            {% if perms.products.add_productvariant %}
+            <a href="{% url 'backoffice:products:variant_create' product.pk %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus-circle me-1"></i> Agregar variante
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th>SKU</th>
+                  <th>Talla</th>
+                  <th>Color</th>
+                  <th>Modificador</th>
+                  <th>Inventario</th>
+                  <th>Estado</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in variants %}
+                <tr>
+                  <td><code>{{ v.sku|default:"—" }}</code></td>
+                  <td>{{ v.size|default:"—" }}</td>
+                  <td>{{ v.color|default:"—" }}</td>
+                  <td>${{ v.price_modifier|floatformat:2 }}</td>
+                  <td>{{ v.stock }}</td>
+                  <td>
+                    {% if v.is_active %}
+                      <span class="badge bg-success">Activo</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <div class="btn-group btn-group-sm" role="group">
+                      {% if perms.products.change_productvariant %}
+                      <a href="{% url 'backoffice:products:variant_update' v.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                      {% endif %}
+                      {% if perms.products.delete_productvariant %}
+                      <a href="{% url 'backoffice:products:variant_delete' v.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i></a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center py-4 text-muted">No hay variantes registradas para este producto.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
