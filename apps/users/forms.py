@@ -144,3 +144,14 @@ class CustomPasswordChangeForm(SetPasswordForm):
         if not self.user.check_password(old_password):
             raise forms.ValidationError("La contraseña actual no es correcta.")
         return old_password
+
+class UserProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "phone"]
+        widgets = {
+            "first_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Apellido"}),
+            "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "Correo"}),
+            "phone": forms.TextInput(attrs={"class": "form-control", "placeholder": "Teléfono"}),
+        }

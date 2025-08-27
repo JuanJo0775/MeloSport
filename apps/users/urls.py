@@ -4,7 +4,7 @@ from .views import (
     EmailTokenObtainPairView, ProfileView,
     UserListView, UserCreateView, UserDetailView,
     UserUpdateView, UserDeleteView, UserToggleActiveView,
-    UserSetPasswordView, AuditLogListView, AuditLogDetailView
+    UserSetPasswordView, AuditLogListView, AuditLogDetailView, UserProfileUpdateView
 )
 
 app_name = "users"
@@ -27,4 +27,6 @@ urlpatterns = [
     # Auditoría
     path("auditlogs/", AuditLogListView.as_view(), name="auditlog_list"),
     path("audit/<int:pk>/", AuditLogDetailView.as_view(), name="audit_detail"),
+
+    path("configuraciones/actualizar/", UserProfileUpdateView.as_view(), name="actualizar_informacion_personal"),
 ]

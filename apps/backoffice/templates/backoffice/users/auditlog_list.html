@@ -135,98 +135,103 @@
   </div>
 
   <!-- Tabla (print-area) -->
-  <div class="card print-area">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-      <h6 class="mb-0"><i class="bi bi-table me-2"></i>Registros</h6>
-      <small class="text-muted">Mostrando {{ page_obj.paginator.count }} registros</small>
-    </div>
-
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th><i class="bi bi-calendar3 me-1"></i> Fecha</th>
-              <th><i class="bi bi-person me-1"></i> Usuario</th>
-              <th><i class="bi bi-activity me-1"></i> Acción</th>
-              <th><i class="bi bi-box me-1"></i> Modelo</th>
-              <th><i class="bi bi-globe me-1"></i> IP</th>
-              <th class="text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for log in logs %}
-            <tr>
-              <td>
-                <div class="fw-medium">{{ log.created_at|date:"d/m/Y" }}</div>
-                <small class="text-muted">{{ log.created_at|date:"H:i:s" }}</small>
-              </td>
-              <td>
-                {% if log.user %}
-                  <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
-                  <small class="text-muted">@{{ log.user.username }}</small>
-                {% else %}
-                  <span class="text-muted">Sistema</span>
-                {% endif %}
-              </td>
-              <td>
-                <span class="badge
-                  {% if log.action == 'create' %}bg-success
-                  {% elif log.action == 'update' %}bg-warning text-dark
-                  {% elif log.action == 'delete' %}bg-danger
-                  {% elif log.action == 'login' %}bg-primary
-                  {% elif log.action == 'logout' %}bg-dark
-                  {% else %}bg-secondary{% endif %}">
-                  {{ log.get_action_display }}
-                </span>
-              </td>
-              <td><span class="small bg-light px-2 py-1 rounded">{{ log.model }}</span></td>
-              <td><code class="text-muted">{{ log.ip_address|default:"-" }}</code></td>
-              <td class="text-center">
-                <a href="{% url 'backoffice:users:audit_detail' log.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalle">
-                  <i class="bi bi-eye"></i>
-                </a>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="6" class="text-center py-4 text-muted">
-                <i class="bi bi-inbox mb-2"></i><br>No hay registros que coincidan con los filtros
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="card print-area">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-table me-2"></i>Registros</h6>
+        <small class="text-muted">Mostrando {{ page_obj.paginator.count }} registros</small>
       </div>
-    </div>
 
-    <!-- Paginación (incluida en print-area para que se imprima si se desea) -->
-    {% if is_paginated %}
-    <div class="card-footer bg-white">
-      <nav aria-label="Paginación">
-        <ul class="pagination justify-content-center mb-0">
-          {% if page_obj.has_previous %}
-          <li class="page-item">
-            <a class="page-link"
-               href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q|urlencode }}&period={{ request.GET.period }}&date={{ request.GET.date }}&only_users={{ request.GET.only_users }}">
-              <i class="bi bi-chevron-left"></i> Anterior
-            </a>
-          </li>
-          {% endif %}
-          <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
-          {% if page_obj.has_next %}
-          <li class="page-item">
-            <a class="page-link"
-               href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q|urlencode }}&period={{ request.GET.period }}&date={{ request.GET.date }}&only_users={{ request.GET.only_users }}">
-              Siguiente <i class="bi bi-chevron-right"></i>
-            </a>
-          </li>
-          {% endif %}
-        </ul>
-      </nav>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th><i class="bi bi-calendar3 me-1"></i> Fecha</th>
+                <th><i class="bi bi-person me-1"></i> Usuario</th>
+                <th><i class="bi bi-activity me-1"></i> Acción</th>
+                <th><i class="bi bi-box me-1"></i> Modelo</th>
+                <th><i class="bi bi-card-text me-1"></i> Descripción</th>
+                <th><i class="bi bi-globe me-1"></i> IP</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in logs %}
+              <tr>
+                <td>
+                  <div class="fw-medium">{{ log.created_at|date:"d/m/Y" }}</div>
+                  <small class="text-muted">{{ log.created_at|date:"H:i:s" }}</small>
+                </td>
+                <td>
+                  {% if log.user %}
+                    <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
+                    <small class="text-muted">@{{ log.user.username }}</small>
+                  {% else %}
+                    <span class="text-muted">Sistema</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge
+                    {% if log.action == 'create' %}bg-success
+                    {% elif log.action == 'update' %}bg-warning text-dark
+                    {% elif log.action == 'delete' %}bg-danger
+                    {% elif log.action == 'login' %}bg-primary
+                    {% elif log.action == 'logout' %}bg-dark
+                    {% else %}bg-secondary{% endif %}">
+                    {{ log.get_action_display }}
+                  </span>
+                </td>
+                <td><span class="small bg-light px-2 py-1 rounded">{{ log.model }}</span></td>
+                <td class="text-truncate" style="max-width: 250px;" title="{{ log.description }}">
+                  {{ log.description|default:"Sin descripción" }}
+                </td>
+                <td><code class="text-muted">{{ log.ip_address|default:"-" }}</code></td>
+                <td class="text-center">
+                  <a href="{% url 'backoffice:users:audit_detail' log.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalle">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                  <i class="bi bi-inbox mb-2"></i><br>No hay registros que coincidan con los filtros
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% if is_paginated %}
+      <div class="card-footer bg-white">
+        <nav aria-label="Paginación">
+          <ul class="pagination justify-content-center mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link"
+                 href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q|urlencode }}&period={{ request.GET.period }}&date={{ request.GET.date }}&only_users={{ request.GET.only_users }}">
+                <i class="bi bi-chevron-left"></i> Anterior
+              </a>
+            </li>
+            {% endif %}
+            <li class="page-item disabled">
+              <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link"
+                 href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q|urlencode }}&period={{ request.GET.period }}&date={{ request.GET.date }}&only_users={{ request.GET.only_users }}">
+                Siguiente <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
-  </div>
 </div>
 
 <!-- Script inline (se carga con la plantilla; evita que la función no exista al hacer click) -->

@@ -8,40 +8,81 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-3 mb-5">
   <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-9">
+
       <!-- Tarjeta principal -->
       <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
-        <div class="card-header bg-primary text-white py-4">
-          <h3 class="mb-0"><i class="bi bi-person-circle me-2"></i>Mi Perfil</h3>
+
+        <!-- Header con avatar a la izquierda, centrado -->
+        <div class="card-header bg-white py-4">
+          <div class="d-flex justify-content-center align-items-center gap-3">
+            <!-- Avatar -->
+            <div class="rounded-circle border border-3 border-primary shadow-sm d-flex align-items-center justify-content-center bg-light" style="width: 70px; height: 70px;">
+              <i class="bi bi-person-circle text-primary fs-2"></i>
+            </div>
+            <!-- Info -->
+            <div class="text-center">
+              <h4 class="fw-bold mb-1">{{ request.user.get_full_name|default:request.user.username }}</h4>
+              <p class="mb-0 text-muted">@{{ request.user.username }}</p>
+              <span class="badge {% if request.user.is_active %}bg-success{% else %}bg-danger{% endif %} mt-2">
+                {% if request.user.is_active %}Activo{% else %}Inactivo{% endif %}
+              </span>
+            </div>
+          </div>
         </div>
-        <div class="card-body p-4">
-          <!-- Info usuario -->
-          <div class="mb-3">
-            <p class="mb-1 text-muted"><i class="bi bi-person"></i> Usuario</p>
-            <h5 class="fw-semibold">{{ request.user.username }}</h5>
-          </div>
 
-          <div class="mb-3">
-            <p class="mb-1 text-muted"><i class="bi bi-envelope"></i> Email</p>
-            <h5 class="fw-semibold">{{ request.user.email }}</h5>
-          </div>
-
-          <div class="mb-3">
-            <p class="mb-1 text-muted"><i class="bi bi-card-text"></i> Nombre completo</p>
-            <h5 class="fw-semibold">{{ request.user.get_full_name }}</h5>
-          </div>
-
-          <!-- Acciones -->
-          <div class="d-flex justify-content-end mt-4">
-            <!-- ✅ corregidos con namespace -->
-            <a href="{% url 'backoffice:cambiar_password' %}" class="btn btn-outline-primary me-2">
-              <i class="bi bi-key"></i> Cambiar contraseña
-            </a>
-            <a href="{% url 'backoffice:configuraciones' %}" class="btn btn-primary">
-              <i class="bi bi-gear"></i> Configuración
-            </a>
+        <!-- Información detallada -->
+        <div class="card-body">
+          <div class="row g-4">
+            <!-- Información personal -->
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-lines-fill me-2"></i>Información Personal</h6>
+                <p class="mb-2"><i class="bi bi-envelope me-2 text-muted"></i><strong>Email:</strong> {{ request.user.email|default:"-" }}</p>
+                <p class="mb-2"><i class="bi bi-card-text me-2 text-muted"></i><strong>Nombre:</strong> {{ request.user.get_full_name|default:"-" }}</p>
+                <p class="mb-0"><i class="bi bi-person-badge me-2 text-muted"></i><strong>Usuario:</strong> {{ request.user.username }}</p>
+              </div>
+            </div>
+            <!-- Actividad -->
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-clock-history me-2"></i>Actividad</h6>
+                <p class="mb-2"><i class="bi bi-calendar-plus me-2 text-muted"></i><strong>Creado:</strong> {{ request.user.date_joined|date:"d/m/Y H:i" }}</p>
+                <p class="mb-0"><i class="bi bi-box-arrow-in-right me-2 text-muted"></i><strong>Último acceso:</strong> {{ request.user.last_login|date:"d/m/Y H:i" }}</p>
+              </div>
+            </div>
+            <!-- Roles -->
+            <div class="col-12">
+              <div class="p-3 border rounded bg-light">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock me-2"></i>Roles / Grupos</h6>
+                {% if request.user.groups.all %}
+                  {% for group in request.user.groups.all %}
+                    <span class="badge bg-secondary me-1">{{ group.name }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">Sin roles asignados</span>
+                {% endif %}
+              </div>
+            </div>
+            <!-- Acciones rápidas -->
+            <div class="col-12">
+              <div class="p-3 border rounded bg-light">
+                <h6 class="fw-bold text-primary mb-3"><i class="bi bi-gear me-2"></i>Acciones rápidas</h6>
+                <div class="d-flex flex-wrap gap-2">
+                  <a href="{% url 'backoffice:cambiar_password' %}" class="btn btn-outline-primary flex-fill">
+                    <i class="bi bi-key me-1"></i> Cambiar contraseña
+                  </a>
+                  <a href="{% url 'backoffice:configuraciones' %}" class="btn btn-primary flex-fill">
+                    <i class="bi bi-sliders me-1"></i> Configuración
+                  </a>
+                  <a href="{% url 'backoffice:logout' %}" class="btn btn-outline-danger flex-fill">
+                    <i class="bi bi-box-arrow-right me-1"></i> Cerrar sesión
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

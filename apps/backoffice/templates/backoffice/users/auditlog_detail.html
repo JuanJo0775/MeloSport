@@ -36,66 +36,94 @@
           <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i> Información del Registro</h6>
         </div>
         <div class="card-body">
-          <dl class="row">
+          <div class="row g-3">
+
             <!-- Usuario -->
-            <dt class="col-sm-3 mb-3"><i class="bi bi-person me-2 text-muted"></i>Usuario</dt>
-            <dd class="col-sm-9 mb-3">
-              <div class="d-flex align-items-center">
-                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
-                     style="width: 40px; height: 40px;">
-                  <i class="bi bi-person text-white"></i>
-                </div>
-                <div>
-                  {% if log.user %}
-                    <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
-                    <small class="text-muted">@{{ log.user.username }} (ID: {{ log.user.id }})</small>
-                  {% else %}
-                    <div class="fw-medium text-muted">Sistema</div>
-                    <small class="text-muted">Acción del sistema</small>
-                  {% endif %}
+            <div class="col-12">
+              <div class="p-3 border rounded bg-light">
+                <div class="text-muted mb-1"><i class="bi bi-person me-2"></i><strong>Usuario</strong></div>
+                <div class="d-flex align-items-center">
+                  <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                       style="width: 45px; height: 45px;">
+                    <i class="bi bi-person text-white"></i>
+                  </div>
+                  <div>
+                    {% if log.user %}
+                      <div class="fw-bold fs-6">{{ log.user.get_full_name|default:log.user.username }}</div>
+                      <small class="text-muted">@{{ log.user.username }} (ID: {{ log.user.id }})</small>
+                    {% else %}
+                      <div class="fw-bold text-muted">Sistema</div>
+                      <small class="text-muted">Acción del sistema</small>
+                    {% endif %}
+                  </div>
                 </div>
               </div>
-            </dd>
+            </div>
 
             <!-- Acción -->
-            <dt class="col-sm-3 mb-3"><i class="bi bi-activity me-2 text-muted"></i>Acción</dt>
-            <dd class="col-sm-9 mb-3">
-              <span class="badge fs-6
-                {% if log.action == 'create' %}bg-success
-                {% elif log.action == 'update' %}bg-warning
-                {% elif log.action == 'delete' %}bg-danger
-                {% elif log.action == 'login' %}bg-primary
-                {% elif log.action == 'logout' %}bg-dark
-                {% else %}bg-secondary{% endif %}">
-                {{ log.get_action_display }}
-              </span>
-            </dd>
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <div class="text-muted mb-2"><i class="bi bi-activity me-2"></i><strong>Acción</strong></div>
+                <span class="badge fs-6 px-3 py-2
+                  {% if log.action == 'create' %}bg-success
+                  {% elif log.action == 'update' %}bg-warning text-dark
+                  {% elif log.action == 'delete' %}bg-danger
+                  {% elif log.action == 'login' %}bg-primary
+                  {% elif log.action == 'logout' %}bg-dark
+                  {% else %}bg-secondary{% endif %}">
+                  {{ log.get_action_display }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Descripción -->
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <div class="text-muted mb-2"><i class="bi bi-card-text me-2"></i><strong>Descripción</strong></div>
+                <div class="text-break" style="max-height: 120px; overflow-y: auto;">
+                  {{ log.description|default:"Sin descripción" }}
+                </div>
+              </div>
+            </div>
 
             <!-- Modelo -->
-            <dt class="col-sm-3 mb-3"><i class="bi bi-database me-2 text-muted"></i>Modelo</dt>
-            <dd class="col-sm-9 mb-3">
-              <span class="bg-light px-3 py-2 rounded"><i class="bi bi-box me-2"></i>{{ log.model }}</span>
-            </dd>
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <div class="text-muted mb-2"><i class="bi bi-database me-2"></i><strong>Modelo</strong></div>
+                <span class="bg-white border px-3 py-2 rounded d-inline-block">
+                  <i class="bi bi-box me-2"></i>{{ log.model }}
+                </span>
+              </div>
+            </div>
 
             <!-- Objeto ID -->
-            <dt class="col-sm-3 mb-3"><i class="bi bi-hash me-2 text-muted"></i>Objeto ID</dt>
-            <dd class="col-sm-9 mb-3">
-              <code class="bg-light px-2 py-1 rounded">{{ log.object_id|default:"-" }}</code>
-            </dd>
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <div class="text-muted mb-2"><i class="bi bi-hash me-2"></i><strong>Objeto ID</strong></div>
+                <code class="bg-white border px-2 py-1 rounded">{{ log.object_id|default:"-" }}</code>
+              </div>
+            </div>
 
             <!-- Dirección IP -->
-            <dt class="col-sm-3 mb-3"><i class="bi bi-globe me-2 text-muted"></i>Dirección IP</dt>
-            <dd class="col-sm-9 mb-3">
-              <code class="bg-light px-2 py-1 rounded">{{ log.ip_address|default:"No disponible" }}</code>
-            </dd>
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <div class="text-muted mb-2"><i class="bi bi-globe me-2"></i><strong>Dirección IP</strong></div>
+                <code class="bg-white border px-2 py-1 rounded">{{ log.ip_address|default:"No disponible" }}</code>
+              </div>
+            </div>
 
-            <!-- Fecha -->
-            <dt class="col-sm-3 mb-0"><i class="bi bi-calendar3 me-2 text-muted"></i>Fecha y Hora</dt>
-            <dd class="col-sm-9 mb-0">
-              <strong>{{ log.created_at|date:"d/m/Y H:i:s" }}</strong>
-              <br><small class="text-muted">{{ log.created_at|timesince }} atrás</small>
-            </dd>
-          </dl>
+            <!-- Fecha y Hora -->
+            <div class="col-md-6">
+              <div class="p-3 border rounded bg-light h-100">
+                <div class="text-muted mb-2"><i class="bi bi-calendar3 me-2"></i><strong>Fecha y Hora</strong></div>
+                <div>
+                  <strong>{{ log.created_at|date:"d/m/Y H:i:s" }}</strong><br>
+                  <small class="text-muted">{{ log.created_at|timesince }} atrás</small>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -113,6 +141,7 @@
       </div>
       {% endif %}
     </div>
+
 
     <!-- Panel lateral -->
     <div class="col-lg-4">

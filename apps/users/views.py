@@ -19,7 +19,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import EmailTokenObtainPairSerializer
 from .models import AuditLog
-from .forms import CustomUserCreationForm, CustomUserChangeForm, CustomPasswordChangeForm
+from .forms import CustomUserCreationForm, CustomUserChangeForm, CustomPasswordChangeForm, UserProfileUpdateForm
 
 User = get_user_model()
 
@@ -342,3 +342,18 @@ class AuditLogDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
         ctx = super().get_context_data(**kwargs)
         ctx["data_pretty"] = self.object.get_data_display()
         return ctx
+
+
+class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
+    model = User
+    form_class = UserProfileUpdateForm
+    template_name = "perfil/actualizar_informacion.html"
+    success_url = reverse_lazy("backoffice:configuraciones")
+
+    def get_object(self, queryset=None):
+        # 🔒 siempre devuelve al usuario autenticado
+        return self.request.user
+
+    def form_valid(self, form):
+        messages.success(self.request, "Tu información ha sido actualizada correctamente.")
+        return super().form_valid(form)
