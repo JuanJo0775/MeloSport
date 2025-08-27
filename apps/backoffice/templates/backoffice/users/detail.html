@@ -110,7 +110,7 @@
               </div>
             </div>
 
-            <!-- Información de fechas -->
+            <!-- Fechas -->
             <div class="col-md-6">
               <div class="border-left-info ps-3">
                 <label class="form-label text-muted small fw-medium mb-1">FECHA DE REGISTRO</label>
@@ -199,13 +199,64 @@
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     <div>
                       <strong>Sin roles asignados</strong><br>
-                      <small>Este usuario no tiene roles específicos. Considera asignar un rol para definir sus permisos.</small>
+                      <small>Este usuario no tiene roles específicos.</small>
                     </div>
                   </div>
                 {% endfor %}
               </div>
             </div>
           </div>
+
+          <hr class="my-4">
+
+          <!-- Auditoría reciente -->
+          {% if perms.users.view_auditlog %}
+          <h6 class="fw-bold mb-3">
+            <i class="bi bi-clock-history me-2 text-info"></i>
+            Auditoría Reciente del Usuario
+          </h6>
+          {% if user_audits %}
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Acción</th>
+                    <th>Modelo</th>
+                    <th>Descripción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for audit in user_audits %}
+                  <tr>
+                    <td class="small text-muted">{{ audit.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                      <span class="badge
+                        {% if audit.action == 'create' %} bg-success
+                        {% elif audit.action == 'update' %} bg-warning text-dark
+                        {% elif audit.action == 'delete' %} bg-danger
+                        {% else %} bg-secondary{% endif %}">
+                        {{ audit.get_action_display }}
+                      </span>
+                    </td>
+                    <td>{{ audit.model }}</td>
+                    <td class="text-truncate" style="max-width:200px;">{{ audit.description|default:"—" }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="text-end mt-2">
+              <a href="{% url 'backoffice:users:auditlog_list' %}?user={{ user_obj.pk }}" class="btn btn-sm btn-outline-info">
+                <i class="bi bi-list me-1"></i> Ver todas las auditorías
+              </a>
+            </div>
+          {% else %}
+            <div class="alert alert-light border text-center small">
+              <i class="bi bi-info-circle me-1"></i> No hay auditorías registradas.
+            </div>
+          {% endif %}
+          {% endif %}
         </div>
       </div>
     </div>
@@ -226,32 +277,28 @@
               <a href="{% url 'backoffice:users:edit' user_obj.pk %}" class="btn btn-outline-primary">
                 <i class="bi bi-pencil-square me-2"></i> Editar Usuario
               </a>
-
               <a href="{% url 'backoffice:users:set_password' user_obj.pk %}" class="btn btn-outline-warning">
                 <i class="bi bi-key me-2"></i> Cambiar Contraseña
               </a>
-
               <form method="post" action="{% url 'backoffice:users:toggle_active' user_obj.pk %}" class="d-inline">
                 {% csrf_token %}
                 {% if user_obj.is_active %}
                   <button type="submit" class="btn btn-outline-danger w-100"
-                          onclick="return confirm('¿Está seguro de desactivar este usuario? No podrá acceder al sistema.')">
+                          onclick="return confirm('¿Está seguro de desactivar este usuario?')">
                     <i class="bi bi-person-x me-2"></i> Desactivar Usuario
                   </button>
                 {% else %}
                   <button type="submit" class="btn btn-outline-success w-100"
-                          onclick="return confirm('¿Activar este usuario para que pueda acceder al sistema?')">
+                          onclick="return confirm('¿Activar este usuario?')">
                     <i class="bi bi-person-check me-2"></i> Activar Usuario
                   </button>
                 {% endif %}
               </form>
             {% endif %}
-
             {% if perms.auth.delete_user and user_obj != user %}
               <hr class="my-3">
-              <a href="{% url 'backoffice:users:delete' user_obj.pk %}"
-                 class="btn btn-outline-danger"
-                 onclick="return confirm('¿Está seguro de eliminar este usuario? Esta acción no se puede deshacer.')">
+              <a href="{% url 'backoffice:users:delete' user_obj.pk %}" class="btn btn-outline-danger"
+                 onclick="return confirm('¿Está seguro de eliminar este usuario?')">
                 <i class="bi bi-trash me-2"></i> Eliminar Usuario
               </a>
             {% endif %}
@@ -259,68 +306,41 @@
         </div>
       </div>
 
-      <!-- Estadísticas y información del sistema -->
+      <!-- Estadísticas -->
       <div class="card mb-4">
         <div class="card-header bg-white">
-          <h6 class="card-title mb-0">
-            <i class="bi bi-bar-chart me-2"></i>
-            Estadísticas
-          </h6>
+          <h6 class="card-title mb-0"><i class="bi bi-bar-chart me-2"></i> Estadísticas</h6>
         </div>
         <div class="card-body">
           <div class="row text-center g-3">
             <div class="col-6">
               <div class="stats-card p-3 bg-light rounded">
-                <div class="stats-icon text-primary mb-2">
-                  <i class="bi bi-person-badge"></i>
-                </div>
+                <div class="stats-icon text-primary mb-2"><i class="bi bi-person-badge"></i></div>
                 <h6 class="mb-1 small">ID Usuario</h6>
                 <span class="fw-bold text-primary">#{{ user_obj.pk }}</span>
               </div>
             </div>
             <div class="col-6">
               <div class="stats-card p-3 bg-light rounded">
-                <div class="stats-icon text-success mb-2">
-                  <i class="bi bi-calendar-check"></i>
-                </div>
+                <div class="stats-icon text-success mb-2"><i class="bi bi-calendar-check"></i></div>
                 <h6 class="mb-1 small">Días Activo</h6>
                 <span class="fw-bold text-success">{{ user_obj.date_joined|timesince }}</span>
               </div>
             </div>
           </div>
-
           <hr class="my-3">
-
           <div class="small">
             <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
               <span class="text-muted">Superusuario:</span>
-              <span class="fw-medium">
-                {% if user_obj.is_superuser %}
-                  <i class="bi bi-check-circle text-success me-1"></i>Sí
-                {% else %}
-                  <i class="bi bi-x-circle text-danger me-1"></i>No
-                {% endif %}
-              </span>
+              <span class="fw-medium">{% if user_obj.is_superuser %}<i class="bi bi-check-circle text-success me-1"></i>Sí{% else %}<i class="bi bi-x-circle text-danger me-1"></i>No{% endif %}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
               <span class="text-muted">Acceso admin:</span>
-              <span class="fw-medium">
-                {% if user_obj.is_staff %}
-                  <i class="bi bi-check-circle text-success me-1"></i>Sí
-                {% else %}
-                  <i class="bi bi-x-circle text-danger me-1"></i>No
-                {% endif %}
-              </span>
+              <span class="fw-medium">{% if user_obj.is_staff %}<i class="bi bi-check-circle text-success me-1"></i>Sí{% else %}<i class="bi bi-x-circle text-danger me-1"></i>No{% endif %}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
               <span class="text-muted">Estado:</span>
-              <span class="fw-medium">
-                {% if user_obj.is_active %}
-                  <i class="bi bi-check-circle text-success me-1"></i>Activo
-                {% else %}
-                  <i class="bi bi-x-circle text-danger me-1"></i>Inactivo
-                {% endif %}
-              </span>
+              <span class="fw-medium">{% if user_obj.is_active %}<i class="bi bi-check-circle text-success me-1"></i>Activo{% else %}<i class="bi bi-x-circle text-danger me-1"></i>Inactivo{% endif %}</span>
             </div>
           </div>
         </div>
@@ -329,24 +349,18 @@
       <!-- Enlaces útiles -->
       <div class="card">
         <div class="card-header bg-white">
-          <h6 class="card-title mb-0">
-            <i class="bi bi-link-45deg me-2"></i>
-            Enlaces Útiles
-          </h6>
+          <h6 class="card-title mb-0"><i class="bi bi-link-45deg me-2"></i> Enlaces Útiles</h6>
         </div>
         <div class="card-body">
           <div class="d-grid gap-2">
             {% if perms.users.view_auditlog %}
-                <a href="{% url 'backoffice:users:auditlog_list' %}?user={{ user_obj.pk }}"
-                   class="btn btn-outline-info btn-sm">
-                  <i class="bi bi-clock-history me-2"></i> Ver Auditoría
-                </a>
+              <a href="{% url 'backoffice:users:auditlog_list' %}?user={{ user_obj.pk }}" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-clock-history me-2"></i> Ver Auditoría
+              </a>
             {% endif %}
-
             <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary btn-sm">
               <i class="bi bi-list me-2"></i> Lista de Usuarios
             </a>
-
             {% if perms.auth.add_user %}
               <a href="{% url 'backoffice:users:create' %}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-person-plus me-2"></i> Nuevo Usuario

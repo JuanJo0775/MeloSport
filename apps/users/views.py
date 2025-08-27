@@ -10,7 +10,7 @@ from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, View, FormView
 )
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -22,7 +22,6 @@ from .models import AuditLog
 from .forms import CustomUserCreationForm, CustomUserChangeForm, CustomPasswordChangeForm
 
 User = get_user_model()
-
 
 # ========== AUTH ==========
 
@@ -109,6 +108,17 @@ class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         role = form.cleaned_data.get("role")
         if role:
             user.groups.add(role)
+
+        # Auditoría
+        AuditLog.log_action(
+            user=self.request.user,
+            action="create",
+            model=self.model,
+            obj=user,
+            request=self.request,
+            description=f"Creó usuario {user.username}"
+        )
+
         messages.success(self.request, "Usuario creado correctamente.")
         return super().form_valid(form)
 
@@ -126,6 +136,17 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
         if role:
             user.groups.clear()
             user.groups.add(role)
+
+        # Auditoría
+        AuditLog.log_action(
+            user=self.request.user,
+            action="update",
+            model=self.model,
+            obj=user,
+            request=self.request,
+            description=f"Actualizó usuario {user.username}"
+        )
+
         messages.success(self.request, "Usuario actualizado correctamente.")
         return super().form_valid(form)
 
@@ -141,6 +162,17 @@ class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
         if obj == request.user:
             messages.error(request, "No puedes eliminarte a ti mismo.")
             return redirect("backoffice:users:list")
+
+        # Auditoría
+        AuditLog.log_action(
+            user=request.user,
+            action="delete",
+            model=self.model,
+            obj=obj,
+            request=request,
+            description=f"Eliminó usuario {obj.username}"
+        )
+
         messages.success(request, f"Usuario {obj.username} eliminado correctamente.")
         return super().delete(request, *args, **kwargs)
 
@@ -153,8 +185,20 @@ class UserToggleActiveView(LoginRequiredMixin, PermissionRequiredMixin, View):
         if user == request.user:
             messages.error(request, "No puedes desactivarte a ti mismo.")
             return redirect("backoffice:users:list")
+
         user.is_active = not user.is_active
         user.save()
+
+        # Auditoría
+        AuditLog.log_action(
+            user=request.user,
+            action="update",
+            model=User,
+            obj=user,
+            request=request,
+            description=f"{'Activó' if user.is_active else 'Desactivó'} usuario {user.username}"
+        )
+
         messages.success(request, f"Usuario {user.username} {'activado' if user.is_active else 'desactivado'}.")
         return redirect("backoffice:users:list")
 
@@ -178,12 +222,22 @@ class UserSetPasswordView(LoginRequiredMixin, PermissionRequiredMixin, FormView)
 
     def form_valid(self, form):
         form.save()
+
+        # Auditoría
+        AuditLog.log_action(
+            user=self.request.user,
+            action="update",
+            model=User,
+            obj=self.user_obj,
+            request=self.request,
+            description=f"Cambió la contraseña del usuario {self.user_obj.username}"
+        )
+
         messages.success(self.request, "Contraseña actualizada correctamente.")
         return super().form_valid(form)
 
 
 # ========== AUDITORÍA ==========
-
 class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = AuditLog
     template_name = "backoffice/users/auditlog_list.html"
@@ -192,60 +246,78 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = "users.view_auditlog"
 
     def get_queryset(self):
-        queryset = AuditLog.objects.select_related("user").all()
-        search = self.request.GET.get("q")
+        qs = AuditLog.objects.select_related("user").all()
+
+        # parámetros
+        q = (self.request.GET.get("q") or "").strip()
+        only_users = self.request.GET.get("only_users")
+        user_id = self.request.GET.get("user")
+        date = self.request.GET.get("date")
         period = self.request.GET.get("period")  # day, week, month, year
-        date = self.request.GET.get("date")      # formato YYYY-MM-DD
 
-        # 🔎 búsqueda flexible por usuario
-        if search:
-            queryset = queryset.filter(
-                Q(user__username__icontains=search) |
-                Q(user__email__icontains=search) |
-                Q(user__first_name__icontains=search) |
-                Q(user__last_name__icontains=search)
+        # filtrar por usuario específico (viene del enlace "ver auditoría" en detalle de usuario)
+        if user_id:
+            try:
+                qs = qs.filter(user_id=int(user_id))
+            except (TypeError, ValueError):
+                pass
+
+        # solo registros con usuario (excluir "Sistema")
+        if only_users in ("1", "true", "True", "on"):
+            qs = qs.filter(user__isnull=False)
+
+        # búsqueda flexible
+        if q:
+            base_q = (
+                Q(user__username__icontains=q) |
+                Q(user__email__icontains=q) |
+                Q(user__first_name__icontains=q) |
+                Q(user__last_name__icontains=q) |
+                Q(action__icontains=q) |
+                Q(model__icontains=q) |
+                Q(description__icontains=q)
             )
+            qs = qs.filter(base_q)
 
+            # intentar búsqueda en JSONField `data` si el motor lo soporta (seguro en Postgres JSONB).
+            try:
+                qs = qs | AuditLog.objects.filter(data__icontains=q)
+            except Exception:
+                # si el backend no soporta data__icontains o lanza error, lo ignoramos
+                pass
+
+        # filtro por fecha exacta
         if date:
-            queryset = queryset.filter(created_at__date=date)
+            qs = qs.filter(created_at__date=date)
 
+        # filtro por periodo relativo
         if period:
             now_ = now()
             if period == "day":
-                queryset = queryset.filter(created_at__date=now_.date())
+                qs = qs.filter(created_at__date=now_.date())
             elif period == "week":
                 start_week = now_ - timedelta(days=now_.weekday())
-                queryset = queryset.filter(created_at__date__gte=start_week.date())
+                qs = qs.filter(created_at__date__gte=start_week.date())
             elif period == "month":
-                queryset = queryset.filter(
-                    created_at__year=now_.year,
-                    created_at__month=now_.month
-                )
+                qs = qs.filter(created_at__year=now_.year, created_at__month=now_.month)
             elif period == "year":
-                queryset = queryset.filter(created_at__year=now_.year)
+                qs = qs.filter(created_at__year=now_.year)
 
-        return queryset.order_by("-created_at")
+        return qs.order_by("-created_at")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-
-        # Último modelo afectado (seguro, sin problemas con paginación)
-        last_log = AuditLog.objects.order_by("-created_at").first()
-        ctx["last_model"] = last_log.model if last_log else "-"
-
-        # Total usuarios únicos
+        ctx["last_model"] = AuditLog.objects.order_by("-created_at").values_list("model", flat=True).first() or "-"
         ctx["unique_users"] = AuditLog.objects.values("user").distinct().count()
-
-        # Total modelos distintos
         ctx["unique_models"] = AuditLog.objects.values("model").distinct().count()
-
-        # Total de registros de auditoría (sin paginación)
         ctx["total_logs"] = AuditLog.objects.count()
-
+        # para mantener el estado del filtro en la plantilla
+        ctx["only_users"] = self.request.GET.get("only_users", "")
         return ctx
 
 
 class AuditLogDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    """Vista de detalle de un registro de auditoría."""
     model = AuditLog
     template_name = "backoffice/users/auditlog_detail.html"
     context_object_name = "log"
@@ -253,3 +325,8 @@ class AuditLogDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView
 
     def get_queryset(self):
         return AuditLog.objects.select_related("user")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["data_pretty"] = self.object.get_data_display()
+        return ctx

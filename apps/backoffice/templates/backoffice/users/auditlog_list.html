@@ -9,16 +9,15 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-
   <!-- Header -->
   <div class="row mb-4">
     <div class="col-12 d-flex justify-content-between align-items-center">
       <h3 class="mb-0">
-        <i class="bi bi-clipboard-data me-2"></i>
-        Registros de Auditoría
+        <i class="bi bi-clipboard-data me-2"></i> Registros de Auditoría
       </h3>
       <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.print()">
+        <!-- Llama a printOnlyTable() -->
+        <button id="btn-print" type="button" class="btn btn-outline-primary btn-sm" onclick="printOnlyTable()">
           <i class="bi bi-printer me-1"></i> Imprimir
         </button>
         <a href="{% url 'backoffice:users:list' %}" class="btn btn-secondary btn-sm">
@@ -36,7 +35,7 @@
           <div class="stats-icon me-3"><i class="bi bi-activity"></i></div>
           <div>
             <div class="text-muted small">Total Registros</div>
-            <div class="fw-bold h5 mb-0">{{ page_obj.paginator.count }}</div>
+            <div class="fw-bold h5 mb-0">{{ total_logs }}</div>
           </div>
         </div>
       </div>
@@ -44,10 +43,10 @@
     <div class="col-md-3">
       <div class="card stats-card border-left-success">
         <div class="card-body d-flex align-items-center">
-          <div class="stats-icon me-3 text-success"><i class="bi bi-check-circle"></i></div>
+          <div class="stats-icon me-3 text-success"><i class="bi bi-people"></i></div>
           <div>
-            <div class="text-muted small">Acciones Registradas</div>
-            <div class="fw-bold h5 mb-0">{{ logs|length }}</div>
+            <div class="text-muted small">Usuarios Únicos</div>
+            <div class="fw-bold h5 mb-0">{{ unique_users }}</div>
           </div>
         </div>
       </div>
@@ -55,7 +54,19 @@
     <div class="col-md-3">
       <div class="card stats-card border-left-info">
         <div class="card-body d-flex align-items-center">
-          <div class="stats-icon me-3 text-info"><i class="bi bi-calendar-event"></i></div>
+          <div class="stats-icon me-3 text-info"><i class="bi bi-box-seam"></i></div>
+          <div>
+            <div class="text-muted small">Modelos Afectados</div>
+            <div class="fw-bold h5 mb-0">{{ unique_models }}</div>
+            <small class="text-muted">Último: {{ last_model }}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card border-left-warning">
+        <div class="card-body d-flex align-items-center">
+          <div class="stats-icon me-3 text-warning"><i class="bi bi-calendar-event"></i></div>
           <div>
             <div class="text-muted small">Periodo</div>
             <div class="fw-bold h6 mb-0">
@@ -69,19 +80,6 @@
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card stats-card border-left-warning">
-        <div class="card-body d-flex align-items-center">
-          <div class="stats-icon me-3 text-warning"><i class="bi bi-box-seam"></i></div>
-          <div>
-            <div class="text-muted small">Modelos Afectados</div>
-            <div class="fw-bold h5 mb-0">
-              {{ last_model }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Filtros -->
@@ -90,16 +88,24 @@
       <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros de Búsqueda</h6>
     </div>
     <div class="card-body">
-      <form method="get" class="row g-3">
-        <div class="col-md-3">
-          <label for="q" class="form-label">Buscar Usuario</label>
-          <input type="text" name="q" id="q" class="form-control"
-                 placeholder="Nombre, email o username"
-                 value="{{ request.GET.q }}">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label for="q" class="form-label small">Buscar Usuario / Acción</label>
+          <input type="text" name="q" id="q" class="form-control form-control-sm"
+                 placeholder="Nombre, email, acción, modelo" value="{{ request.GET.q }}">
         </div>
-        <div class="col-md-3">
-          <label for="period" class="form-label">Periodo</label>
-          <select name="period" id="period" class="form-select">
+
+        <div class="col-md-2">
+          <label for="only_users" class="form-label small">Tipo de registros</label>
+          <select name="only_users" id="only_users" class="form-select form-select-sm">
+            <option value="" {% if not request.GET.only_users %}selected{% endif %}>Todos</option>
+            <option value="1" {% if request.GET.only_users == "1" %}selected{% endif %}>Solo usuarios</option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label for="period" class="form-label small">Periodo</label>
+          <select name="period" id="period" class="form-select form-select-sm">
             <option value="">-- Todos --</option>
             <option value="day" {% if request.GET.period == "day" %}selected{% endif %}>Hoy</option>
             <option value="week" {% if request.GET.period == "week" %}selected{% endif %}>Semana</option>
@@ -107,12 +113,13 @@
             <option value="year" {% if request.GET.period == "year" %}selected{% endif %}>Año</option>
           </select>
         </div>
-        <div class="col-md-3">
-          <label for="date" class="form-label">Fecha específica</label>
-          <input type="date" name="date" id="date" class="form-control"
-                 value="{{ request.GET.date }}">
+
+        <div class="col-md-2">
+          <label for="date" class="form-label small">Fecha específica</label>
+          <input type="date" name="date" id="date" class="form-control form-control-sm" value="{{ request.GET.date }}">
         </div>
-        <div class="col-md-3 d-flex align-items-end">
+
+        <div class="col-md-2 text-end">
           <div class="btn-group w-100">
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-search me-1"></i> Filtrar
@@ -126,12 +133,13 @@
     </div>
   </div>
 
-  <!-- Tabla -->
-  <div class="card">
+  <!-- Tabla (print-area) -->
+  <div class="card print-area">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
       <h6 class="mb-0"><i class="bi bi-table me-2"></i>Registros</h6>
-      <small class="text-muted">Mostrando {{ logs|length }} registros</small>
+      <small class="text-muted">Mostrando {{ page_obj.paginator.count }} registros</small>
     </div>
+
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -147,68 +155,68 @@
           </thead>
           <tbody>
             {% for log in logs %}
-              <tr>
-                <td>
-                  <div class="fw-medium">{{ log.created_at|date:"d/m/Y" }}</div>
-                  <small class="text-muted">{{ log.created_at|date:"H:i:s" }}</small>
-                </td>
-                <td>
-                  {% if log.user %}
+            <tr>
+              <td>
+                <div class="fw-medium">{{ log.created_at|date:"d/m/Y" }}</div>
+                <small class="text-muted">{{ log.created_at|date:"H:i:s" }}</small>
+              </td>
+              <td>
+                {% if log.user %}
                   <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
                   <small class="text-muted">@{{ log.user.username }}</small>
-                  {% else %}
+                {% else %}
                   <span class="text-muted">Sistema</span>
-                  {% endif %}
-                </td>
-                <td>
-                  <span class="badge
-                    {% if log.action == 'CREATE' %}bg-success
-                    {% elif log.action == 'UPDATE' %}bg-warning
-                    {% elif log.action == 'DELETE' %}bg-danger
-                    {% else %}bg-secondary{% endif %}">
-                    {{ log.action }}
-                  </span>
-                </td>
-                <td><span class="small bg-light px-2 py-1 rounded">{{ log.model }}</span></td>
-                <td><code class="text-muted">{{ log.ip_address|default:"-" }}</code></td>
-                <td class="text-center">
-                <a href="{% url 'backoffice:users:audit_detail' log.pk %}"
-                   class="btn btn-sm btn-outline-primary" title="Ver detalle">
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge
+                  {% if log.action == 'create' %}bg-success
+                  {% elif log.action == 'update' %}bg-warning text-dark
+                  {% elif log.action == 'delete' %}bg-danger
+                  {% elif log.action == 'login' %}bg-primary
+                  {% elif log.action == 'logout' %}bg-dark
+                  {% else %}bg-secondary{% endif %}">
+                  {{ log.get_action_display }}
+                </span>
+              </td>
+              <td><span class="small bg-light px-2 py-1 rounded">{{ log.model }}</span></td>
+              <td><code class="text-muted">{{ log.ip_address|default:"-" }}</code></td>
+              <td class="text-center">
+                <a href="{% url 'backoffice:users:audit_detail' log.pk %}" class="btn btn-sm btn-outline-primary" title="Ver detalle">
                   <i class="bi bi-eye"></i>
                 </a>
-                </td>
-              </tr>
+              </td>
+            </tr>
             {% empty %}
-              <tr>
-                <td colspan="6" class="text-center py-4 text-muted">
-                  <i class="bi bi-inbox mb-2"></i><br>
-                  No hay registros que coincidan con los filtros
-                </td>
-              </tr>
+            <tr>
+              <td colspan="6" class="text-center py-4 text-muted">
+                <i class="bi bi-inbox mb-2"></i><br>No hay registros que coincidan con los filtros
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Paginación -->
+    <!-- Paginación (incluida en print-area para que se imprima si se desea) -->
     {% if is_paginated %}
     <div class="card-footer bg-white">
       <nav aria-label="Paginación">
         <ul class="pagination justify-content-center mb-0">
           {% if page_obj.has_previous %}
           <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q }}&period={{ request.GET.period }}&date={{ request.GET.date }}">
+            <a class="page-link"
+               href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q|urlencode }}&period={{ request.GET.period }}&date={{ request.GET.date }}&only_users={{ request.GET.only_users }}">
               <i class="bi bi-chevron-left"></i> Anterior
             </a>
           </li>
           {% endif %}
-          <li class="page-item disabled">
-            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-          </li>
+          <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
           {% if page_obj.has_next %}
           <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q }}&period={{ request.GET.period }}&date={{ request.GET.date }}">
+            <a class="page-link"
+               href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q|urlencode }}&period={{ request.GET.period }}&date={{ request.GET.date }}&only_users={{ request.GET.only_users }}">
               Siguiente <i class="bi bi-chevron-right"></i>
             </a>
           </li>
@@ -219,4 +227,97 @@
     {% endif %}
   </div>
 </div>
+
+<!-- Script inline (se carga con la plantilla; evita que la función no exista al hacer click) -->
+<script>
+/**
+ * printOnlyTable()
+ * - Intenta abrir ventana nueva con solo la .print-area (más fiable visualmente).
+ * - Si popup bloqueado -> fallback que activa body.print-mode y llama a print().
+ */
+function printOnlyTable() {
+  var el = document.querySelector('.print-area');
+  if (!el) {
+    window.print();
+    return;
+  }
+
+  // Intentar abrir ventana nueva (accion iniciada por click -> normalmente permitido)
+  var newWin = window.open('', '_blank', 'noopener,noreferrer');
+  if (!newWin) {
+    // Popup bloqueado -> fallback
+    document.body.classList.add('print-mode');
+    window.print();
+    setTimeout(function(){ document.body.classList.remove('print-mode'); }, 800);
+    return;
+  }
+
+  // Copiar hojas de estilo (links) y estilos en la página
+  var css = '';
+  document.querySelectorAll('link[rel="stylesheet"]').forEach(function(link){
+    css += link.outerHTML;
+  });
+  document.querySelectorAll('style').forEach(function(s){
+    css += s.outerHTML;
+  });
+
+  // Construir el HTML de impresión
+  var html = '<!doctype html><html><head><meta charset="utf-8"><title>Imprimir - Auditoría</title>';
+  html += css;
+  // pequeño reset/ajustes para print
+  html += '<style>body{margin:10px;font-family:inherit;color:#000} table{width:100%;border-collapse:collapse} th,td{border:1px solid #e9ecef;padding:.45rem} .no-print{display:none !important}</style>';
+  html += '</head><body>';
+  html += el.outerHTML;
+  html += '</body></html>';
+
+  // Escribir documento nuevo y lanzar impresión
+  newWin.document.open();
+  newWin.document.write(html);
+  newWin.document.close();
+
+  // Esperar un poco a que carguen estilos luego imprimir
+  newWin.focus();
+  var fired = false;
+  newWin.addEventListener('load', function(){
+    if (fired) return; fired = true;
+    try { newWin.print(); newWin.close(); } catch(e) { console.error(e); }
+  });
+
+  // Safety fallback por si no se dispara load
+  setTimeout(function(){
+    try { newWin.print(); newWin.close(); } catch(e) {
+      // si todo falla, fallback local
+      document.body.classList.add('print-mode');
+      window.print();
+      setTimeout(function(){ document.body.classList.remove('print-mode'); }, 800);
+    }
+  }, 1000);
+}
+</script>
+
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+/* Fallback local para ocultar todo excepto .print-area cuando usamos print-mode */
+@media print {
+  body.print-mode * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  body.print-mode .print-area,
+  body.print-mode .print-area * {
+    display: block !important;
+    visibility: visible !important;
+  }
+  body.print-mode .print-area {
+    position: static !important;
+    width: 100% !important;
+    left: 0; top: 0;
+  }
+  /* Mantener encabezado/pie al imprimir si existen */
+  body.print-mode .print-area .card-header { display: table-header-group !important; }
+  body.print-mode .print-area .card-footer { display: table-footer-group !important; }
+}
+</style>
 {% endblock %}

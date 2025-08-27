@@ -1,11 +1,18 @@
-import json
 from django.contrib.auth.models import AbstractUser
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.utils.timezone import now
+from django.core.serializers.json import DjangoJSONEncoder
+from django.forms.models import model_to_dict
+from django.forms.utils import ErrorDict, ErrorList
+from django.db.models import Model, QuerySet
+from django.http import QueryDict
+import json
+
 
 class Role(models.Model):
     name = models.CharField(max_length=50, unique=True)
-    permissions = models.JSONField(default=dict)  # Almacenar permisos como JSON
+    # Guarda permisos como JSON {"permissions": ["add_user", "change_user"]}
+    permissions = models.JSONField(default=dict)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -15,7 +22,11 @@ class Role(models.Model):
         verbose_name_plural = "Roles"
 
     def has_permission(self, perm_codename):
-        return self.permissions.filter(codename=perm_codename).exists()
+        """
+        Verifica si el rol tiene un permiso (cuando se guardan como JSON).
+        """
+        perms = self.permissions.get("permissions", [])
+        return perm_codename in perms
 
     def __str__(self):
         return self.name
@@ -27,7 +38,7 @@ class User(AbstractUser):
     is_active = models.BooleanField(default=True)
     last_access = models.DateTimeField(null=True, blank=True)
 
-    # Agrega estos campos para resolver los conflictos
+    # Sobrescribimos groups y user_permissions para evitar conflictos
     groups = models.ManyToManyField(
         'auth.Group',
         verbose_name='groups',
@@ -54,109 +65,191 @@ class User(AbstractUser):
 
 
 class AuditLog(models.Model):
+    ACTION_CHOICES = [
+        ("create", "Creación"),
+        ("update", "Actualización"),
+        ("delete", "Eliminación"),
+        ("login", "Inicio de sesión"),
+        ("logout", "Cierre de sesión"),
+        ("other", "Otro"),
+    ]
+
     user = models.ForeignKey(
-        User,
+        "users.User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Usuario"
+        verbose_name="Usuario",
     )
-    action = models.CharField(
-        max_length=255,
-        verbose_name="Acción"
-    )
-    model = models.CharField(
-        max_length=100,
-        verbose_name="Modelo"
-    )
-    object_id = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name="ID del Objeto"
-    )
-    data = models.JSONField(
-        default=dict,
-        encoder=DjangoJSONEncoder,  # Usa el encoder de Django que maneja más tipos
-        verbose_name="Datos"
-    )
-    ip_address = models.GenericIPAddressField(
-        null=True,
-        blank=True,
-        verbose_name="Dirección IP"
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="Fecha de Creación"
-    )
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES, verbose_name="Acción")
+    model = models.CharField(max_length=100, verbose_name="Modelo")
+    object_id = models.CharField(max_length=100, blank=True, verbose_name="ID del Objeto")
+    description = models.TextField(blank=True, verbose_name="Descripción")
+    data = models.JSONField(default=dict, encoder=DjangoJSONEncoder, verbose_name="Datos")
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name="Dirección IP")
+    created_at = models.DateTimeField(default=now, verbose_name="Fecha de Creación")
 
     class Meta:
         verbose_name = "Registro de Auditoría"
         verbose_name_plural = "Registros de Auditoría"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['model']),
-            models.Index(fields=['user']),
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["model"]),
+            models.Index(fields=["user"]),
         ]
 
     def __str__(self):
-        return f"{self.user or 'Sistema'} - {self.action} ({self.model})"
+        return f"{self.user or 'Sistema'} - {self.get_action_display()} ({self.model})"
 
-    def save(self, *args, **kwargs):
-        # Limpieza y validación de datos antes de guardar
-        self._clean_data()
-        super().save(*args, **kwargs)
-
-    def _clean_data(self):
-        """
-        Asegura que los datos sean serializables a JSON.
-        Convierte objetos no serializables a representaciones de cadena.
-        """
-        if not isinstance(self.data, dict):
-            self.data = {'value': str(self.data)}
-
-        try:
-            # Intenta serializar para validar
-            json.dumps(self.data, cls=DjangoJSONEncoder)
-        except (TypeError, ValueError) as e:
-            # Si falla, guarda un mensaje de error y los datos convertidos a string
-            self.data = {
-                '_error': 'Los datos no pudieron ser serializados completamente',
-                '_original_error': str(e),
-                '_fallback_data': str(self.data)
-            }
+    # ========= utilidades internas =========
+    SENSITIVE_KEYS = {"password", "pass", "token", "authorization", "secret", "api_key"}
 
     @classmethod
-    def log_action(cls, user=None, action=None, model=None, obj=None, request=None, **kwargs):
+    def _to_jsonable(cls, value):
         """
-        Método helper para crear registros de auditoría fácilmente.
+        Convierte value en algo 100% serializable por json (recursivo).
+        Maneja Model, Form, QueryDict, ErrorDict, QuerySet, listas, etc.
         """
-        data = {
-            'model': str(model.__class__.__name__) if model else None,
-            'object_id': str(obj.pk) if obj and hasattr(obj, 'pk') else None,
-            **kwargs
-        }
+        # primitivos
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
 
+        # dict
+        if isinstance(value, dict):
+            return {str(k): cls._to_jsonable(v) for k, v in value.items()}
+
+        # listas/tuplas/sets
+        if isinstance(value, (list, tuple, set)):
+            return [cls._to_jsonable(v) for v in value]
+
+        # QueryDict (request.POST / GET)
+        if isinstance(value, QueryDict):
+            return {k: (vals if len(vals) > 1 else vals[0]) for k, vals in value.lists()}
+
+        # Errores de formulario
+        if isinstance(value, ErrorDict):
+            return {k: [str(e) for e in v] for k, v in value.items()}
+        if isinstance(value, ErrorList):
+            return [str(e) for e in value]
+
+        # Model
+        if isinstance(value, Model):
+            try:
+                data = model_to_dict(value)
+                # Manejar ManyToMany (ej: groups, roles, user_permissions)
+                for field in value._meta.many_to_many:
+                    try:
+                        related = getattr(value, field.name).all()
+                        data[field.name] = [str(obj) for obj in related]
+                    except Exception:
+                        data[field.name] = []
+                return data
+            except Exception:
+                return {"object": str(value), "pk": getattr(value, "pk", None)}
+
+        # QuerySet
+        if isinstance(value, QuerySet):
+            try:
+                return list(value.values())
+            except Exception:
+                return [str(x) for x in value]
+
+        # Form (usa cleaned_data si existe)
+        if hasattr(value, "cleaned_data"):
+            try:
+                return cls._to_jsonable(getattr(value, "cleaned_data", {}))
+            except Exception:
+                return {"form": str(value)}
+
+        # Objetos con get_json_data (p. ej. errors)
+        if hasattr(value, "get_json_data"):
+            try:
+                return value.get_json_data()
+            except Exception:
+                pass
+
+        # último intento con el encoder de Django
+        try:
+            json.dumps(value, cls=DjangoJSONEncoder)
+            return value
+        except TypeError:
+            return str(value)
+
+    @classmethod
+    def _mask_sensitive(cls, payload):
+        """
+        Enmascara valores de claves sensibles (password, token, etc.).
+        """
+        if isinstance(payload, dict):
+            out = {}
+            for k, v in payload.items():
+                lk = str(k).lower()
+                if any(s in lk for s in cls.SENSITIVE_KEYS):
+                    out[k] = "***"
+                else:
+                    out[k] = cls._mask_sensitive(v)
+            return out
+        if isinstance(payload, list):
+            return [cls._mask_sensitive(v) for v in payload]
+        return payload
+
+    # ========= API pública =========
+    @classmethod
+    def log_action(
+        cls,
+        *,
+        user=None,
+        request=None,
+        action="other",
+        model=None,
+        obj=None,
+        description="",
+        extra_data=None,
+    ):
+        """
+        Logger robusto: acepta casi cualquier cosa en obj/extra_data.
+        """
+        # Usuario
+        if not user and request:
+            user = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
+
+        # IP (real si hay proxy)
+        ip = None
         if request:
-            data.update({
-                'ip_address': request.META.get('REMOTE_ADDR'),
-                'user_agent': request.META.get('HTTP_USER_AGENT'),
-            })
+            xff = request.META.get("HTTP_X_FORWARDED_FOR")
+            ip = (xff.split(",")[0] if xff else request.META.get("REMOTE_ADDR"))
+
+        # Datos principales desde obj
+        data = {}
+        if obj is not None:
+            data = cls._to_jsonable(obj)
+
+        # Merge con extra_data
+        if extra_data is not None:
+            merged = {}
+            if isinstance(data, dict):
+                merged.update(data)
+            else:
+                merged["object"] = data
+            merged["extra"] = cls._to_jsonable(extra_data)
+            data = merged
+
+        # Enmascarar sensibles SIEMPRE
+        data = cls._mask_sensitive(data if isinstance(data, (dict, list)) else {"value": data})
 
         return cls.objects.create(
             user=user,
-            action=action or 'Acción no especificada',
-            model=model.__class__.__name__ if model else 'Desconocido',
-            object_id=str(obj.pk) if obj and hasattr(obj, 'pk') else '',
+            action=action,
+            model=(model if isinstance(model, str) else getattr(model, "__name__", str(model))),
+            object_id=str(getattr(obj, "pk", "")) if hasattr(obj, "pk") else "",
+            description=description,
             data=data,
-            ip_address=request.META.get('REMOTE_ADDR') if request else None
+            ip_address=ip,
         )
 
     def get_data_display(self):
-        """
-        Devuelve una representación legible de los datos.
-        """
         try:
-            return json.dumps(self.data, indent=2, ensure_ascii=False)
-        except:
+            return json.dumps(self.data, indent=2, ensure_ascii=False, cls=DjangoJSONEncoder)
+        except Exception:
             return str(self.data)

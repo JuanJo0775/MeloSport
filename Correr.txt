@@ -13,4 +13,8 @@ Admin
 
 Usuario de ejemplo admin
         usuario: admin
-        contraseña: Admin123!
+        contraseña: Bocato0731@
+
+Usuario de ejemplo user
+        usuario: user-test
+        contraseña: Usa123@testusa

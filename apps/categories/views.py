@@ -1,3 +1,4 @@
+# apps/categories/views.py
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Q, Count
 from django.db.models.functions import Cast
@@ -7,10 +8,12 @@ from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.views.generic.base import TemplateView
+from django.db.models import CharField
+
 from .models import Category, AbsoluteCategory
 from ..products.models import Product
-from django.db.models import CharField
 from .forms import CategoryForm, AbsoluteCategoryForm
+from apps.users.models import AuditLog  # 👈 Auditoría
 
 
 class CategoryHomeView(LoginRequiredMixin, TemplateView):
@@ -18,31 +21,27 @@ class CategoryHomeView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        # Estadísticas deportes (AbsoluteCategory)
         deportes = AbsoluteCategory.objects.all()
         context['deportes_activos'] = deportes.filter(activo=True).count()
         context['deportes_inactivos'] = deportes.filter(activo=False).count()
 
-        # Estadísticas categorías
         todas = Category.objects.all()
         context['categorias_count'] = todas.count()
         context['categorias_padre_count'] = todas.filter(parent__isnull=True).count()
         context['categorias_activas'] = todas.filter(is_active=True).count()
         context['categorias_inactivas'] = todas.filter(is_active=False).count()
 
-        # Total de productos asociados
         context['productos_count'] = Product.objects.count()
         context['total_productos'] = Product.objects.filter(
             categories__in=todas
-        ).distinct().count()  # si quieres contar solo productos asociados a categorías
+        ).distinct().count()
 
         return context
+
 
 # ===================== Utilidades =====================
 
 def _has_products(obj):
-    """Detecta productos asociados tolerando distintos related_name."""
     if hasattr(obj, "products"):
         return obj.products.exists()
     if hasattr(obj, "product_set"):
@@ -62,7 +61,6 @@ class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     def get_queryset(self):
         qs = Category.objects.all().prefetch_related('children', 'parent')
 
-        # 🔎 Búsqueda
         search = self.request.GET.get('search')
         if search:
             qs = qs.filter(
@@ -70,14 +68,12 @@ class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 Q(description__icontains=search)
             )
 
-        # 🎚️ Filtro por categoría padre
         parent = self.request.GET.get('parent')
         if parent == "null":
             qs = qs.filter(parent__isnull=True)
         elif parent:
             qs = qs.filter(parent_id=parent)
 
-        # 🎚️ Filtro por estado
         status = self.request.GET.get('status')
         if status == 'active':
             qs = qs.filter(is_active=True)
@@ -88,24 +84,18 @@ class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
         todas = Category.objects.all()
 
-        # Estadísticas
         context['categorias_activas'] = todas.filter(is_active=True).count()
         context['categorias_inactivas'] = todas.filter(is_active=False).count()
-        context['categorias_padre_count'] = todas.filter(parent__isnull=True).count()  # número
-
-        # Lista de categorías padre para el select (iterable)
+        context['categorias_padre_count'] = todas.filter(parent__isnull=True).count()
         context['categorias_padre'] = todas.filter(parent__isnull=True).order_by('name')
 
-        # Total productos asociados a cualquier categoría
         context['total_productos'] = Product.objects.filter(
             categories__in=todas
         ).distinct().count()
 
         return context
-
 
 
 class CategoryDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -122,6 +112,17 @@ class CategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView
     template_name = 'backoffice/categories/create.html'
     success_url = reverse_lazy('backoffice:categories:list')
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        AuditLog.log_action(
+            request=self.request,
+            action="create",
+            model=self.model,
+            obj=self.object,
+            description=f"Categoría '{self.object.name}' creada"
+        )
+        return response
+
 
 class CategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = 'categories.change_category'
@@ -130,14 +131,19 @@ class CategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView
     template_name = 'backoffice/categories/update.html'
     success_url = reverse_lazy('backoffice:categories:list')
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        AuditLog.log_action(
+            request=self.request,
+            action="update",
+            model=self.model,
+            obj=self.object,
+            description=f"Categoría '{self.object.name}' actualizada"
+        )
+        return response
+
 
 class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
-    """
-    Flujo de eliminación seguro:
-      - GET: si tiene hijos o productos => paso 'warn' (aviso 1). Si no, va a 'confirm_password' directamente.
-      - POST step=1: segundo aviso (más enfático) + campo contraseña.
-      - POST step=2: valida contraseña y elimina.
-    """
     permission_required = 'categories.delete_category'
     model = Category
     template_name = 'backoffice/categories/confirm_delete.html'
@@ -188,8 +194,16 @@ class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView
                 )
                 return self.render_to_response(context)
 
-            messages.success(request, "La categoría fue eliminada correctamente.")
+            nombre = self.object.name
             self.object.delete()
+            AuditLog.log_action(
+                request=request,
+                action="delete",
+                model=self.model,
+                obj=self.object,
+                description=f"Categoría '{nombre}' eliminada"
+            )
+            messages.success(request, "La categoría fue eliminada correctamente.")
             return redirect(self.success_url)
 
         return redirect(self.success_url)
@@ -249,6 +263,17 @@ class AbsoluteCategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, Cr
     template_name = 'backoffice/absolute_categories/create.html'
     success_url = reverse_lazy('backoffice:categories:absolute_list')
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        AuditLog.log_action(
+            request=self.request,
+            action="create",
+            model=self.model,
+            obj=self.object,
+            description=f"Deporte '{self.object.nombre}' creado"
+        )
+        return response
+
 
 class AbsoluteCategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     permission_required = 'categories.change_absolutecategory'
@@ -257,11 +282,19 @@ class AbsoluteCategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, Up
     template_name = 'backoffice/absolute_categories/update.html'
     success_url = reverse_lazy('backoffice:categories:absolute_list')
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        AuditLog.log_action(
+            request=self.request,
+            action="update",
+            model=self.model,
+            obj=self.object,
+            description=f"Deporte '{self.object.nombre}' actualizado"
+        )
+        return response
+
 
 class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
-    """
-    Mismo flujo de 2 avisos + contraseña.
-    """
     permission_required = 'categories.delete_absolutecategory'
     model = AbsoluteCategory
     template_name = 'backoffice/absolute_categories/confirm_delete.html'
@@ -307,17 +340,34 @@ class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, De
                 )
                 return self.render_to_response(context)
 
-            messages.success(request, "La categoría absoluta fue eliminada correctamente.")
+            nombre = self.object.nombre
             self.object.delete()
+            AuditLog.log_action(
+                request=request,
+                action="delete",
+                model=self.model,
+                obj=self.object,
+                description=f"Deporte '{nombre}' eliminado"
+            )
+            messages.success(request, "La categoría absoluta fue eliminada correctamente.")
             return redirect(self.success_url)
 
         return redirect(self.success_url)
 
 
+# ===================== Activar / Desactivar =====================
+
 def absolute_activate(request, pk):
     deporte = get_object_or_404(AbsoluteCategory, pk=pk)
     deporte.activo = True
     deporte.save()
+    AuditLog.log_action(
+        request=request,
+        action="update",
+        model=AbsoluteCategory,
+        obj=deporte,
+        description=f"Deporte '{deporte.nombre}' activado"
+    )
     messages.success(request, f"El deporte '{deporte.nombre}' ha sido activado correctamente.")
     return redirect("backoffice:categories:absolute_detail", pk=pk)
 
@@ -326,5 +376,12 @@ def absolute_deactivate(request, pk):
     deporte = get_object_or_404(AbsoluteCategory, pk=pk)
     deporte.activo = False
     deporte.save()
+    AuditLog.log_action(
+        request=request,
+        action="update",
+        model=AbsoluteCategory,
+        obj=deporte,
+        description=f"Deporte '{deporte.nombre}' desactivado"
+    )
     messages.warning(request, f"El deporte '{deporte.nombre}' ha sido desactivado.")
     return redirect("backoffice:categories:absolute_detail", pk=pk)
