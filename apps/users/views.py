@@ -95,6 +95,18 @@ class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     context_object_name = "user_obj"
     permission_required = "auth.view_user"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user_obj = self.get_object()
+
+        # Últimas 10 auditorías del usuario
+        if self.request.user.has_perm("users.view_auditlog"):
+            context["user_audits"] = AuditLog.objects.filter(user=user_obj).order_by("-created_at")[:10]
+        else:
+            context["user_audits"] = []
+
+        return context
+
 
 class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = User

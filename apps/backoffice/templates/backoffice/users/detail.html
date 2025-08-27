@@ -209,54 +209,72 @@
 
           <hr class="my-4">
 
-          <!-- Auditoría reciente -->
-          {% if perms.users.view_auditlog %}
-          <h6 class="fw-bold mb-3">
-            <i class="bi bi-clock-history me-2 text-info"></i>
-            Auditoría Reciente del Usuario
-          </h6>
-          {% if user_audits %}
-            <div class="table-responsive">
-              <table class="table table-sm table-striped align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Acción</th>
-                    <th>Modelo</th>
-                    <th>Descripción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for audit in user_audits %}
-                  <tr>
-                    <td class="small text-muted">{{ audit.created_at|date:"d/m/Y H:i" }}</td>
-                    <td>
-                      <span class="badge
-                        {% if audit.action == 'create' %} bg-success
-                        {% elif audit.action == 'update' %} bg-warning text-dark
-                        {% elif audit.action == 'delete' %} bg-danger
-                        {% else %} bg-secondary{% endif %}">
-                        {{ audit.get_action_display }}
-                      </span>
-                    </td>
-                    <td>{{ audit.model }}</td>
-                    <td class="text-truncate" style="max-width:200px;">{{ audit.description|default:"—" }}</td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+            <!-- Auditoría reciente -->
+            {% if perms.users.view_auditlog %}
+            <div class="card mt-4">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                  <i class="bi bi-clock-history me-2 text-info"></i>
+                  Auditoría Reciente del Usuario
+                </h6>
+                <small class="text-muted">Últimas {{ user_audits|length }} acciones</small>
+              </div>
+
+              {% if user_audits %}
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th><i class="bi bi-calendar3 me-1"></i> Fecha</th>
+                        <th><i class="bi bi-activity me-1"></i> Acción</th>
+                        <th><i class="bi bi-box me-1"></i> Modelo</th>
+                        <th><i class="bi bi-card-text me-1"></i> Descripción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for audit in user_audits %}
+                      <tr>
+                        <td>
+                          <div class="fw-medium">{{ audit.created_at|date:"d/m/Y" }}</div>
+                          <small class="text-muted">{{ audit.created_at|date:"H:i:s" }}</small>
+                        </td>
+                        <td>
+                          <span class="badge
+                            {% if audit.action == 'create' %}bg-success
+                            {% elif audit.action == 'update' %}bg-warning text-dark
+                            {% elif audit.action == 'delete' %}bg-danger
+                            {% elif audit.action == 'login' %}bg-primary
+                            {% elif audit.action == 'logout' %}bg-dark
+                            {% else %}bg-secondary{% endif %}">
+                            {{ audit.get_action_display }}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="small bg-light px-2 py-1 rounded">{{ audit.model }}</span>
+                        </td>
+                        <td class="text-truncate" style="max-width: 250px;" title="{{ audit.description }}">
+                          {{ audit.description|default:"Sin descripción" }}
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card-footer bg-white text-end">
+                <a href="{% url 'backoffice:users:auditlog_list' %}?user={{ user_obj.pk }}" class="btn btn-sm btn-outline-info">
+                  <i class="bi bi-list me-1"></i> Ver todas las auditorías
+                </a>
+              </div>
+              {% else %}
+              <div class="card-body text-center py-4">
+                <i class="bi bi-inbox mb-2 fs-3 text-muted"></i>
+                <p class="text-muted mb-0 small">No hay auditorías registradas para este usuario.</p>
+              </div>
+              {% endif %}
             </div>
-            <div class="text-end mt-2">
-              <a href="{% url 'backoffice:users:auditlog_list' %}?user={{ user_obj.pk }}" class="btn btn-sm btn-outline-info">
-                <i class="bi bi-list me-1"></i> Ver todas las auditorías
-              </a>
-            </div>
-          {% else %}
-            <div class="alert alert-light border text-center small">
-              <i class="bi bi-info-circle me-1"></i> No hay auditorías registradas.
-            </div>
-          {% endif %}
-          {% endif %}
+            {% endif %}
         </div>
       </div>
     </div>
