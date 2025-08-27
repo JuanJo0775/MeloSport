@@ -4,35 +4,39 @@
 {% block title %}Crear Usuario{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb  "Usuarios|backoffice:users:list" "Crear" %}
+  {% breadcrumb "Usuarios|backoffice:users:list" "Crear" %}
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
   <div class="row justify-content-center">
     <div class="col-lg-8">
+
       <!-- Header -->
       <div class="d-flex align-items-center mb-4">
-        <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary me-3">
-          <i class="bi bi-arrow-left"></i>
-        </a>
         <div>
-          <h1 class="h3 mb-1">Crear Nuevo Usuario</h1>
-          <p class="text-muted mb-0">Completa la información del nuevo usuario del sistema</p>
+          <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Volver
+          </a>
+        </div>
+        <div class="ms-3">
+          <h1 class="h3 fw-semibold mb-1">Crear Nuevo Usuario</h1>
+          <p class="text-muted mb-0">Completa la información para registrar un nuevo usuario en el sistema</p>
         </div>
       </div>
 
       <!-- Formulario -->
-      <div class="card shadow-sm">
-        <div class="card-header bg-white">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom-0">
           <div class="d-flex align-items-center">
-            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3"
-                 style="width: 40px; height: 40px;">
-              <i class="bi bi-person-plus"></i>
+            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                 style="width: 44px; height: 44px;">
+              <i class="bi bi-person-plus fs-5"></i>
             </div>
             <div>
-              <h5 class="mb-0">Información del Usuario</h5>
-              <small class="text-muted">Todos los campos marcados con * son obligatorios</small>
+              <h5 class="mb-0 fw-semibold">Información del Usuario</h5>
+              <small class="text-muted">Los campos marcados con * son obligatorios</small>
             </div>
           </div>
         </div>
@@ -44,14 +48,14 @@
             <!-- Información personal -->
             <div class="row g-3 mb-4">
               <div class="col-12">
-                <h6 class="text-muted text-uppercase fw-bold mb-3">
-                  <i class="bi bi-person me-2"></i>Información Personal
+                <h6 class="text-muted text-uppercase fw-bold mb-3 border-bottom pb-2">
+                  <i class="bi bi-person me-2"></i>Datos Personales
                 </h6>
               </div>
 
               <div class="col-md-6">
-                <label for="{{ form.first_name.id_for_label }}" class="form-label">
-                  Nombre *
+                <label for="{{ form.first_name.id_for_label }}" class="form-label fw-medium">
+                  <i class="bi bi-card-text me-1"></i> Nombre *
                 </label>
                 {{ form.first_name }}
                 {% if form.first_name.errors %}
@@ -64,8 +68,8 @@
               </div>
 
               <div class="col-md-6">
-                <label for="{{ form.last_name.id_for_label }}" class="form-label">
-                  Apellido *
+                <label for="{{ form.last_name.id_for_label }}" class="form-label fw-medium">
+                  <i class="bi bi-card-text me-1"></i> Apellido *
                 </label>
                 {{ form.last_name }}
                 {% if form.last_name.errors %}
@@ -78,8 +82,8 @@
               </div>
 
               <div class="col-md-6">
-                <label for="{{ form.email.id_for_label }}" class="form-label">
-                  Correo Electrónico *
+                <label for="{{ form.email.id_for_label }}" class="form-label fw-medium">
+                  <i class="bi bi-envelope me-1"></i> Correo Electrónico *
                 </label>
                 {{ form.email }}
                 {% if form.email.errors %}
@@ -90,13 +94,13 @@
                   </div>
                 {% endif %}
                 <div class="form-text">
-                  <i class="bi bi-info-circle me-1"></i>Se utilizará para notificaciones y recuperación de contraseña
+                  <i class="bi bi-info-circle me-1"></i> Se usará para notificaciones y recuperación de contraseña
                 </div>
               </div>
 
               <div class="col-md-6">
-                <label for="{{ form.phone.id_for_label }}" class="form-label">
-                  Teléfono
+                <label for="{{ form.phone.id_for_label }}" class="form-label fw-medium">
+                  <i class="bi bi-telephone me-1"></i> Teléfono
                 </label>
                 {{ form.phone }}
                 {% if form.phone.errors %}
@@ -114,14 +118,14 @@
             <!-- Información de acceso -->
             <div class="row g-3 mb-4">
               <div class="col-12">
-                <h6 class="text-muted text-uppercase fw-bold mb-3">
-                  <i class="bi bi-key me-2"></i>Información de Acceso
+                <h6 class="text-muted text-uppercase fw-bold mb-3 border-bottom pb-2">
+                  <i class="bi bi-key me-2"></i>Credenciales de Acceso
                 </h6>
               </div>
 
               <div class="col-md-6">
-                <label for="{{ form.username.id_for_label }}" class="form-label">
-                  Nombre de Usuario *
+                <label for="{{ form.username.id_for_label }}" class="form-label fw-medium">
+                  <i class="bi bi-person-circle me-1"></i> Nombre de Usuario *
                 </label>
                 {{ form.username }}
                 {% if form.username.errors %}
@@ -132,13 +136,13 @@
                   </div>
                 {% endif %}
                 <div class="form-text">
-                  <i class="bi bi-info-circle me-1"></i>Será utilizado para iniciar sesión en el sistema
+                  <i class="bi bi-info-circle me-1"></i> Usado para iniciar sesión
                 </div>
               </div>
 
               <div class="col-md-6">
-                <label for="{{ form.role.id_for_label }}" class="form-label">
-                  Rol del Usuario
+                <label for="{{ form.role.id_for_label }}" class="form-label fw-medium">
+                  <i class="bi bi-shield-check me-1"></i> Rol del Usuario
                 </label>
                 {{ form.role }}
                 {% if form.role.errors %}
@@ -150,36 +154,47 @@
                 {% endif %}
               </div>
 
-              <div class="col-md-6">
-                <label for="{{ form.password1.id_for_label }}" class="form-label">
-                  Contraseña *
-                </label>
-                {{ form.password1 }}
-                {% if form.password1.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.password1.errors %}
-                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
-                    {% endfor %}
+              <!-- Contraseña -->
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="{{ form.password1.id_for_label }}" class="form-label">Nueva Contraseña</label>
+                  <div class="input-group">
+                    {{ form.password1 }}
+                    <button type="button" class="btn btn-outline-secondary"
+                            onclick="togglePassword('{{ form.password1.id_for_label }}', this)">
+                      <i class="bi bi-eye"></i>
+                    </button>
                   </div>
-                {% endif %}
-              </div>
+                  {% if form.password1.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in form.password1.errors %}
+                        <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
 
-              <div class="col-md-6">
-                <label for="{{ form.password2.id_for_label }}" class="form-label">
-                  Confirmar Contraseña *
-                </label>
-                {{ form.password2 }}
-                {% if form.password2.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.password2.errors %}
-                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
-                    {% endfor %}
+                <div class="col-md-6">
+                  <label for="{{ form.password2.id_for_label }}" class="form-label">Confirmar Contraseña</label>
+                  <div class="input-group">
+                    {{ form.password2 }}
+                    <button type="button" class="btn btn-outline-secondary"
+                            onclick="togglePassword('{{ form.password2.id_for_label }}', this)">
+                      <i class="bi bi-eye"></i>
+                    </button>
                   </div>
-                {% endif %}
+                  {% if form.password2.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in form.password2.errors %}
+                        <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
               </div>
             </div>
 
-            <!-- Errores generales del formulario -->
+            <!-- Errores generales -->
             {% if form.non_field_errors %}
               <div class="alert alert-danger">
                 <i class="bi bi-exclamation-triangle me-2"></i>
@@ -189,8 +204,8 @@
               </div>
             {% endif %}
 
-            <!-- Botones de acción -->
-            <div class="d-flex justify-content-end gap-2">
+            <!-- Botones -->
+            <div class="d-flex justify-content-end gap-2 mt-3">
               <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-x-circle me-2"></i>Cancelar
               </a>
@@ -203,25 +218,40 @@
       </div>
 
       <!-- Información adicional -->
-      <div class="card mt-4">
+      <div class="card shadow-sm border-0 mt-3">
         <div class="card-body">
           <div class="d-flex">
             <div class="text-primary me-3">
               <i class="bi bi-info-circle-fill fs-4"></i>
             </div>
             <div>
-              <h6 class="mb-2">Información importante</h6>
+              <h6 class="fw-semibold mb-2">Información importante</h6>
               <ul class="mb-0 small text-muted">
-                <li>El usuario recibirá sus credenciales por correo electrónico</li>
-                <li>Podrá cambiar su contraseña en el primer acceso</li>
-                <li>Los roles determinan los permisos en el sistema</li>
-                <li>Un usuario inactivo no podrá acceder al sistema</li>
+                <li>El usuario podrá cambiar su contraseña en el primer inicio de sesión</li>
+                <li>Los roles determinan los permisos disponibles en el sistema</li>
+                <li>Un usuario inactivo no podrá iniciar sesión</li>
               </ul>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </div>
+
+<script>
+function togglePassword(fieldId, button) {
+  const field = document.getElementById(fieldId);
+  const icon = button.querySelector('i');
+
+  if (field.type === 'password') {
+    field.type = 'text';
+    icon.classList.replace('bi-eye', 'bi-eye-slash');
+  } else {
+    field.type = 'password';
+    icon.classList.replace('bi-eye-slash', 'bi-eye');
+  }
+}
+</script>
 {% endblock %}

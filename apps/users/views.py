@@ -1,10 +1,14 @@
+# apps/users/views.py
+
 from django.db.models import Q, Count
 from django.contrib.auth.models import Group
 from django.utils.timezone import now, timedelta
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
+from django.views.generic import (
+    ListView, DetailView, CreateView, UpdateView, DeleteView, View, FormView
+)
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth import get_user_model
@@ -52,7 +56,7 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = "auth.view_user"
 
     def get_queryset(self):
-        qs = User.objects.all().select_related()
+        qs = User.objects.all().prefetch_related("groups")
         search = self.request.GET.get("q")
         if search:
             qs = qs.filter(
@@ -61,22 +65,30 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
                 Q(last_name__icontains=search) |
                 Q(email__icontains=search)
             )
-        group = self.request.GET.get("group")
-        if group:
-            qs = qs.filter(groups__name__iexact=group)
-        return qs
+        group_id = self.request.GET.get("group_id")
+        if group_id:
+            qs = qs.filter(groups__id=group_id)
+        return qs.distinct()
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["total_users"] = User.objects.count()
-        context["active_users"] = User.objects.filter(is_active=True).count()
-        context["inactive_users"] = User.objects.filter(is_active=False).count()
-        context["users_by_role"] = (
-            User.objects.values("groups__name")
-            .annotate(count=Count("id"))
-            .order_by()
-        )
-        return context
+        ctx = super().get_context_data(**kwargs)
+
+        admin_group = Group.objects.filter(name__iexact="Administrador").first()
+        vendor_group = Group.objects.filter(name__iexact="Vendedor").first()
+
+        ctx.update({
+            "total_users": User.objects.count(),
+            "active_users": User.objects.filter(is_active=True).count(),
+            "vendors": User.objects.filter(groups=vendor_group).count() if vendor_group else 0,
+            "admins": User.objects.filter(groups=admin_group).count() if admin_group else 0,
+            "groups": list(Group.objects.order_by("name").values("id", "name")),
+            "users_by_role": (
+                User.objects.values("groups__name")
+                .annotate(count=Count("id"))
+                .order_by()
+            ),
+        })
+        return ctx
 
 
 class UserDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -90,7 +102,7 @@ class UserCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = User
     form_class = CustomUserCreationForm
     template_name = "backoffice/users/create.html"
-    success_url = reverse_lazy("users:list")
+    success_url = reverse_lazy("backoffice:users:list")
     permission_required = "auth.add_user"
 
     def form_valid(self, form):
@@ -106,7 +118,7 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = User
     form_class = CustomUserChangeForm
     template_name = "backoffice/users/update.html"
-    success_url = reverse_lazy("users:list")
+    success_url = reverse_lazy("backoffice:users:list")
     permission_required = "auth.change_user"
 
     def form_valid(self, form):
@@ -122,14 +134,14 @@ class UserUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
 class UserDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = User
     template_name = "backoffice/users/confirm_delete.html"
-    success_url = reverse_lazy("users:list")
+    success_url = reverse_lazy("backoffice:users:list")
     permission_required = "auth.delete_user"
 
     def delete(self, request, *args, **kwargs):
         obj = self.get_object()
         if obj == request.user:
             messages.error(request, "No puedes eliminarte a ti mismo.")
-            return redirect("users:list")
+            return redirect("backoffice:users:list")
         messages.success(request, f"Usuario {obj.username} eliminado correctamente.")
         return super().delete(request, *args, **kwargs)
 
@@ -141,29 +153,37 @@ class UserToggleActiveView(LoginRequiredMixin, PermissionRequiredMixin, View):
         user = get_object_or_404(User, pk=pk)
         if user == request.user:
             messages.error(request, "No puedes desactivarte a ti mismo.")
-            return redirect("users:list")
+            return redirect("backoffice:users:list")
         user.is_active = not user.is_active
         user.save()
         messages.success(request, f"Usuario {user.username} {'activado' if user.is_active else 'desactivado'}.")
-        return redirect("users:list")
+        return redirect("backoffice:users:list")
 
 
-class UserSetPasswordView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    model = User
-    form_class = SetPasswordForm
+from .forms import CustomPasswordChangeForm
+
+class UserSetPasswordView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
     template_name = "backoffice/users/set_password.html"
-    success_url = reverse_lazy("users:list")
+    form_class = CustomPasswordChangeForm
+    success_url = reverse_lazy("backoffice:users:list")
     permission_required = "auth.change_user"
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["user"] = self.get_object()
+        self.user_obj = get_object_or_404(User, pk=self.kwargs["pk"])
+        kwargs["user"] = self.user_obj
         return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["object"] = self.user_obj
+        return ctx
 
     def form_valid(self, form):
         form.save()
         messages.success(self.request, "Contraseña actualizada correctamente.")
         return super().form_valid(form)
+
 
 
 # ========== AUDITORÍA ==========

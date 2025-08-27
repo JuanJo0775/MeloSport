@@ -29,6 +29,7 @@
           <form method="post" novalidate>
             {% csrf_token %}
 
+            <!-- Datos principales -->
             <div class="row mb-4">
               <div class="col-md-6 mb-3">
                 <label for="{{ form.username.id_for_label }}" class="form-label fw-medium">
@@ -61,23 +62,12 @@
                   <i class="bi bi-card-text me-1"></i> Nombre
                 </label>
                 {{ form.first_name }}
-                {% if form.first_name.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.first_name.errors %}{{ error }}{% endfor %}
-                  </div>
-                {% endif %}
               </div>
-
               <div class="col-md-6 mb-3">
                 <label for="{{ form.last_name.id_for_label }}" class="form-label fw-medium">
                   <i class="bi bi-card-text me-1"></i> Apellido
                 </label>
                 {{ form.last_name }}
-                {% if form.last_name.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.last_name.errors %}{{ error }}{% endfor %}
-                  </div>
-                {% endif %}
               </div>
             </div>
 
@@ -87,26 +77,55 @@
                   <i class="bi bi-telephone me-1"></i> Teléfono *
                 </label>
                 {{ form.phone }}
-                {% if form.phone.errors %}
-                  <div class="invalid-feedback d-block">
-                    {% for error in form.phone.errors %}{{ error }}{% endfor %}
-                  </div>
-                {% endif %}
               </div>
-
               <div class="col-md-6 mb-3">
                 <label for="{{ form.role.id_for_label }}" class="form-label fw-medium">
                   <i class="bi bi-shield-check me-1"></i> Rol
                 </label>
                 {{ form.role }}
-                {% if form.role.errors %}
+              </div>
+            </div>
+
+            <!-- Contraseña -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label for="{{ form.password1.id_for_label }}" class="form-label">Nueva Contraseña</label>
+                <div class="input-group">
+                  {{ form.password1 }}
+                  <button type="button" class="btn btn-outline-secondary"
+                          onclick="togglePassword('{{ form.password1.id_for_label }}', this)">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+                {% if form.password1.errors %}
                   <div class="invalid-feedback d-block">
-                    {% for error in form.role.errors %}{{ error }}{% endfor %}
+                    {% for error in form.password1.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.password2.id_for_label }}" class="form-label">Confirmar Contraseña</label>
+                <div class="input-group">
+                  {{ form.password2 }}
+                  <button type="button" class="btn btn-outline-secondary"
+                          onclick="togglePassword('{{ form.password2.id_for_label }}', this)">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+                {% if form.password2.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in form.password2.errors %}
+                      <small><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</small>
+                    {% endfor %}
                   </div>
                 {% endif %}
               </div>
             </div>
 
+            <!-- Activo -->
             <div class="row mb-4">
               <div class="col-12">
                 <div class="form-check">
@@ -114,13 +133,7 @@
                   <label class="form-check-label fw-medium" for="{{ form.is_active.id_for_label }}">
                     <i class="bi bi-check-circle me-1"></i> Usuario activo
                   </label>
-                  {% if form.is_active.errors %}
-                    <div class="invalid-feedback d-block">
-                      {% for error in form.is_active.errors %}{{ error }}{% endfor %}
-                    </div>
-                  {% endif %}
                 </div>
-                <small class="text-muted">Los usuarios inactivos no pueden iniciar sesión en el sistema</small>
               </div>
             </div>
 
@@ -167,4 +180,20 @@
     </div>
   </div>
 </div>
+
+<script>
+  function togglePassword(fieldId, btn) {
+    const input = document.getElementById(fieldId);
+    const icon = btn.querySelector("i");
+    if (input.type === "password") {
+      input.type = "text";
+      icon.classList.remove("bi-eye");
+      icon.classList.add("bi-eye-slash");
+    } else {
+      input.type = "password";
+      icon.classList.remove("bi-eye-slash");
+      icon.classList.add("bi-eye");
+    }
+  }
+</script>
 {% endblock %}

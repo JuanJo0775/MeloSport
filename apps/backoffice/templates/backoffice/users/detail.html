@@ -223,7 +223,7 @@
         <div class="card-body">
           <div class="d-grid gap-2">
             {% if perms.auth.change_user %}
-              <a href="{% url 'backoffice:users:update' user_obj.pk %}" class="btn btn-outline-primary">
+              <a href="{% url 'backoffice:users:edit' user_obj.pk %}" class="btn btn-outline-primary">
                 <i class="bi bi-pencil-square me-2"></i> Editar Usuario
               </a>
 

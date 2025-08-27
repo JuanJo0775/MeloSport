@@ -4,12 +4,12 @@
 {% block title %}Usuarios{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb  "Usuarios" %}
+  {% breadcrumb "Usuarios" %}
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <!-- Header con título y acciones -->
+  <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h1 class="h3 mb-1 text-dark">Gestión de Usuarios</h1>
@@ -22,75 +22,55 @@
     {% endif %}
   </div>
 
-  <!-- Estadísticas rápidas -->
+  <!-- Estadísticas -->
   <div class="row g-3 mb-4">
     <div class="col-md-3">
       <div class="card stats-card border-left-primary">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-primary mb-1">{{ total_users }}</h5>
-              <p class="card-text text-muted small mb-0">Total Usuarios</p>
-            </div>
-            <div class="stats-icon">
-              <i class="bi bi-people"></i>
-            </div>
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title text-primary mb-1">{{ total_users }}</h5>
+            <p class="card-text text-muted small mb-0">Total Usuarios</p>
           </div>
+          <div class="stats-icon"><i class="bi bi-people"></i></div>
         </div>
       </div>
     </div>
     <div class="col-md-3">
       <div class="card stats-card border-left-success">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-success mb-1">{{ active_users }}</h5>
-              <p class="card-text text-muted small mb-0">Activos</p>
-            </div>
-            <div class="stats-icon text-success">
-              <i class="bi bi-person-check"></i>
-            </div>
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title text-success mb-1">{{ active_users }}</h5>
+            <p class="card-text text-muted small mb-0">Activos</p>
           </div>
+          <div class="stats-icon text-success"><i class="bi bi-person-check"></i></div>
         </div>
       </div>
     </div>
     <div class="col-md-3">
       <div class="card stats-card border-left-warning">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-warning mb-1">{{ inactive_users }}</h5>
-              <p class="card-text text-muted small mb-0">Inactivos</p>
-            </div>
-            <div class="stats-icon text-warning">
-              <i class="bi bi-person-x"></i>
-            </div>
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title text-warning mb-1">{{ vendors }}</h5>
+            <p class="card-text text-muted small mb-0">Vendedores</p>
           </div>
+          <div class="stats-icon text-warning"><i class="bi bi-person-badge"></i></div>
         </div>
       </div>
     </div>
     <div class="col-md-3">
       <div class="card stats-card border-left-info">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-info mb-1">
-                {% for role in users_by_role %}
-                  {% if role.groups__name == "Administradores" %}{{ role.count }}{% endif %}
-                {% endfor %}
-              </h5>
-              <p class="card-text text-muted small mb-0">Administradores</p>
-            </div>
-            <div class="stats-icon text-info">
-              <i class="bi bi-shield-check"></i>
-            </div>
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title text-info mb-1">{{ admins }}</h5>
+            <p class="card-text text-muted small mb-0">Administradores</p>
           </div>
+          <div class="stats-icon text-info"><i class="bi bi-shield-check"></i></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Filtros y búsqueda -->
+  <!-- Filtros -->
   <div class="card mb-4">
     <div class="card-body">
       <form method="get" class="row g-3">
@@ -102,23 +82,24 @@
                    value="{{ request.GET.q }}" placeholder="Nombre, usuario o email">
           </div>
         </div>
+
         <div class="col-md-3">
           <label for="group" class="form-label">Filtrar por rol</label>
-          <select class="form-select" id="group" name="group">
+          <select class="form-select" id="group" name="group_id">
             <option value="">Todos los roles</option>
-            <option value="Administradores" {% if request.GET.group == "Administradores" %}selected{% endif %}>
-              Administradores
-            </option>
-            <option value="Vendedores" {% if request.GET.group == "Vendedores" %}selected{% endif %}>
-              Vendedores
-            </option>
+            {% for g in groups %}
+              <option value="{{ g.id }}" {% if request.GET.group_id == g.id|stringformat:"s" %}selected{% endif %}>
+                {{ g.name }}
+              </option>
+            {% endfor %}
           </select>
         </div>
+
         <div class="col-md-2 d-flex align-items-end">
           <button type="submit" class="btn btn-primary me-2">
             <i class="bi bi-funnel me-1"></i>Filtrar
           </button>
-          <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary">
+          <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary" title="Restablecer">
             <i class="bi bi-arrow-clockwise"></i>
           </a>
         </div>
@@ -126,7 +107,7 @@
     </div>
   </div>
 
-  <!-- Tabla de usuarios -->
+  <!-- Tabla -->
   <div class="card shadow-sm">
     <div class="card-header bg-white">
       <h6 class="mb-0">
@@ -166,19 +147,15 @@
                   </div>
                 </div>
               </td>
-              <td>
-                <span class="text-muted">{{ user.email|default:"Sin email" }}</span>
-              </td>
+
+              <td><span class="text-muted">{{ user.email|default:"Sin email" }}</span></td>
+
               <td>
                 {% for group in user.groups.all %}
-                  {% if group.name == "Administradores" %}
-                    <span class="badge bg-danger">
-                      <i class="bi bi-shield-fill me-1"></i>{{ group.name }}
-                    </span>
-                  {% elif group.name == "Vendedores" %}
-                    <span class="badge bg-primary">
-                      <i class="bi bi-person-badge me-1"></i>{{ group.name }}
-                    </span>
+                  {% if group.name|lower == "administrador" %}
+                    <span class="badge bg-danger"><i class="bi bi-shield-fill me-1"></i>{{ group.name }}</span>
+                  {% elif group.name|lower == "vendedor" %}
+                    <span class="badge bg-primary"><i class="bi bi-person-badge me-1"></i>{{ group.name }}</span>
                   {% else %}
                     <span class="badge bg-secondary">{{ group.name }}</span>
                   {% endif %}
@@ -186,43 +163,38 @@
                   <span class="text-muted small">Sin rol</span>
                 {% endfor %}
               </td>
+
               <td>
                 {% if user.is_active %}
-                  <span class="badge bg-success">
-                    <i class="bi bi-check-circle me-1"></i>Activo
-                  </span>
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Activo</span>
                 {% else %}
-                  <span class="badge bg-danger">
-                    <i class="bi bi-x-circle me-1"></i>Inactivo
-                  </span>
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Inactivo</span>
                 {% endif %}
               </td>
+
               <td>
                 <span class="text-muted small">
-                  {% if user.last_login %}
-                    {{ user.last_login|date:"d/m/Y H:i" }}
-                  {% else %}
-                    Nunca
-                  {% endif %}
+                  {% if user.last_login %}{{ user.last_login|date:"d/m/Y H:i" }}{% else %}Nunca{% endif %}
                 </span>
               </td>
+
               <td class="text-center">
                 <div class="btn-group" role="group">
                   {% if perms.auth.view_user %}
-                    <a href="{% url 'backoffice:users:detail' user.pk %}"
-                       class="btn btn-sm btn-outline-info" title="Ver detalles">
+                    <a href="{% url 'backoffice:users:detail' user.pk %}" class="btn btn-sm btn-outline-success action-btn" title="Ver detalles">
                       <i class="bi bi-eye"></i>
                     </a>
                   {% endif %}
                   {% if perms.auth.change_user %}
-                    <a href="{% url 'backoffice:users:edit' user.pk %}"
-                       class="btn btn-sm btn-outline-warning" title="Editar">
+                    <a href="{% url 'backoffice:users:edit' user.pk %}" class="btn btn-sm btn-outline-primary action-btn" title="Editar">
                       <i class="bi bi-pencil"></i>
+                    </a>
+                    <a href="{% url 'backoffice:users:set_password' user.pk %}" class="btn btn-sm btn-outline-warning action-btn" title="Cambiar contraseña">
+                      <i class="bi bi-key"></i>
                     </a>
                   {% endif %}
                   {% if perms.auth.delete_user and user != request.user %}
-                    <a href="{% url 'backoffice:users:delete' user.pk %}"
-                       class="btn btn-sm btn-outline-danger" title="Eliminar">
+                    <a href="{% url 'backoffice:users:delete' user.pk %}" class="btn btn-sm btn-outline-danger action-btn" title="Eliminar">
                       <i class="bi bi-trash"></i>
                     </a>
                   {% endif %}
@@ -249,46 +221,31 @@
       </div>
     </div>
 
-    <!-- Paginación -->
     {% if is_paginated %}
-    <div class="card-footer bg-white">
-      <nav aria-label="Paginación de usuarios">
-        <ul class="pagination pagination-sm justify-content-center mb-0">
-          {% if page_obj.has_previous %}
-            <li class="page-item">
-              <a class="page-link" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group %}&group={{ request.GET.group }}{% endif %}">
-                <i class="bi bi-chevron-double-left"></i>
-              </a>
-            </li>
-            <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group %}&group={{ request.GET.group }}{% endif %}">
-                <i class="bi bi-chevron-left"></i>
-              </a>
-            </li>
-          {% endif %}
-
-          <li class="page-item active">
-            <span class="page-link">
-              Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-            </span>
-          </li>
-
-          {% if page_obj.has_next %}
-            <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group %}&group={{ request.GET.group }}{% endif %}">
-                <i class="bi bi-chevron-right"></i>
-              </a>
-            </li>
-            <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group %}&group={{ request.GET.group }}{% endif %}">
-                <i class="bi bi-chevron-double-right"></i>
-              </a>
-            </li>
-          {% endif %}
-        </ul>
-      </nav>
-    </div>
+      <div class="card-footer bg-white">
+        <nav aria-label="Paginación de usuarios">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            {% if page_obj.has_previous %}
+              <li class="page-item"><a class="page-link" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group_id %}&group_id={{ request.GET.group_id }}{% endif %}"><i class="bi bi-chevron-double-left"></i></a></li>
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group_id %}&group_id={{ request.GET.group_id }}{% endif %}"><i class="bi bi-chevron-left"></i></a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group_id %}&group_id={{ request.GET.group_id }}{% endif %}"><i class="bi bi-chevron-right"></i></a></li>
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.group_id %}&group_id={{ request.GET.group_id }}{% endif %}"><i class="bi bi-chevron-double-right"></i></a></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
     {% endif %}
   </div>
 </div>
+
+<style>
+.action-btn { transition: all 0.2s ease-in-out; }
+.action-btn.btn-outline-primary:hover { background-color: #0d6efd; color: white; }
+.action-btn.btn-outline-success:hover { background-color: #28a745; color: white; }
+.action-btn.btn-outline-warning:hover { background-color: #ffc107; color: black; }
+.action-btn.btn-outline-danger:hover { background-color: #dc3545; color: white; }
+</style>
 {% endblock %}
