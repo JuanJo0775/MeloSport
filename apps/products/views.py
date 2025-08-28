@@ -10,6 +10,7 @@ from django_filters.views import FilterView
 from rest_framework import viewsets
 from django.forms import inlineformset_factory
 from django.db import transaction
+from django.views.decorators.http import require_POST
 
 from apps.api.filters import ProductFilter
 from apps.products.models import Product, ProductVariant, ProductImage
@@ -18,14 +19,25 @@ from apps.users.models import AuditLog
 from .serializers import ProductSerializer
 
 
-# Formset para imágenes (se usa en create/update)
+# ================================
+# Formsets
+# ================================
 ProductImageFormSet = inlineformset_factory(
     Product,
     ProductImage,
     form=ProductImageForm,
-    fields=('image', 'is_main', 'order'),
+    fields=("image", "is_main", "order"),
     extra=0,
     can_delete=True
+)
+
+ProductVariantFormSet = inlineformset_factory(
+    Product,
+    ProductVariant,
+    form=ProductVariantForm,
+    extra=1,
+    can_delete=True,
+    fields=("size", "color", "price_modifier", "stock", "is_active"),  # 👈 declaramos explícitamente
 )
 
 
@@ -73,10 +85,23 @@ class ProductDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
+        # imágenes
         images_rel = getattr(self.object, "images", None) or getattr(self.object, "productimage_set", None)
         context["images"] = images_rel.all() if images_rel else []
-        context["variants"] = ProductVariant.objects.filter(product=self.object)
+
+        # variantes existentes
+        context["variants"] = self.object.variants.all()
+
+        # formset de variantes (para edición en bloque)
+        if self.request.method == "POST":
+            context["variant_formset"] = ProductVariantFormSet(self.request.POST, instance=self.object)
+        else:
+            context["variant_formset"] = ProductVariantFormSet(instance=self.object)
+
+        # formulario rápido (para añadir una variante desde el detalle)
         context["variant_form"] = ProductVariantForm()
+
         return context
 
 
@@ -88,7 +113,6 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Añadir image_formset (bind si es POST)
         if self.request.method == "POST":
             context["image_formset"] = ProductImageFormSet(self.request.POST, self.request.FILES)
         else:
@@ -96,22 +120,16 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         return context
 
     def form_valid(self, form):
-        # Obtenemos formset desde contexto (estará bind si vinimos por POST)
         image_formset = self.get_context_data().get("image_formset")
 
-        # Guardado atómico: producto + imágenes
         with transaction.atomic():
             self.object = form.save()
-
-            # Guardar imágenes si el formset es válido
             if image_formset and image_formset.is_valid():
                 image_formset.instance = self.object
                 image_formset.save()
             elif image_formset and not image_formset.is_valid():
-                # Re-render con errores del formset
                 return self.form_invalid(form)
 
-            # Auditoría
             AuditLog.log_action(
                 request=self.request,
                 action="create",
@@ -120,18 +138,15 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
                 description=f"Producto '{self.object.name}' creado"
             )
 
-        # Si tiene variantes vamos al detalle para que el usuario agregue variantes
         if self.object.has_variants:
             messages.info(self.request, "Producto creado. Ahora puede agregar sus variantes.")
-            return redirect("products:product_detail", pk=self.object.pk)
+            return redirect("backoffice:products:product_detail", pk=self.object.pk)
 
         messages.success(self.request, "Producto creado correctamente.")
-        return redirect("products:product_list")
+        return redirect("backoffice:products:product_list")
 
     def form_invalid(self, form):
-        # Re-render con form y formset (si existe)
         context = self.get_context_data(form=form)
-        # si no existía image_formset en contexto (p. ej. error no-POST), creadla ahora bind a POST
         if "image_formset" not in context:
             context["image_formset"] = ProductImageFormSet(self.request.POST or None, self.request.FILES or None)
         return self.render_to_response(context)
@@ -142,11 +157,10 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     model = Product
     form_class = ProductForm
     template_name = "backoffice/products/update.html"
-    success_url = reverse_lazy("products:product_list")
+    success_url = reverse_lazy("backoffice:products:product_list")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # image formset bound a la instancia del producto
         if self.request.method == "POST":
             context["image_formset"] = ProductImageFormSet(self.request.POST, self.request.FILES, instance=self.object)
         else:
@@ -157,15 +171,13 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         image_formset = self.get_context_data().get("image_formset")
 
         with transaction.atomic():
-            response = super().form_valid(form)  # guarda self.object
-            # guardar formset de imágenes
+            response = super().form_valid(form)
             if image_formset and image_formset.is_valid():
                 image_formset.instance = self.object
                 image_formset.save()
             elif image_formset and not image_formset.is_valid():
                 return self.form_invalid(form)
 
-            # Auditoría
             AuditLog.log_action(
                 request=self.request,
                 action="update",
@@ -188,7 +200,7 @@ class ProductDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
     permission_required = "products.delete_product"
     model = Product
     template_name = "backoffice/products/confirm_delete.html"
-    success_url = reverse_lazy("products:product_list")
+    success_url = reverse_lazy("backoffice:products:product_list")
 
     def delete(self, request, *args, **kwargs):
         self.object = self.get_object()
@@ -244,13 +256,8 @@ class VariantCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
     template_name = "backoffice/products/variant_create.html"
 
     def dispatch(self, request, *args, **kwargs):
-        # comprobar que el product existe antes de mostrar el formulario
         self.product = get_object_or_404(Product, pk=self.kwargs.get("pk"))
         return super().dispatch(request, *args, **kwargs)
-
-    def get_initial(self):
-        # si queremos prellenar algo basándonos en el producto padre, hacerlo aquí
-        return {}
 
     def form_valid(self, form):
         form.instance.product = self.product
@@ -266,7 +273,7 @@ class VariantCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         return response
 
     def get_success_url(self):
-        return reverse("products:product_detail", kwargs={"pk": self.product.pk})
+        return reverse("backoffice:products:product_detail", kwargs={"pk": self.product.pk})
 
 
 class VariantUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -288,7 +295,7 @@ class VariantUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         return response
 
     def get_success_url(self):
-        return reverse("products:product_detail", kwargs={"pk": self.object.product.pk})
+        return reverse("backoffice:products:product_detail", kwargs={"pk": self.object.product.pk})
 
 
 class VariantDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
@@ -312,7 +319,32 @@ class VariantDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
         return response
 
     def get_success_url(self):
-        return reverse("products:product_detail", kwargs={"pk": self.object.product.pk})
+        return reverse("backoffice:products:product_detail", kwargs={"pk": self.object.product.pk})
+
+
+# ================================
+# GESTIÓN INLINE DE VARIANTES EN PRODUCT DETAIL
+# ================================
+@require_POST
+def product_variants_manage(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    formset = ProductVariantFormSet(request.POST, instance=product)
+
+    if formset.is_valid():
+        formset.save()
+        AuditLog.log_action(
+            request=request,
+            action="update",
+            model=ProductVariant,
+            obj=product,
+            description=f"Variantes de producto '{product.name}' gestionadas desde detalle"
+        )
+        messages.success(request, "Variantes actualizadas correctamente.")
+    else:
+        print("Errores en variantes:", formset.errors)
+        messages.error(request, "Error al actualizar variantes. Revise los formularios.")
+
+    return redirect("backoffice:products:product_detail", pk=product.pk)
 
 
 # ================================
@@ -338,4 +370,4 @@ def variant_quick_create(request, pk):
         else:
             messages.error(request, "Error al crear variante. Verifique el formulario.")
 
-    return redirect("products:product_detail", pk=product.pk)
+    return redirect("backoffice:products:product_detail", pk=product.pk)
