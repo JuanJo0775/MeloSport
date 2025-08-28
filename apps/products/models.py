@@ -83,23 +83,7 @@ class Product(models.Model):
             return f"{self.name} ({self.sku})"
         return self.name
 
-    def save(self, *args, **kwargs):
-        """Guarda el producto y maneja las relaciones después"""
-        creating = not self.pk  # Verifica si es creación nueva
 
-        # Generar SKU si no existe
-        if not self.sku:
-            self.sku = self.generate_product_sku()
-
-        # Guardar primero el producto
-        super().save(*args, **kwargs)
-
-        # Si es creación nueva, guardar relaciones ManyToMany después
-        if creating and hasattr(self, '_pending_m2m'):
-            for fieldname, values in self._pending_m2m.items():
-                field = getattr(self, fieldname)
-                field.set(values)
-            del self._pending_m2m
 
     def generate_product_sku(self):
         """Genera un SKU base para el producto"""
@@ -122,6 +106,11 @@ class Product(models.Model):
         if self.variants.exists():
             return sum(v.stock for v in self.variants.all())
         return self._stock
+
+    @stock.setter
+    def stock(self, value):
+        """Permite asignar stock como si fuera un campo normal"""
+        self._stock = value
 
 
     @property
@@ -309,7 +298,8 @@ class InventoryMovement(models.Model):
             self.variant.stock += self.quantity if self.movement_type == 'in' else -self.quantity
             self.variant.save()
         else:
-            self.product.stock += self.quantity if self.movement_type == 'in' else -self.quantity
+            # usar el campo real de BD
+            self.product._stock += self.quantity if self.movement_type == 'in' else -self.quantity
             self.product.save()
 
     @property
