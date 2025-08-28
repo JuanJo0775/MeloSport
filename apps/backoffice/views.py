@@ -15,12 +15,10 @@ from apps.users.models import AuditLog
 # ==========================
 @login_required(login_url="/backoffice/login/")
 def dashboard(request):
-    last_login = request.user.last_login
-    current_login = timezone.localtime(timezone.now())  # 👈 convierte UTC → local
-
+    user = request.user
     context = {
-        "last_login": timezone.localtime(last_login) if last_login else None,
-        "current_login": current_login,
+        "last_login": user.last_access,       # 👈 login anterior
+        "current_login": user.current_login,  # 👈 login actual
         "stats": {
             "categories_count": Category.objects.count(),
             "absolute_categories_count": AbsoluteCategory.objects.count(),
@@ -42,7 +40,7 @@ def login_view(request):
 
         if user is not None and user.is_active:
             login(request, user)
-
+            user.update_login_timestamps()
             # Registrar login exitoso
             AuditLog.log_action(
                 request=request,
@@ -101,7 +99,7 @@ def logout_view(request):
 # Vistas protegidas de ejemplo
 # ==========================
 @login_required(login_url="/backoffice/login/")
-@permission_required("productos.view_producto", raise_exception=True)
+@permission_required("products.view_product", raise_exception=True)
 def productos(request):
     return render(request, "backoffice/productos.html")
 

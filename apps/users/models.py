@@ -6,6 +6,7 @@ from django.forms.models import model_to_dict
 from django.forms.utils import ErrorDict, ErrorList
 from django.db.models import Model, QuerySet
 from django.http import QueryDict
+from django.utils import timezone
 import json
 
 
@@ -33,10 +34,13 @@ class Role(models.Model):
 
 
 class User(AbstractUser):
-    roles = models.ManyToManyField(Role, blank=True)
+    roles = models.ManyToManyField("Role", blank=True)
     phone = models.CharField(max_length=20, blank=True)
     is_active = models.BooleanField(default=True)
+
     last_access = models.DateTimeField(null=True, blank=True)
+
+    current_login = models.DateTimeField(null=True, blank=True)
 
     # Sobrescribimos groups y user_permissions para evitar conflictos
     groups = models.ManyToManyField(
@@ -63,6 +67,16 @@ class User(AbstractUser):
     def __str__(self):
         return self.get_full_name() or self.username
 
+    # 🔥 Método para actualizar las fechas de login
+    def update_login_timestamps(self):
+        """
+        Copia current_login en last_access (histórico),
+        y actualiza current_login con el login actual.
+        """
+        if self.current_login:
+            self.last_access = self.current_login
+        self.current_login = timezone.now()
+        self.save(update_fields=["last_access", "current_login"])
 
 class AuditLog(models.Model):
     ACTION_CHOICES = [
