@@ -3,6 +3,12 @@ from .models import Product, ProductVariant, ProductImage
 
 
 class ProductForm(forms.ModelForm):
+    """
+    Formulario de Producto
+    - Si tiene variantes, el stock manual se fuerza a 0
+    - Si no tiene variantes, se exige un stock manual
+    """
+
     class Meta:
         model = Product
         fields = [
@@ -12,7 +18,7 @@ class ProductForm(forms.ModelForm):
             "tax_percentage",
             "markup_percentage",
             "price",
-            "_stock",  # 👈 importante: usar siempre _stock en el form
+            "_stock",  # 👈 siempre usamos _stock (campo real en BD)
             "min_stock",
             "status",
             "categories",
@@ -20,7 +26,6 @@ class ProductForm(forms.ModelForm):
             "has_variants",
         ]
         widgets = {
-            "sku": forms.TextInput(attrs={"class": "form-control", "placeholder": "SKU único"}),
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre del producto"}),
             "description": forms.Textarea(
                 attrs={"class": "form-control", "rows": 3, "placeholder": "Descripción del producto"}
@@ -50,13 +55,20 @@ class ProductForm(forms.ModelForm):
         stock = cleaned_data.get("_stock")
 
         if has_variants:
+            # Si tiene variantes, forzamos stock manual a 0
             if stock and stock > 0:
                 self.add_error("_stock", "Si el producto tiene variantes, el stock manual no se puede asignar aquí.")
             cleaned_data["_stock"] = 0
+        else:
+            # Si no tiene variantes, exigir stock manual
+            if stock is None or stock < 0:
+                self.add_error("_stock", "Debes asignar un stock válido cuando el producto no tiene variantes.")
         return cleaned_data
 
 
 class ProductVariantForm(forms.ModelForm):
+    """Formulario para variantes del producto"""
+
     class Meta:
         model = ProductVariant
         fields = ["size", "color", "price_modifier", "stock", "is_active"]
@@ -64,7 +76,7 @@ class ProductVariantForm(forms.ModelForm):
             "size": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej: M, L, XL"}),
             "color": forms.TextInput(attrs={"class": "form-control", "placeholder": "Color"}),
             "price_modifier": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "stock": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "1"}),  # stock entero
+            "stock": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
