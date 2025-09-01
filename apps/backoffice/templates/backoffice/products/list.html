@@ -1,6 +1,7 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
 {% load static %}
+{% load money %}
 
 {% block title %}Productos - Melosport{% endblock %}
 
@@ -180,7 +181,7 @@
                 </div>
               </td>
               <td class="text-end">
-                <strong>${{ product.price|floatformat:2 }}</strong>
+                <strong>{{ product.price|cop }}</strong>
               </td>
               <td class="text-center">
                 {% if product.stock <= product.min_stock %}

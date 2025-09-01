@@ -2,6 +2,7 @@
 
 {% block title %}Dashboard - Panel Administrativo - Melosport{% endblock %}
 {% load friendly_datetime %}
+{% load money %}
 
 {% load breadcrumbs %}
 {% block breadcrumb %}
@@ -74,7 +75,7 @@
                                 Valor Inventario
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ${{ stats.inventory_value|floatformat:0 }}
+                                {{ stats.inventory_value|cop }}
                             </div>
                         </div>
                         <div class="col-auto">
