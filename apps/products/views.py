@@ -1,4 +1,6 @@
 # apps/products/views.py
+from decimal import Decimal, InvalidOperation
+from django.db.models import Q, Count
 from django.contrib.auth import authenticate
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy, reverse
@@ -21,7 +23,7 @@ from .serializers import ProductSerializer
 
 
 # ================================
-# Formsets
+# Formsets helpers
 # ================================
 ProductImageFormSet = inlineformset_factory(
     Product,
@@ -29,17 +31,24 @@ ProductImageFormSet = inlineformset_factory(
     form=ProductImageForm,
     fields=("image", "is_main", "order"),
     extra=1,
-    can_delete=True
+    can_delete=True,
 )
 
-ProductVariantFormSet = inlineformset_factory(
-    Product,
-    ProductVariant,
-    form=ProductVariantForm,
-    extra=1,
-    can_delete=True,
-    fields=("size", "color", "price_modifier", "stock", "is_active"),  # 👈 declaramos explícitamente
-)
+
+def make_product_variant_formset(request, **kwargs):
+    """Factory dinámico para variantes según permisos del usuario."""
+    extra_forms = 1 if request.user.has_perm("products.add_productvariant") else 0
+    can_delete = request.user.has_perm("products.delete_productvariant")
+
+    return inlineformset_factory(
+        Product,
+        ProductVariant,
+        form=ProductVariantForm,
+        extra=extra_forms,
+        can_delete=can_delete,
+        fields=("size", "color", "price_modifier", "stock", "is_active"),
+        **kwargs,
+    )
 
 
 # ================================
@@ -54,27 +63,71 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 # ================================
 # PRODUCTO VIEWS (Backoffice)
 # ================================
-class ProductListView(LoginRequiredMixin, PermissionRequiredMixin, FilterView):
+class ProductListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = "products.view_product"
     model = Product
     template_name = "backoffice/products/list.html"
     context_object_name = "products"
-    filterset_class = ProductFilter
-    paginate_by = 20
+    paginate_by = 25  # ajusta si quieres
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        q = self.request.GET.get("q", "")
+        qs = Product.objects.all().prefetch_related("variants", "images")
+        request = self.request
+
+        q = request.GET.get("q", "").strip()
+        price_min = request.GET.get("price_min")
+        price_max = request.GET.get("price_max")
+        has_variants = request.GET.get("has_variants")
+        status = request.GET.get("status")
+
         if q:
-            qs = qs.filter(name__icontains=q)
-        return qs
+            qs = qs.filter(Q(name__icontains=q) | Q(sku__icontains=q))
+
+        # Precios
+        if price_min:
+            try:
+                pm = Decimal(price_min)
+                qs = qs.filter(price__gte=pm)
+            except (InvalidOperation, ValueError):
+                pass
+        if price_max:
+            try:
+                pM = Decimal(price_max)
+                qs = qs.filter(price__lte=pM)
+            except (InvalidOperation, ValueError):
+                pass
+
+        # Variantes
+        qs = qs.annotate(_variant_count=Count("variants", distinct=True))
+        if has_variants == "true":
+            qs = qs.filter(_variant_count__gt=0)
+        elif has_variants == "false":
+            qs = qs.filter(_variant_count__lte=0)
+
+        # Estado
+        if status:
+            qs = qs.filter(status=status)
+
+        return qs.order_by("name")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # añadir thumbnails seguros para la lista
-        for product in context.get("products", []):
-            images_rel = getattr(product, "images", None) or getattr(product, "productimage_set", None)
-            product._thumbs = images_rel.all() if images_rel else []
+        qs_filtered = self.object_list
+
+        context["productos_activos"] = qs_filtered.filter(status="active").count()
+        context["productos_inactivos"] = qs_filtered.filter(status="inactive").count()
+        context["variantes_count"] = ProductVariant.objects.filter(
+            product__in=qs_filtered.values_list("pk", flat=True)
+        ).count()
+        context["imagenes_count"] = ProductImage.objects.filter(
+            product__in=qs_filtered.values_list("pk", flat=True)
+        ).count()
+
+        # Mantener querystring en la paginación
+        qs = self.request.GET.copy()
+        if "page" in qs:
+            qs.pop("page")
+        context["querystring"] = qs.urlencode()
         return context
 
 
@@ -91,16 +144,17 @@ class ProductDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         images_rel = getattr(self.object, "images", None) or getattr(self.object, "productimage_set", None)
         context["images"] = images_rel.all() if images_rel else []
 
-        # variantes existentes
+        # variantes
         context["variants"] = self.object.variants.all()
 
-        # formset de variantes (para edición en bloque)
+        # formset variantes
+        VariantFormSet = make_product_variant_formset(self.request)
         if self.request.method == "POST":
-            context["variant_formset"] = ProductVariantFormSet(self.request.POST, instance=self.object)
+            context["variant_formset"] = VariantFormSet(self.request.POST, instance=self.object)
         else:
-            context["variant_formset"] = ProductVariantFormSet(instance=self.object)
+            context["variant_formset"] = VariantFormSet(instance=self.object)
 
-        # formulario rápido (para añadir una variante desde el detalle)
+        # form rápido de variante
         context["variant_form"] = ProductVariantForm()
 
         return context
@@ -137,7 +191,7 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
                 action="create",
                 model=self.model,
                 obj=self.object,
-                description=f"Producto '{self.object.name}' creado"
+                description=f"Producto '{self.object.name}' creado",
             )
 
         if self.object.has_variants:
@@ -163,19 +217,13 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        prefix = "images"  # 👈 define el prefijo explícito
+        prefix = "images"
         if self.request.method == "POST":
             context["image_formset"] = ProductImageFormSet(
-                self.request.POST,
-                self.request.FILES,
-                instance=self.object,
-                prefix=prefix
+                self.request.POST, self.request.FILES, instance=self.object, prefix=prefix
             )
         else:
-            context["image_formset"] = ProductImageFormSet(
-                instance=self.object,
-                prefix=prefix
-            )
+            context["image_formset"] = ProductImageFormSet(instance=self.object, prefix=prefix)
         return context
 
     def form_valid(self, form):
@@ -194,7 +242,7 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
                 action="update",
                 model=self.model,
                 obj=self.object,
-                description=f"Producto '{self.object.name}' actualizado"
+                description=f"Producto '{self.object.name}' actualizado",
             )
 
         messages.success(self.request, "Producto actualizado correctamente.")
@@ -203,7 +251,9 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     def form_invalid(self, form):
         context = self.get_context_data(form=form)
         if "image_formset" not in context:
-            context["image_formset"] = ProductImageFormSet(self.request.POST or None, self.request.FILES or None, instance=self.object)
+            context["image_formset"] = ProductImageFormSet(
+                self.request.POST or None, self.request.FILES or None, instance=self.object
+            )
         return self.render_to_response(context)
 
 
@@ -234,7 +284,7 @@ class ProductDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
                     action="delete",
                     model=self.model,
                     obj=self.object,
-                    description=f"Producto '{nombre}' eliminado"
+                    description=f"Producto '{nombre}' eliminado",
                 )
                 messages.success(request, "Producto eliminado correctamente.")
                 return response
@@ -296,7 +346,7 @@ class VariantCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
             action="create",
             model=self.model,
             obj=self.object,
-            description=f"Variante '{self.object.sku}' creada para producto '{self.product.name}'"
+            description=f"Variante '{self.object.sku}' creada para producto '{self.product.name}'",
         )
         messages.success(self.request, "Variante creada correctamente.")
         return response
@@ -318,7 +368,7 @@ class VariantUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             action="update",
             model=self.model,
             obj=self.object,
-            description=f"Variante '{self.object.sku}' actualizada"
+            description=f"Variante '{self.object.sku}' actualizada",
         )
         messages.success(self.request, "Variante actualizada correctamente.")
         return response
@@ -354,7 +404,7 @@ class VariantDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
                     action="delete",
                     model=self.model,
                     obj=self.object,
-                    description=f"Variante '{sku}' eliminada del producto '{product.name}'"
+                    description=f"Variante '{sku}' eliminada del producto '{product.name}'",
                 )
                 messages.success(request, "Variante eliminada correctamente.")
                 return response
@@ -368,13 +418,15 @@ class VariantDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
     def get_success_url(self):
         return reverse("backoffice:products:product_detail", kwargs={"pk": self.object.product.pk})
 
+
 # ================================
 # GESTIÓN INLINE DE VARIANTES EN PRODUCT DETAIL
 # ================================
 @require_POST
 def product_variants_manage(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    formset = ProductVariantFormSet(request.POST, instance=product)
+    VariantFormSet = make_product_variant_formset(request)
+    formset = VariantFormSet(request.POST, instance=product)
 
     if formset.is_valid():
         formset.save()
@@ -383,7 +435,7 @@ def product_variants_manage(request, pk):
             action="update",
             model=ProductVariant,
             obj=product,
-            description=f"Variantes de producto '{product.name}' gestionadas desde detalle"
+            description=f"Variantes de producto '{product.name}' gestionadas desde detalle",
         )
         messages.success(request, "Variantes actualizadas correctamente.")
     else:
@@ -410,7 +462,7 @@ def variant_quick_create(request, pk):
                 action="create",
                 model=ProductVariant,
                 obj=variant,
-                description=f"Variante rápida '{variant.sku}' creada para producto '{product.name}'"
+                description=f"Variante rápida '{variant.sku}' creada para producto '{product.name}'",
             )
             messages.success(request, "Variante creada correctamente.")
         else:

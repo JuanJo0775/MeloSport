@@ -31,6 +31,12 @@
 
     <!-- Acciones rápidas -->
     <div class="d-flex gap-2">
+      <a href="{% url 'backoffice:products:product_detail' object.product.pk %}"
+         class="btn btn-outline-secondary"
+         data-bs-toggle="tooltip" title="Volver al producto">
+        <i class="bi bi-arrow-left me-1"></i>
+        Volver
+      </a>
       <a href="{% url 'backoffice:products:variant_update' object.pk %}"
          class="btn btn-outline-secondary"
          data-bs-toggle="tooltip" title="Editar variante">
