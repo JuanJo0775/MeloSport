@@ -244,75 +244,116 @@
             </div>
           </div>
 
-          <!-- 4. Imágenes -->
-          <div class="tab-pane fade" id="images" role="tabpanel">
-            <div class="mb-4">
-              <h5 class="fw-semibold mb-3">
-                <i class="bi bi-images me-2 text-primary"></i>Galería de Imágenes
-              </h5>
+            <!-- 4. Imágenes -->
+            <div class="tab-pane fade" id="images" role="tabpanel">
+              <div class="mb-4">
+                <h5 class="fw-semibold mb-3">
+                  <i class="bi bi-images me-2 text-primary"></i>Galería de Imágenes
+                </h5>
 
-              {{ image_formset.management_form }}
-              <div id="image-empty-form" style="display:none;">
-                {{ image_formset.empty_form.as_p }}
-              </div>
+                {{ image_formset.management_form }}
+                {% if image_formset.non_form_errors %}
+                  <div class="alert alert-danger py-2 small mb-3">
+                    {% for error in image_formset.non_form_errors %}
+                      <div>{{ error }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
 
-              <div class="row g-3" id="image-gallery">
-                {% for form in image_formset %}
+                <!-- Empty form (se clona con JS) -->
+                <div id="image-empty-form" style="display:none;">
                   <div class="col-lg-3 col-md-4 col-sm-6 image-card">
                     <div class="card h-100 shadow-sm border-0">
                       <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
-                        {% if form.instance.pk and form.instance.image %}
-                          <img src="{{ form.instance.image.url }}" class="img-fluid preview gallery-thumb">
-                        {% else %}
-                          <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview gallery-thumb">
-                        {% endif %}
+                        <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview gallery-thumb">
                       </div>
                       <div class="card-body p-3">
                         <div class="mb-2">
-                          {{ form.image }}
-                          {% if form.image.errors %}
-                            <div class="invalid-feedback d-block">{{ form.image.errors }}</div>
-                          {% endif %}
+                          {{ image_formset.empty_form.image }}
                         </div>
-
                         <div class="row g-2 mb-2">
                           <div class="col-6">
                             <div class="form-check form-check-sm">
-                              {{ form.is_main }}
-                              <label class="form-check-label small fw-semibold" for="{{ form.is_main.id_for_label }}">
+                              {{ image_formset.empty_form.is_main }}
+                              <label class="form-check-label small fw-semibold" for="{{ image_formset.empty_form.is_main.id_for_label }}">
                                 Principal
                               </label>
                             </div>
                           </div>
                           <div class="col-6">
-                            <label class="form-label small fw-semibold" for="{{ form.order.id_for_label }}">Orden</label>
-                            {{ form.order }}
+                            <label class="form-label small fw-semibold" for="{{ image_formset.empty_form.order.id_for_label }}">Orden</label>
+                            {{ image_formset.empty_form.order }}
                           </div>
                         </div>
-
-                        {{ form.DELETE }}
+                        {{ image_formset.empty_form.DELETE }}
                       </div>
                       <div class="card-footer bg-light p-2 text-center">
-                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete"
-                                data-bs-toggle="tooltip" title="Eliminar imagen">
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete">
                           <i class="bi bi-trash me-1"></i>Eliminar
                         </button>
                       </div>
                     </div>
                   </div>
-                {% endfor %}
-              </div>
+                </div>
 
-              <div class="mt-4 text-center">
-                <button type="button" class="btn btn-outline-primary" id="add-image">
-                  <i class="bi bi-plus-circle me-1"></i>Agregar Imagen
-                </button>
-                <small class="form-text text-muted d-block mt-2">
-                  Puede definir una imagen principal y el orden de aparición
-                </small>
+                <!-- Galería existente -->
+                <div class="row g-3" id="image-gallery">
+                  {% for form in image_formset %}
+                    <div class="col-lg-3 col-md-4 col-sm-6 image-card">
+                      <div class="card h-100 shadow-sm border-0">
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                          {% if form.instance.pk and form.instance.image %}
+                            <img src="{{ form.instance.image.url }}" class="img-fluid preview gallery-thumb">
+                          {% else %}
+                            <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview gallery-thumb">
+                          {% endif %}
+                        </div>
+                        <div class="card-body p-3">
+                          <div class="mb-2">
+                            {{ form.image }}
+                            {% if form.image.errors %}
+                              <div class="invalid-feedback d-block">{{ form.image.errors }}</div>
+                            {% endif %}
+                          </div>
+
+                          <div class="row g-2 mb-2">
+                            <div class="col-6">
+                              <div class="form-check form-check-sm">
+                                {{ form.is_main }}
+                                <label class="form-check-label small fw-semibold" for="{{ form.is_main.id_for_label }}">
+                                  Principal
+                                </label>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <label class="form-label small fw-semibold" for="{{ form.order.id_for_label }}">Orden</label>
+                              {{ form.order }}
+                            </div>
+                          </div>
+
+                          {{ form.DELETE }}
+                        </div>
+                        <div class="card-footer bg-light p-2 text-center">
+                          <button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-bs-toggle="tooltip" title="Eliminar imagen">
+                            <i class="bi bi-trash me-1"></i>Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+
+                <div class="mt-4 text-center">
+                  <button type="button" class="btn btn-outline-primary" id="add-image">
+                    <i class="bi bi-plus-circle me-1"></i>Agregar Imagen
+                  </button>
+                  <small class="form-text text-muted d-block mt-2">
+                    Puede definir una imagen principal y el orden de aparición
+                  </small>
+                </div>
               </div>
             </div>
-          </div>
+
 
           <!-- 5. Confirmar -->
           <div class="tab-pane fade" id="confirm" role="tabpanel">
@@ -346,9 +387,10 @@
         <div class="row mt-5">
           <div class="col-12">
             <div class="d-flex justify-content-between align-items-center border-top pt-4">
-              <a href="{% url 'backoffice:products:product_list' %}" class="btn btn-outline-secondary px-4">
-                <i class="bi bi-x-circle me-1"></i>Cancelar
-              </a>
+                <a href="{% url 'backoffice:products:product_detail' object.pk %}"
+                   class="btn btn-outline-secondary px-4">
+                  <i class="bi bi-x-circle me-1"></i>Cancelar
+                </a>
               <button type="submit" class="btn btn-success px-4">
                 <i class="bi bi-check-circle me-1"></i>Actualizar Producto
               </button>

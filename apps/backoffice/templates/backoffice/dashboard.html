@@ -41,8 +41,9 @@
       </div>
     </div>
 
-    <!-- Tarjetas de estadísticas principales -->
+   <!-- Tarjetas de estadísticas principales -->
     <div class="row mb-4">
+        <!-- Total Productos -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card stats-card border-left-primary h-100">
                 <div class="card-body">
@@ -51,7 +52,9 @@
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Productos
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">1,247</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ stats.products_count }}
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-box stats-icon"></i>
@@ -61,6 +64,7 @@
             </div>
         </div>
 
+        <!-- Valor Inventario -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card stats-card border-left-success h-100">
                 <div class="card-body">
@@ -69,7 +73,9 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Valor Inventario
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">$89,420</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ stats.inventory_value|floatformat:0 }}
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-currency-dollar stats-icon text-success"></i>
@@ -79,6 +85,7 @@
             </div>
         </div>
 
+        <!-- Stock Bajo -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card stats-card border-left-warning h-100">
                 <div class="card-body">
@@ -87,7 +94,9 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Stock Bajo
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">23</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ stats.low_stock }}
+                            </div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-exclamation-triangle stats-icon text-warning"></i>
@@ -96,6 +105,8 @@
                 </div>
             </div>
         </div>
+
+        <!-- Categorías -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card stats-card border-left-info h-100">
                 <div class="card-body">
@@ -114,7 +125,6 @@
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     </div>
 

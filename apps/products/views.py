@@ -17,7 +17,8 @@ from django.views.decorators.http import require_POST
 
 from apps.api.filters import ProductFilter
 from apps.products.models import Product, ProductVariant, ProductImage
-from apps.products.forms import ProductForm, ProductVariantForm, ProductImageForm, ConfirmDeleteForm
+from apps.products.forms import ProductForm, ProductVariantForm, ProductImageForm, ConfirmDeleteForm, BaseProductImageFormSet
+
 from apps.users.models import AuditLog
 from .serializers import ProductSerializer
 
@@ -29,7 +30,7 @@ ProductImageFormSet = inlineformset_factory(
     Product,
     ProductImage,
     form=ProductImageForm,
-    fields=("image", "is_main", "order"),
+    formset=BaseProductImageFormSet,
     extra=1,
     can_delete=True,
 )
@@ -213,11 +214,11 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     model = Product
     form_class = ProductForm
     template_name = "backoffice/products/update.html"
-    success_url = reverse_lazy("backoffice:products:product_list")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         prefix = "images"
+        # cuando venga POST, construimos formset con POST+FILES para mostrar errores
         if self.request.method == "POST":
             context["image_formset"] = ProductImageFormSet(
                 self.request.POST, self.request.FILES, instance=self.object, prefix=prefix
@@ -227,16 +228,31 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         return context
 
     def form_valid(self, form):
-        image_formset = self.get_context_data().get("image_formset")
+        """
+        Guardamos el producto primero (para tener PK), luego validamos y guardamos el formset.
+        Si el formset falla, devolvemos el template con errores.
+        """
+        prefix = "images"
 
         with transaction.atomic():
-            response = super().form_valid(form)
-            if image_formset and image_formset.is_valid():
-                image_formset.instance = self.object
-                image_formset.save()
-            elif image_formset and not image_formset.is_valid():
-                return self.form_invalid(form)
+            # guardar los cambios del producto (self.object queda disponible)
+            self.object = form.save()
 
+            # construimos el formset con POST+FILES contra la instancia ya guardada
+            image_formset = ProductImageFormSet(
+                self.request.POST or None, self.request.FILES or None, instance=self.object, prefix=prefix
+            )
+
+            if image_formset.is_valid():
+                image_formset.save()
+            else:
+                # Si es inválido, hacemos rollback y re-renderizamos con los errores del formset
+                transaction.set_rollback(True)
+                context = self.get_context_data(form=form)
+                context["image_formset"] = image_formset  # formset con errores
+                return self.render_to_response(context)
+
+            # Audit log
             AuditLog.log_action(
                 request=self.request,
                 action="update",
@@ -249,12 +265,16 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         return redirect(self.get_success_url())
 
     def form_invalid(self, form):
+        # get_context_data ya añade image_formset (POST), así que solo aseguramos que exista
         context = self.get_context_data(form=form)
         if "image_formset" not in context:
             context["image_formset"] = ProductImageFormSet(
                 self.request.POST or None, self.request.FILES or None, instance=self.object
             )
         return self.render_to_response(context)
+
+    def get_success_url(self):
+        return reverse("backoffice:products:product_detail", args=[self.object.pk])
 
 
 class ProductDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):

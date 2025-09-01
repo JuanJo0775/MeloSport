@@ -1,6 +1,6 @@
 from django import forms
 from .models import Product, ProductVariant, ProductImage
-
+from django.forms import BaseInlineFormSet, ValidationError
 
 class ProductForm(forms.ModelForm):
     """
@@ -119,6 +119,29 @@ class ProductImageForm(forms.ModelForm):
         if order is not None and order < 0:
             raise forms.ValidationError("El orden debe ser un número positivo.")
         return order
+
+class BaseProductImageFormSet(BaseInlineFormSet):
+    def clean(self):
+        """
+        Garantiza que exista al menos una imagen (ya sea existente o subida en el POST).
+        """
+        super().clean()
+        has_image = False
+
+        for form in self.forms:
+            # Ignorar forms vacíos o marcados para borrar
+            if not hasattr(form, "cleaned_data"):
+                continue
+            if form.cleaned_data.get("DELETE"):
+                continue
+
+            # Si hay imagen nueva subida o una ya guardada en BD
+            if form.cleaned_data.get("image") or (form.instance and form.instance.pk):
+                has_image = True
+                break
+
+        if not has_image:
+            raise ValidationError("Debes agregar al menos una imagen para el producto.")
 
 class ConfirmDeleteForm(forms.Form):
     password = forms.CharField(

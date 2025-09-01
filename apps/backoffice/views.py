@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.utils import timezone
 
 from apps.categories.models import Category, AbsoluteCategory
+from apps.products.models import Product
 from apps.users.models import AuditLog
 
 
@@ -16,13 +17,26 @@ from apps.users.models import AuditLog
 @login_required(login_url="/backoffice/login/")
 def dashboard(request):
     user = request.user
+
+    # Total productos
+    total_products = Product.objects.count()
+
+    # Valor de inventario: stock real * precio
+    inventory_value = sum([p.stock * p.price for p in Product.objects.all()])
+
+    # Productos con stock bajo
+    low_stock = sum([1 for p in Product.objects.all() if p.stock <= p.min_stock])
+
     context = {
-        "last_login": user.last_access,       # 👈 login anterior
-        "current_login": user.current_login,  # 👈 login actual
+        "last_login": user.last_access,
+        "current_login": user.current_login,
         "stats": {
+            "products_count": total_products,
+            "inventory_value": inventory_value,
+            "low_stock": low_stock,
             "categories_count": Category.objects.count(),
             "absolute_categories_count": AbsoluteCategory.objects.count(),
-        }
+        },
     }
     return render(request, "backoffice/dashboard.html", context)
 
