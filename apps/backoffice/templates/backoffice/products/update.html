@@ -1,0 +1,254 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+{% load static %}
+
+{% block title %}Editar Producto - {{ object.name }}{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Productos|backoffice:products:product_list" "Detalle|backoffice:products:product_detail object.pk" "Editar Producto" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <!-- Título -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4 m-0">Editar Producto: {{ object.name }}</h2>
+    <a href="{% url 'backoffice:products:product_detail' object.pk %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Volver al Detalle
+    </a>
+  </div>
+
+  <!-- Formulario de producto -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs" id="productTabs" role="tablist">
+          <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#basic" role="tab">1. Básico</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pricing" role="tab">2. Costos y Precios</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#inventory" role="tab">3. Inventario</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#images" role="tab">4. Imágenes</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#confirm" role="tab">5. Confirmar</a></li>
+        </ul>
+
+        <div class="tab-content mt-3">
+
+          <!-- 1. Básico -->
+          <div class="tab-pane fade show active" id="basic">
+            <div class="mb-3">{{ form.sku.label_tag }} {{ form.sku }} {{ form.sku.errors }}</div>
+            <div class="mb-3">{{ form.name.label_tag }} {{ form.name }} {{ form.name.errors }}</div>
+            <div class="mb-3">{{ form.description.label_tag }} {{ form.description }}</div>
+
+            <div class="mb-3">
+              {{ form.absolute_category.label_tag }} {{ form.absolute_category }}
+              <small class="text-muted">👉 Categoría principal, ej: "Deportes"</small>
+            </div>
+            <div class="mb-3">
+              <label>Categorías secundarias</label>
+              {{ form.categories }}
+              <small class="text-muted">Puede seleccionar múltiples categorías relacionadas.</small>
+            </div>
+          </div>
+
+          <!-- 2. Costos y Precios -->
+          <div class="tab-pane fade" id="pricing">
+            <div class="row g-3">
+              <div class="col-md-4">{{ form.cost.label_tag }} {{ form.cost }}</div>
+              <div class="col-md-4">{{ form.tax_percentage.label_tag }} {{ form.tax_percentage }}</div>
+              <div class="col-md-4">{{ form.markup_percentage.label_tag }} {{ form.markup_percentage }}</div>
+            </div>
+            <div class="alert alert-info mt-3">
+              <strong>💡 Precio sugerido:</strong>
+              <span id="suggested-price">—</span>
+              <button type="button" class="btn btn-sm btn-outline-success ms-2" id="accept-price">Aceptar</button>
+              <br>
+              <small>Se calcula automáticamente con costo + IVA + margen de ganancia.</small>
+            </div>
+            <div class="mt-3">
+              {{ form.price.label_tag }} {{ form.price }}
+              <small class="text-muted">Puede aceptar el precio sugerido o definir uno manualmente.</small>
+            </div>
+          </div>
+
+          <!-- 3. Inventario -->
+          <div class="tab-pane fade" id="inventory">
+            <div class="row g-3">
+              <div class="col-md-6 field-stock">
+                {{ form.stock.label_tag }} {{ form.stock }} {{ form.stock.errors }}
+              </div>
+              <div class="col-md-6">
+                {{ form.min_stock.label_tag }} {{ form.min_stock }}
+                <small class="text-muted">⚠️ Se enviará alerta cuando stock ≤ mínimo.</small>
+              </div>
+            </div>
+            <div class="form-check mt-3">
+              {{ form.has_variants }} {{ form.has_variants.label_tag }}
+              <small class="text-muted">Si se marca, el stock se controlará por variantes (no editable aquí).</small>
+            </div>
+          </div>
+
+          <!-- 4. Imágenes -->
+          <div class="tab-pane fade" id="images">
+            <h5>Imágenes del producto</h5>
+
+            {{ image_formset.management_form }}
+            <div id="image-empty-form" style="display:none;">
+              {{ image_formset.empty_form.as_p }}
+            </div>
+
+            <div class="row" id="image-gallery">
+              {% for form in image_formset %}
+                <div class="col-md-3 mb-3 image-card">
+                  <div class="card h-100">
+                    <div class="card-img-top text-center p-2">
+                      {% if form.instance.pk and form.instance.image %}
+                        <img src="{{ form.instance.image.url }}" class="img-fluid preview" style="max-height:150px;">
+                      {% else %}
+                        <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview" style="max-height:150px;">
+                      {% endif %}
+                    </div>
+                    <div class="card-body p-2">
+                      {{ form.image }} {{ form.image.errors }}
+                      <div class="form-check mt-2">
+                        {{ form.is_main }} <label>Principal</label>
+                      </div>
+                      <div class="mt-2">
+                        {{ form.order.label_tag }} {{ form.order }}
+                      </div>
+                      {{ form.DELETE }}
+                    </div>
+                    <div class="card-footer text-center">
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-delete">🗑 Eliminar</button>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="mt-3">
+              <button type="button" class="btn btn-outline-primary" id="add-image">➕ Agregar imagen</button>
+            </div>
+            <small class="text-muted d-block mt-2">Puede definir una imagen principal y el orden de aparición.</small>
+          </div>
+
+          <!-- 5. Confirmar -->
+          <div class="tab-pane fade" id="confirm">
+            <div class="mb-3">{{ form.status.label_tag }} {{ form.status }}</div>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <a href="{% url 'backoffice:products:product_detail' object.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-check2-circle"></i> Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts (idénticos al create) -->
+<script>
+  // precio sugerido
+  function calcSuggested() {
+    const cost = parseFloat(document.getElementById("id_cost").value) || 0;
+    const tax = parseFloat(document.getElementById("id_tax_percentage").value) || 0;
+    const margin = parseFloat(document.getElementById("id_markup_percentage").value) || 0;
+
+    const costWithTax = cost * (1 + tax/100);
+    const suggested = costWithTax * (1 + margin/100);
+
+    document.getElementById("suggested-price").innerText = "$" + suggested.toFixed(2);
+    return suggested;
+  }
+  document.getElementById("id_cost").addEventListener("input", calcSuggested);
+  document.getElementById("id_tax_percentage").addEventListener("change", calcSuggested);
+  document.getElementById("id_markup_percentage").addEventListener("input", calcSuggested);
+  document.getElementById("accept-price").addEventListener("click", function() {
+    document.getElementById("id_price").value = calcSuggested().toFixed(2);
+  });
+
+  // stock dinámico
+  document.addEventListener("DOMContentLoaded", function() {
+    const hasVariants = document.getElementById("id_has_variants");
+    const stockField = document.querySelector(".field-stock");
+
+    function toggleStock() {
+      stockField.style.display = hasVariants.checked ? "none" : "block";
+    }
+    toggleStock();
+    hasVariants.addEventListener("change", toggleStock);
+  });
+
+  // formset imágenes
+  document.addEventListener("DOMContentLoaded", function () {
+    const formPrefix = "{{ image_formset.prefix }}";
+    const totalFormsInput = document.getElementById("id_" + formPrefix + "-TOTAL_FORMS");
+    const gallery = document.getElementById("image-gallery");
+    const addButton = document.getElementById("add-image");
+
+    function addImageForm() {
+      let formCount = parseInt(totalFormsInput.value, 10);
+      let templateHtml = document.getElementById("image-empty-form").innerHTML;
+      let newHtml = templateHtml.replace(/__prefix__/g, formCount);
+
+      const col = document.createElement("div");
+      col.className = "col-md-3 mb-3 image-card";
+      col.innerHTML = `
+        <div class="card h-100">
+          <div class="card-img-top text-center p-2">
+            <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview" style="max-height:150px;">
+          </div>
+          <div class="card-body p-2">${newHtml}</div>
+          <div class="card-footer text-center">
+            <button type="button" class="btn btn-sm btn-outline-danger btn-delete">🗑 Eliminar</button>
+          </div>
+        </div>
+      `;
+
+      gallery.appendChild(col);
+      totalFormsInput.value = formCount + 1;
+
+      initPreview(col);
+      initDelete(col);
+      const fileInput = col.querySelector('input[type="file"]');
+      if (fileInput) fileInput.click();
+    }
+
+    function initPreview(container) {
+      const fileInput = container.querySelector('input[type="file"]');
+      const previewImg = container.querySelector(".preview");
+      if (fileInput) {
+        fileInput.addEventListener("change", function () {
+          if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            reader.onload = e => { previewImg.src = e.target.result; };
+            reader.readAsDataURL(this.files[0]);
+          }
+        });
+      }
+    }
+
+    function initDelete(container) {
+      const btnDelete = container.querySelector(".btn-delete");
+      const deleteInput = container.querySelector("input[type=checkbox][name$='-DELETE']");
+      btnDelete.addEventListener("click", function () {
+        if (deleteInput) {
+          deleteInput.checked = true;
+          container.style.display = "none";
+        } else {
+          container.remove();
+        }
+      });
+    }
+
+    document.querySelectorAll(".image-card").forEach(initPreview);
+    document.querySelectorAll(".image-card").forEach(initDelete);
+    addButton.addEventListener("click", addImageForm);
+  });
+</script>
+{% endblock %}

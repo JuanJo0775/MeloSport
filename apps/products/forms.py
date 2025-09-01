@@ -9,6 +9,15 @@ class ProductForm(forms.ModelForm):
     - Si no tiene variantes, se exige un stock manual
     """
 
+    # Campo "visible" que se mapea a _stock del modelo
+    stock = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="Stock",
+        help_text="Solo se usa si el producto no tiene variantes",
+        widget=forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
+    )
+
     class Meta:
         model = Product
         fields = [
@@ -18,7 +27,7 @@ class ProductForm(forms.ModelForm):
             "tax_percentage",
             "markup_percentage",
             "price",
-            "_stock",  # 👈 siempre usamos _stock (campo real en BD)
+            "stock",          # 👈 usamos este alias en vez de "_stock"
             "min_stock",
             "status",
             "categories",
@@ -39,7 +48,6 @@ class ProductForm(forms.ModelForm):
                 attrs={"class": "form-control", "step": "0.01", "placeholder": "% ganancia"}
             ),
             "price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "_stock": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
             "min_stock": forms.NumberInput(
                 attrs={"class": "form-control", "min": "0", "placeholder": "Ej: 5"}
             ),
@@ -49,21 +57,36 @@ class ProductForm(forms.ModelForm):
             "has_variants": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # inicializamos el alias "stock" con el valor real de _stock
+        if self.instance and self.instance.pk:
+            self.fields["stock"].initial = self.instance._stock
+
     def clean(self):
         cleaned_data = super().clean()
         has_variants = cleaned_data.get("has_variants")
-        stock = cleaned_data.get("_stock")
+        stock = cleaned_data.get("stock")
 
         if has_variants:
-            # Si tiene variantes, forzamos stock manual a 0
+            # Si tiene variantes, stock manual no aplica
             if stock and stock > 0:
-                self.add_error("_stock", "Si el producto tiene variantes, el stock manual no se puede asignar aquí.")
-            cleaned_data["_stock"] = 0
+                self.add_error("stock", "Si el producto tiene variantes, el stock manual no se puede asignar aquí.")
+            cleaned_data["stock"] = 0
         else:
-            # Si no tiene variantes, exigir stock manual
+            # Si no tiene variantes, exigir stock válido
             if stock is None or stock < 0:
-                self.add_error("_stock", "Debes asignar un stock válido cuando el producto no tiene variantes.")
+                self.add_error("stock", "Debes asignar un stock válido cuando el producto no tiene variantes.")
         return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Mapear campo visible al real en BD
+        instance._stock = self.cleaned_data.get("stock", 0)
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class ProductVariantForm(forms.ModelForm):
@@ -86,7 +109,7 @@ class ProductImageForm(forms.ModelForm):
         model = ProductImage
         fields = ["image", "is_main", "order"]
         widgets = {
-            "image": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),  # 👈 sin multiple
+            "image": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*"}),
             "is_main": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "order": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "1"}),
         }
@@ -96,3 +119,9 @@ class ProductImageForm(forms.ModelForm):
         if order is not None and order < 0:
             raise forms.ValidationError("El orden debe ser un número positivo.")
         return order
+
+class ConfirmDeleteForm(forms.Form):
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Confirma tu contraseña"}),
+        label="Contraseña",
+    )

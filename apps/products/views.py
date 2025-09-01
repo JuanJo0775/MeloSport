@@ -1,4 +1,5 @@
 # apps/products/views.py
+from django.contrib.auth import authenticate
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
@@ -14,7 +15,7 @@ from django.views.decorators.http import require_POST
 
 from apps.api.filters import ProductFilter
 from apps.products.models import Product, ProductVariant, ProductImage
-from apps.products.forms import ProductForm, ProductVariantForm, ProductImageForm
+from apps.products.forms import ProductForm, ProductVariantForm, ProductImageForm, ConfirmDeleteForm
 from apps.users.models import AuditLog
 from .serializers import ProductSerializer
 
@@ -27,7 +28,7 @@ ProductImageFormSet = inlineformset_factory(
     ProductImage,
     form=ProductImageForm,
     fields=("image", "is_main", "order"),
-    extra=0,
+    extra=1,
     can_delete=True
 )
 
@@ -113,10 +114,11 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        prefix = "images"
         if self.request.method == "POST":
-            context["image_formset"] = ProductImageFormSet(self.request.POST, self.request.FILES)
+            context["image_formset"] = ProductImageFormSet(self.request.POST, self.request.FILES, prefix=prefix)
         else:
-            context["image_formset"] = ProductImageFormSet()
+            context["image_formset"] = ProductImageFormSet(prefix=prefix)
         return context
 
     def form_valid(self, form):
@@ -161,10 +163,19 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        prefix = "images"  # 👈 define el prefijo explícito
         if self.request.method == "POST":
-            context["image_formset"] = ProductImageFormSet(self.request.POST, self.request.FILES, instance=self.object)
+            context["image_formset"] = ProductImageFormSet(
+                self.request.POST,
+                self.request.FILES,
+                instance=self.object,
+                prefix=prefix
+            )
         else:
-            context["image_formset"] = ProductImageFormSet(instance=self.object)
+            context["image_formset"] = ProductImageFormSet(
+                instance=self.object,
+                prefix=prefix
+            )
         return context
 
     def form_valid(self, form):
@@ -202,19 +213,37 @@ class ProductDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
     template_name = "backoffice/products/confirm_delete.html"
     success_url = reverse_lazy("backoffice:products:product_list")
 
-    def delete(self, request, *args, **kwargs):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if "form" not in context:
+            context["form"] = ConfirmDeleteForm()
+        return context
+
+    def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        nombre = self.object.name
-        response = super().delete(request, *args, **kwargs)
-        AuditLog.log_action(
-            request=request,
-            action="delete",
-            model=self.model,
-            obj=self.object,
-            description=f"Producto '{nombre}' eliminado"
-        )
-        messages.success(request, "Producto eliminado correctamente.")
-        return response
+        form = ConfirmDeleteForm(request.POST)
+
+        if form.is_valid():
+            password = form.cleaned_data["password"]
+            user = authenticate(username=request.user.username, password=password)
+            if user:
+                nombre = self.object.name
+                response = super().delete(request, *args, **kwargs)
+                AuditLog.log_action(
+                    request=request,
+                    action="delete",
+                    model=self.model,
+                    obj=self.object,
+                    description=f"Producto '{nombre}' eliminado"
+                )
+                messages.success(request, "Producto eliminado correctamente.")
+                return response
+            else:
+                messages.error(request, "Contraseña incorrecta. Intenta nuevamente.")
+                return redirect("backoffice:products:product_confirm_delete", pk=self.object.pk)
+
+        messages.error(request, "Debes confirmar la contraseña para eliminar.")
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 # ================================
@@ -303,24 +332,41 @@ class VariantDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
     model = ProductVariant
     template_name = "backoffice/products/variant_confirm_delete.html"
 
-    def delete(self, request, *args, **kwargs):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if "form" not in context:
+            context["form"] = ConfirmDeleteForm()
+        return context
+
+    def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        sku = self.object.sku
-        product = self.object.product
-        response = super().delete(request, *args, **kwargs)
-        AuditLog.log_action(
-            request=request,
-            action="delete",
-            model=self.model,
-            obj=self.object,
-            description=f"Variante '{sku}' eliminada del producto '{product.name}'"
-        )
-        messages.success(request, "Variante eliminada correctamente.")
-        return response
+        form = ConfirmDeleteForm(request.POST)
+
+        if form.is_valid():
+            password = form.cleaned_data["password"]
+            user = authenticate(username=request.user.username, password=password)
+            if user:
+                sku = self.object.sku
+                product = self.object.product
+                response = super().delete(request, *args, **kwargs)
+                AuditLog.log_action(
+                    request=request,
+                    action="delete",
+                    model=self.model,
+                    obj=self.object,
+                    description=f"Variante '{sku}' eliminada del producto '{product.name}'"
+                )
+                messages.success(request, "Variante eliminada correctamente.")
+                return response
+            else:
+                messages.error(request, "Contraseña incorrecta. Intenta nuevamente.")
+                return redirect("backoffice:products:variant_confirm_delete", pk=self.object.pk)
+
+        messages.error(request, "Debes confirmar la contraseña para eliminar.")
+        return self.render_to_response(self.get_context_data(form=form))
 
     def get_success_url(self):
         return reverse("backoffice:products:product_detail", kwargs={"pk": self.object.product.pk})
-
 
 # ================================
 # GESTIÓN INLINE DE VARIANTES EN PRODUCT DETAIL

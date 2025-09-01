@@ -77,7 +77,9 @@
           <!-- 3. Inventario -->
           <div class="tab-pane fade" id="inventory">
             <div class="row g-3">
-              <div class="col-md-6">{{ form.stock.label_tag }} {{ form.stock }}</div>
+              <div class="col-md-6 field-stock">
+                {{ form.stock.label_tag }} {{ form.stock }} {{ form.stock.errors }}
+              </div>
               <div class="col-md-6">
                 {{ form.min_stock.label_tag }} {{ form.min_stock }}
                 <small class="text-muted">⚠️ Se enviará alerta cuando stock ≤ mínimo.</small>
@@ -90,27 +92,51 @@
           </div>
 
           <!-- 4. Imágenes -->
-          <div class="tab-pane fade" id="images">
-            <h5>Imágenes del producto</h5>
-            <div id="image-formset">
-              {{ image_formset.management_form }}
-              {% for form in image_formset %}
-                <div class="image-form border rounded p-2 mb-2">
-                  {{ form.image.label_tag }} {{ form.image }} {{ form.image.errors }}
-                  {{ form.is_main }} <label>Principal</label>
-                  {{ form.order.label_tag }} {{ form.order }}
-                  {% if form.instance.pk %}
-                    <img src="{{ form.instance.image.url }}" class="img-thumbnail mt-2" style="max-height:120px;">
-                  {% endif %}
-                  <div class="form-check mt-1">
-                    {{ form.DELETE }} <label>Eliminar</label>
+        <div class="tab-pane fade" id="images">
+          <h5>Imágenes del producto</h5>
+
+          {{ image_formset.management_form }}
+          <div id="image-empty-form" style="display:none;">
+            {{ image_formset.empty_form.as_p }}
+          </div>
+
+          <div class="row" id="image-gallery">
+            {% for form in image_formset %}
+              <div class="col-md-3 mb-3 image-card">
+                <div class="card h-100">
+                  <div class="card-img-top text-center p-2">
+                    {% if form.instance.pk and form.instance.image %}
+                      <img src="{{ form.instance.image.url }}" class="img-fluid preview" style="max-height:150px;">
+                    {% else %}
+                      <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview" style="max-height:150px;">
+                    {% endif %}
+                  </div>
+                  <div class="card-body p-2">
+                    {{ form.image }} {{ form.image.errors }}
+
+                    <div class="form-check mt-2">
+                      {{ form.is_main }} <label>Principal</label>
+                    </div>
+                    <div class="mt-2">
+                      {{ form.order.label_tag }} {{ form.order }}
+                    </div>
+                    {{ form.DELETE }}  <!-- Se oculta, lo usamos con JS -->
+                  </div>
+                  <div class="card-footer text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete">
+                      🗑 Eliminar
+                    </button>
                   </div>
                 </div>
-              {% endfor %}
-            </div>
-            <button type="button" class="btn btn-outline-primary mt-2" id="add-image">➕ Agregar imagen</button>
-            <small class="text-muted d-block mt-2">Puede definir una imagen principal y el orden de aparición.</small>
+              </div>
+            {% endfor %}
           </div>
+
+          <div class="mt-3">
+            <button type="button" class="btn btn-outline-primary" id="add-image">➕ Agregar imagen</button>
+          </div>
+          <small class="text-muted d-block mt-2">Puede definir una imagen principal y el orden de aparición.</small>
+        </div>
 
           <!-- 5. Confirmar -->
           <div class="tab-pane fade" id="confirm">
@@ -149,32 +175,98 @@
     document.getElementById("id_price").value = calcSuggested().toFixed(2);
   });
 
+  // === Mostrar/ocultar campo stock según has_variants ===
+  document.addEventListener("DOMContentLoaded", function() {
+    const hasVariants = document.getElementById("id_has_variants");
+    const stockField = document.querySelector(".field-stock");
+
+    function toggleStock() {
+      if (hasVariants.checked) {
+        stockField.style.display = "none";
+      } else {
+        stockField.style.display = "block";
+      }
+    }
+    toggleStock();
+    hasVariants.addEventListener("change", toggleStock);
+  });
+
   // === Formset dinámico de imágenes ===
   document.addEventListener("DOMContentLoaded", function () {
-    let formsetDiv = document.getElementById("image-formset");
-    let addButton = document.getElementById("add-image");
+  const formPrefix = "{{ image_formset.prefix }}";
+  const totalFormsInput = document.getElementById("id_" + formPrefix + "-TOTAL_FORMS");
+  const gallery = document.getElementById("image-gallery");
+  const addButton = document.getElementById("add-image");
 
-    addButton.addEventListener("click", function () {
-      let totalForms = document.getElementById("id_images-TOTAL_FORMS");
-      let formCount = parseInt(totalForms.value);
+  // función para crear tarjeta nueva
+  function addImageForm() {
+    let formCount = parseInt(totalFormsInput.value, 10);
+    let templateHtml = document.getElementById("image-empty-form").innerHTML;
+    let newHtml = templateHtml.replace(/__prefix__/g, formCount);
 
-      let newForm = formsetDiv.querySelector(".image-form").cloneNode(true);
+    const col = document.createElement("div");
+    col.className = "col-md-3 mb-3 image-card";
+    col.innerHTML = `
+      <div class="card h-100">
+        <div class="card-img-top text-center p-2">
+          <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview" style="max-height:150px;">
+        </div>
+        <div class="card-body p-2">${newHtml}</div>
+        <div class="card-footer text-center">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-delete">🗑 Eliminar</button>
+        </div>
+      </div>
+    `;
 
-      // limpiar valores
-      newForm.querySelectorAll("input").forEach(input => {
-        if (input.type !== "hidden") input.value = "";
-        if (input.type === "checkbox") input.checked = false;
+    gallery.appendChild(col);
+    totalFormsInput.value = formCount + 1;
+
+    // preview automática al seleccionar archivo
+    initPreview(col);
+    // eliminar tarjeta
+    initDelete(col);
+    // abrir file dialog inmediatamente
+    const fileInput = col.querySelector('input[type="file"]');
+    if (fileInput) fileInput.click();
+  }
+
+  // función preview
+  function initPreview(container) {
+    const fileInput = container.querySelector('input[type="file"]');
+    const previewImg = container.querySelector(".preview");
+
+    if (fileInput) {
+      fileInput.addEventListener("change", function () {
+        if (this.files && this.files[0]) {
+          const reader = new FileReader();
+          reader.onload = e => { previewImg.src = e.target.result; };
+          reader.readAsDataURL(this.files[0]);
+        }
       });
+    }
+  }
 
-      // actualizar los atributos name/id
-      newForm.innerHTML = newForm.innerHTML.replace(
-        new RegExp(`images-(\\d+)-`, "g"),
-        `images-${formCount}-`
-      );
+  // función eliminar
+  function initDelete(container) {
+    const btnDelete = container.querySelector(".btn-delete");
+    const deleteInput = container.querySelector("input[type=checkbox][name$='-DELETE']");
 
-      formsetDiv.appendChild(newForm);
-      totalForms.value = formCount + 1;
+    btnDelete.addEventListener("click", function () {
+      if (deleteInput) {
+        deleteInput.checked = true; // marcar para borrado
+        container.style.display = "none"; // ocultar visualmente
+      } else {
+        container.remove(); // si es nuevo y no tiene DELETE
+      }
     });
-  });
+  }
+
+  // inicializar en los forms ya existentes
+  document.querySelectorAll(".image-card").forEach(initPreview);
+  document.querySelectorAll(".image-card").forEach(initDelete);
+
+  // botón agregar
+  addButton.addEventListener("click", addImageForm);
+});
 </script>
 {% endblock %}

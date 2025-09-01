@@ -1,11 +1,13 @@
 import random
 import string
+import uuid
+from decimal import Decimal
+
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.categories.models import Category
 from django.db import models
 from django.core.exceptions import ValidationError
-from decimal import Decimal
-
+from django.utils.text import slugify
 
 
 class Product(models.Model):
@@ -15,7 +17,7 @@ class Product(models.Model):
         ('draft', 'Borrador'),
     ]
 
-    sku = models.CharField(max_length=50, unique=True, verbose_name="SKU")
+    sku = models.CharField(max_length=50, unique=True, verbose_name="SKU", blank=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
@@ -83,13 +85,25 @@ class Product(models.Model):
             return f"{self.name} ({self.sku})"
         return self.name
 
-
-
     def generate_product_sku(self):
-        """Genera un SKU base para el producto"""
-        prefix = self.name[:3].upper() if self.name else 'PRO'
-        random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        return f"{prefix}-{random_part}"
+        """
+        Genera un SKU legible y único para el producto.
+        Estrategia:
+          - Base: primeros 8 caracteres slugificados del nombre (o 'PRO' si no hay nombre)
+          - Sufijo: 6 caracteres hex (uuid) o combinación aleatoria
+          - Si hay colisión, intenta con sufijo alternativo hasta 10 veces.
+        """
+        base = (slugify(self.name)[:8].upper() if self.name else "PRO").strip("-_")
+        attempts = 0
+        while attempts < 10:
+            suffix = uuid.uuid4().hex[:6].upper()
+            candidate = f"{base}-{suffix}"
+            if not Product.objects.filter(sku=candidate).exists():
+                return candidate
+            attempts += 1
+
+        # Fallback seguro (menos legible) si por alguna razón hay colisiones
+        return f"{base}-{uuid.uuid4().hex[:8].upper()}"
 
     def calculated_stock(self):
         """Calcula el stock dependiendo de si tiene variantes o no"""
@@ -112,7 +126,6 @@ class Product(models.Model):
         """Permite asignar stock como si fuera un campo normal"""
         self._stock = value
 
-
     @property
     def cost_with_tax(self):
         """Calcula el costo con IVA incluido"""
@@ -124,12 +137,14 @@ class Product(models.Model):
     def suggested_price(self):
         """
         Calcula el precio sugerido con base en el costo con IVA y el % de ganancia.
-        Ejemplo: 30% sobre el costo final
+        Mantengo la estructura original; la lógica de acceso a atributos
+        parecía referirse a self.product.* en un contexto distinto — dejo el cálculo seguro.
         """
         try:
-            cost = Decimal(self.product.cost)  # ajusta si usas otro campo
-            tax = Decimal(self.product.tax_percentage)  # ajusta según tu modelo
-            profit_pct = Decimal(self.product.profit_margin)  # o fija el 30%
+            # Si quieres usar cost, tax y markup del propio producto:
+            cost = Decimal(self.cost or 0)
+            tax = Decimal(self.tax_percentage or 0)
+            profit_pct = Decimal(self.markup_percentage or 0)
 
             cost_with_tax = cost * (1 + tax / 100)
             suggested = cost_with_tax * (1 + profit_pct / 100)
@@ -140,7 +155,7 @@ class Product(models.Model):
     def clean(self):
         super().clean()
 
-        if Product.objects.filter(sku=self.sku).exclude(pk=self.pk).exists():
+        if self.sku and Product.objects.filter(sku=self.sku).exclude(pk=self.pk).exists():
             raise ValidationError(f"El SKU {self.sku} ya existe para otro producto")
 
         # Solo validar si el producto ya existe (tiene PK) y no es nuevo
@@ -149,6 +164,17 @@ class Product(models.Model):
                 "El producto está marcado como 'sin variantes' pero tiene variantes asociadas. "
                 "Por favor cambie la opción '¿Tiene Variantes?' a 'Sí' o elimine las variantes."
             )
+
+    def save(self, *args, **kwargs):
+        """
+        Sobrescribimos save para asegurar generación de SKU antes de persistir,
+        sin eliminar ninguna lógica existente.
+        """
+        # Si sku está vacío o es cadena vacía, generamos uno
+        if not self.sku or (isinstance(self.sku, str) and self.sku.strip() == ""):
+            self.sku = self.generate_product_sku()
+        super().save(*args, **kwargs)
+
 
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
@@ -197,28 +223,44 @@ class ProductVariant(models.Model):
         return f"{self.product.name} ({', '.join(attrs)})" if attrs else f"{self.product.name} (Base)"
 
     def save(self, *args, **kwargs):
-        """Validación estricta de producto existente"""
+        """Validación estricta de producto existente y generación de SKU para la variante"""
         if not self.product_id:
             raise ValidationError(
                 "No se puede guardar una variante sin producto asociado. "
                 "Guarde primero el producto principal."
             )
 
+        # Generar SKU si no existe (no dependemos de raise en generator)
         if not self.sku:
             self.sku = self.generate_standardized_sku()
 
         super().save(*args, **kwargs)
 
     def generate_standardized_sku(self):
-        if not self.product_id or not self.product.sku:
-            raise ValidationError("No se puede generar SKU sin un producto padre con SKU válido.")
+        """
+        Genera un SKU para la variante basado en el SKU del producto (si existe),
+        o en el nombre del producto como fallback. Asegura unicidad.
+        Formato: <BASE>-<SIZE3>-<COL3>-<NN>
+        """
+        # Base preferente: parte anterior del SKU del producto si existe
+        if self.product and self.product.sku:
+            base_sku = self.product.sku.split('-')[0]
+        else:
+            base_sku = (slugify(self.product.name)[:6].upper() if self.product and self.product.name else "PROD")
 
-        base_sku = self.product.sku.split('-')[0]
-        size_part = self.size[:3].upper().strip() if self.size else "UNI"
-        color_part = self.color[:3].upper().strip() if self.color else "DEF"
-        checksum = ''.join(random.choices(string.digits, k=2))
+        size_part = (self.size[:3].upper().strip() if self.size else "UNI")
+        color_part = (self.color[:3].upper().strip() if self.color else "DEF")
 
-        return f"{base_sku}-{size_part}-{color_part}-{checksum}"
+        attempts = 0
+        while attempts < 10:
+            checksum = ''.join(random.choices(string.digits, k=2))
+            candidate = f"{base_sku}-{size_part}-{color_part}-{checksum}"
+            if not ProductVariant.objects.filter(sku=candidate).exists():
+                return candidate
+            attempts += 1
+
+        # Fallback con uuid corto
+        return f"{base_sku}-{size_part}-{color_part}-{uuid.uuid4().hex[:4].upper()}"
 
     def clean(self):
         super().clean()

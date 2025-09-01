@@ -154,10 +154,21 @@
                   <td>{{ form.is_active }}</td>
                   <td class="text-end">
                     {% if form.instance.pk %}
+                      <a href="{% url 'backoffice:products:variant_detail' form.instance.pk %}"
+                         class="btn btn-sm btn-outline-primary me-1"
+                         data-bs-toggle="tooltip"
+                         title="Ver variante">
+                        <i class="bi bi-eye"></i>
+                      </a>
+
+                      {% if perms.products.delete_productvariant %}
                       <a href="{% url 'backoffice:products:variant_delete' form.instance.pk %}"
-                         class="btn btn-sm btn-outline-danger">
+                         class="btn btn-sm btn-outline-danger"
+                         data-bs-toggle="tooltip"
+                         title="Eliminar variante">
                         <i class="bi bi-trash"></i>
                       </a>
+                      {% endif %}
                     {% endif %}
                   </td>
                 </tr>
@@ -175,26 +186,6 @@
           </button>
         </div>
       </form>
-
-      <!-- Formulario rápido para añadir variante -->
-      {% if perms.products.add_productvariant %}
-        <div class="card-footer bg-light mt-2">
-          <form method="post" action="{% url 'backoffice:products:variant_quick_create' product.pk %}">
-            {% csrf_token %}
-            <div class="row g-2 align-items-end">
-              <div class="col-md-3">{{ variant_form.size }}</div>
-              <div class="col-md-3">{{ variant_form.color }}</div>
-              <div class="col-md-2">{{ variant_form.stock }}</div>
-              <div class="col-md-2">{{ variant_form.price_modifier }}</div>
-              <div class="col-md-2 text-end">
-                <button type="submit" class="btn btn-success">
-                  <i class="bi bi-plus-circle"></i> Añadir
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      {% endif %}
     </div>
   {% endif %}
 

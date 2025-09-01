@@ -103,21 +103,35 @@
               {% endif %}
             </td>
             <td class="text-end">
-              {% if perms.products.view_product %}
-                <a href="{% url 'backoffice:products:product_detail' product.pk %}" class="btn btn-sm btn-outline-info">
-                  <i class="bi bi-eye"></i>
-                </a>
-              {% endif %}
-              {% if perms.products.change_product %}
-                <a href="{% url 'backoffice:products:product_update' product.pk %}" class="btn btn-sm btn-outline-warning">
-                  <i class="bi bi-pencil"></i>
-                </a>
-              {% endif %}
-              {% if perms.products.delete_product %}
-                <a href="{% url 'backoffice:products:product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">
-                  <i class="bi bi-trash"></i>
-                </a>
-              {% endif %}
+              <div class="d-flex justify-content-end">
+                {% if perms.products.view_product %}
+                  <a href="{% url 'backoffice:products:product_detail' product.pk %}"
+                     class="btn btn-sm btn-outline-primary me-1"
+                     data-bs-toggle="tooltip"
+                     title="Ver producto">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                {% endif %}
+
+                {% if perms.products.change_product %}
+                  <a href="{% url 'backoffice:products:product_update' product.pk %}"
+                     class="btn btn-sm btn-outline-secondary me-1"
+                     data-bs-toggle="tooltip"
+                     title="Editar producto">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                {% endif %}
+
+                {% if perms.products.delete_product %}
+                  <a href="{% url 'backoffice:products:product_delete' product.pk %}"
+                     class="btn btn-sm btn-outline-danger"
+                     data-bs-toggle="tooltip"
+                     title="Eliminar producto">
+                    <i class="bi bi-trash"></i>
+                  </a>
+                {% endif %}
+              </div>
+            </td>
             </td>
           </tr>
           {% empty %}

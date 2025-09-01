@@ -1,10 +1,58 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
 
-</body>
-</html>
+{% block title %}Detalle Variante - {{ object.sku }}{% endblock %}
+
+{% block breadcrumb %}
+{% breadcrumb "Productos|backoffice:products:product_list" "Detalle|backoffice:products:product_detail product.id" "Detalle Variante"%}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow-sm rounded">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Variante de {{ object.product.name }}</h4>
+      <div>
+        <a href="{% url 'backoffice:products:variant_update' object.pk %}" class="btn btn-sm btn-primary">
+          <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'backoffice:products:variant_delete' object.pk %}" class="btn btn-sm btn-danger">
+          <i class="bi bi-trash"></i> Eliminar
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      <dl class="row">
+        <dt class="col-sm-3">SKU</dt>
+        <dd class="col-sm-9">{{ object.sku }}</dd>
+
+        <dt class="col-sm-3">Talla</dt>
+        <dd class="col-sm-9">{{ object.size|default:"-" }}</dd>
+
+        <dt class="col-sm-3">Color</dt>
+        <dd class="col-sm-9">{{ object.color|default:"-" }}</dd>
+
+        <dt class="col-sm-3">Stock</dt>
+        <dd class="col-sm-9">{{ object.stock }}</dd>
+
+        <dt class="col-sm-3">Ajuste de precio</dt>
+        <dd class="col-sm-9">{{ object.price_modifier }}</dd>
+
+        <dt class="col-sm-3">Estado</dt>
+        <dd class="col-sm-9">
+          {% if object.is_active %}
+            <span class="badge bg-success">Activo</span>
+          {% else %}
+            <span class="badge bg-secondary">Inactivo</span>
+          {% endif %}
+        </dd>
+      </dl>
+    </div>
+    <div class="card-footer text-end">
+      <a href="{% url 'backoffice:products:product_detail' object.product.pk %}" class="btn btn-secondary">
+        Volver al Producto
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
