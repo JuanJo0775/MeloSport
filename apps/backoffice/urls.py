@@ -29,7 +29,10 @@ urlpatterns = [
         "password_reset/",
         auth_views.PasswordResetView.as_view(
             template_name="login/password_reset.html",
-            form_class=BackofficePasswordResetForm
+            form_class=BackofficePasswordResetForm,
+            email_template_name="login/password_reset_email.txt",  # <- archivo que creamos
+            subject_template_name="login/password_reset_subject.txt",  # <- opcional
+            success_url="/backoffice/password_reset/done/",
         ),
         name="password_reset"
     ),
