@@ -1,43 +1,181 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
+{% load static %}
 
 {% block title %}Eliminar Variante - {{ object.sku }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/styles_inventario.css' %}">
+{% endblock %}
 
 {% block breadcrumb %}
   {% breadcrumb "Productos|backoffice:products:product_list" "Detalle|backoffice:products:product_detail object.product.pk" "Eliminar Variante" %}
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="alert alert-warning shadow-sm rounded p-4">
-    <h4 class="alert-heading">⚠️ Advertencia</h4>
-    <p>
-      Estás a punto de eliminar la variante <strong>{{ object.sku }}</strong>
-      del producto <strong>{{ object.product.name }}</strong>.
-    </p>
-    <p class="mb-0">
-      Esta acción <strong>no se puede deshacer</strong>. Si continúas, esta variante
-      desaparecerá permanentemente del sistema.
-    </p>
-  </div>
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
 
-  <form method="post" class="card p-4 shadow-sm mt-3">
-    {% csrf_token %}
-    <div class="mb-3">
-      {{ form.password.label_tag }}
-      {{ form.password }}
-      {% if form.password.errors %}
-        <div class="text-danger small">{{ form.password.errors }}</div>
-      {% endif %}
+      <!-- Encabezado -->
+      <div class="d-flex align-items-center mb-4">
+        <div class="me-3">
+          <div class="stats-icon text-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </div>
+        </div>
+        <div>
+          <h2 class="h4 mb-1">Eliminar Variante</h2>
+          <p class="text-muted mb-0">Esta acción no se puede deshacer</p>
+        </div>
+      </div>
+
+      <!-- Card de confirmación -->
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+
+          <!-- Alerta de advertencia -->
+          <div class="alert alert-warning border-0 mb-4">
+            <div class="d-flex">
+              <div class="me-3">
+                <i class="bi bi-exclamation-diamond-fill fs-4 text-warning"></i>
+              </div>
+              <div class="flex-grow-1">
+                <h5 class="alert-heading mb-2">¡Atención! Eliminación de variante</h5>
+                <p class="mb-2">
+                  Estás a punto de eliminar la variante <strong class="text-dark">{{ object.sku }}</strong>
+                  del producto <strong class="text-dark">{{ object.product.name }}</strong>.
+                </p>
+                <p class="mb-0 small">
+                  Esta variante desaparecerá permanentemente del sistema.
+                  El producto principal se mantendrá intacto.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detalles de la variante a eliminar -->
+          <div class="bg-light rounded p-3 mb-4">
+            <h6 class="text-muted mb-3">Variante a eliminar:</h6>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-upc-scan text-muted me-2"></i>
+                  <div>
+                    <div class="small text-muted">SKU Variante</div>
+                    <div class="fw-medium">{{ object.sku }}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-box text-muted me-2"></i>
+                  <div>
+                    <div class="small text-muted">Producto</div>
+                    <div class="fw-medium">{{ object.product.name }}</div>
+                  </div>
+                </div>
+              </div>
+              {% if object.size %}
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-rulers text-muted me-2"></i>
+                  <div>
+                    <div class="small text-muted">Talla</div>
+                    <div class="fw-medium">{{ object.size }}</div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+              {% if object.color %}
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-palette text-muted me-2"></i>
+                  <div>
+                    <div class="small text-muted">Color</div>
+                    <div class="fw-medium">{{ object.color }}</div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-box-seam text-muted me-2"></i>
+                  <div>
+                    <div class="small text-muted">Stock Actual</div>
+                    <div class="fw-medium">{{ object.stock }} unidades</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-activity text-muted me-2"></i>
+                  <div>
+                    <div class="small text-muted">Estado</div>
+                    <div class="fw-medium">
+                      {% if object.is_active %}
+                        <span class="badge bg-success">Activa</span>
+                      {% else %}
+                        <span class="badge bg-secondary">Inactiva</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulario de confirmación -->
+          <form method="post">
+            {% csrf_token %}
+
+            <!-- Campo de contraseña para confirmar -->
+            <div class="mb-4">
+              <label for="{{ form.password.id_for_label }}" class="form-label fw-medium">
+                <i class="bi bi-shield-lock me-1"></i>
+                {{ form.password.label }}
+              </label>
+              {{ form.password }}
+              {% if form.password.errors %}
+                <div class="text-danger small mt-1">
+                  {% for error in form.password.errors %}
+                    <div>{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <div class="form-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Confirma tu contraseña para proceder con la eliminación
+              </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+              <a href="{% url 'backoffice:products:product_detail' object.product.pk %}"
+                 class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>
+                Volver al Producto
+              </a>
+
+              <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i>
+                Eliminar Variante
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+
+      <!-- Información adicional -->
+      <div class="text-center mt-3">
+        <small class="text-muted">
+          <i class="bi bi-info-circle me-1"></i>
+          El producto principal <strong>{{ object.product.name }}</strong> seguirá disponible
+        </small>
+      </div>
+
     </div>
-    <div class="d-flex justify-content-between">
-      <a href="{% url 'backoffice:products:product_detail' object.product.pk %}" class="btn btn-secondary">
-        Cancelar
-      </a>
-      <button type="submit" class="btn btn-danger">
-        <i class="bi bi-trash"></i> Eliminar Variante
-      </button>
-    </div>
-  </form>
+  </div>
 </div>
 {% endblock %}

@@ -8,143 +8,349 @@
   {% breadcrumb "Productos|backoffice:products:product_list" "Nuevo Producto" %}
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/styles_inventario.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-
-  <!-- Título -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="h4 m-0">Crear Producto</h2>
-    <a href="{% url 'backoffice:products:product_list' %}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-arrow-left"></i> Volver
-    </a>
+  <!-- Encabezado -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="h4 mb-0 text-dark fw-bold">
+            <i class="bi bi-plus-circle me-2 text-primary"></i>Crear Producto
+          </h2>
+          <p class="text-muted mb-0 mt-1">Complete la información del nuevo producto</p>
+        </div>
+        <a href="{% url 'backoffice:products:product_list' %}"
+           class="btn btn-outline-secondary"
+           data-bs-toggle="tooltip"
+           title="Volver a la lista">
+          <i class="bi bi-arrow-left me-1"></i>Volver
+        </a>
+      </div>
+    </div>
   </div>
 
-  <!-- Formulario de producto -->
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <form method="post" enctype="multipart/form-data">
+  <!-- Formulario -->
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+      <form method="post" enctype="multipart/form-data" id="product-form">
         {% csrf_token %}
-        {{ form.non_field_errors }}
 
-        <!-- Nav tabs -->
-        <ul class="nav nav-tabs" id="productTabs" role="tablist">
-          <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#basic" role="tab">1. Básico</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pricing" role="tab">2. Costos y Precios</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#inventory" role="tab">3. Inventario</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#images" role="tab">4. Imágenes</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#confirm" role="tab">5. Confirmar</a></li>
+        <!-- Mostrar errores generales -->
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger border-left-danger mb-4">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              <div>
+                <strong>Errores en el formulario:</strong>
+                {{ form.non_field_errors }}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Pestañas de navegación -->
+        <ul class="nav nav-tabs nav-tabs-custom mb-4" id="productTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab"
+                    data-bs-target="#basic" type="button" role="tab">
+              <i class="bi bi-info-circle me-1"></i>1. Información Básica
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pricing-tab" data-bs-toggle="tab"
+                    data-bs-target="#pricing" type="button" role="tab">
+              <i class="bi bi-currency-dollar me-1"></i>2. Costos y Precios
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="inventory-tab" data-bs-toggle="tab"
+                    data-bs-target="#inventory" type="button" role="tab">
+              <i class="bi bi-boxes me-1"></i>3. Inventario
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="images-tab" data-bs-toggle="tab"
+                    data-bs-target="#images" type="button" role="tab">
+              <i class="bi bi-images me-1"></i>4. Imágenes
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="confirm-tab" data-bs-toggle="tab"
+                    data-bs-target="#confirm" type="button" role="tab">
+              <i class="bi bi-check-circle me-1"></i>5. Confirmar
+            </button>
+          </li>
         </ul>
 
-        <div class="tab-content mt-3">
+        <div class="tab-content" id="productTabContent">
+          <!-- 1. Información Básica -->
+          <div class="tab-pane fade show active" id="basic" role="tabpanel">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <label for="{{ form.sku.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-upc me-1 text-primary"></i>{{ form.sku.label }}
+                </label>
+                {{ form.sku }}
+                {% if form.sku.errors %}
+                  <div class="invalid-feedback d-block">{{ form.sku.errors }}</div>
+                {% endif %}
+                <small class="form-text text-muted">Código único del producto</small>
+              </div>
 
-          <!-- 1. Básico -->
-          <div class="tab-pane fade show active" id="basic">
-            <div class="mb-3">{{ form.sku.label_tag }} {{ form.sku }} {{ form.sku.errors }}</div>
-            <div class="mb-3">{{ form.name.label_tag }} {{ form.name }} {{ form.name.errors }}</div>
-            <div class="mb-3">{{ form.description.label_tag }} {{ form.description }}</div>
+              <div class="col-md-6">
+                <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-tag me-1 text-primary"></i>{{ form.name.label }}
+                </label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                  <div class="invalid-feedback d-block">{{ form.name.errors }}</div>
+                {% endif %}
+              </div>
 
-            <div class="mb-3">
-              {{ form.absolute_category.label_tag }} {{ form.absolute_category }}
-              <small class="text-muted">👉 Categoría principal, ej: "Deportes"</small>
-            </div>
-            <div class="mb-3">
-              <label>Categorías secundarias</label>
-              {{ form.categories }}
-              <small class="text-muted">Puede seleccionar múltiples categorías relacionadas.</small>
+              <div class="col-12">
+                <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-card-text me-1 text-primary"></i>{{ form.description.label }}
+                </label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                  <div class="invalid-feedback d-block">{{ form.description.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.absolute_category.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-folder me-1 text-primary"></i>{{ form.absolute_category.label }}
+                </label>
+                {{ form.absolute_category }}
+                {% if form.absolute_category.errors %}
+                  <div class="invalid-feedback d-block">{{ form.absolute_category.errors }}</div>
+                {% endif %}
+                <small class="form-text text-muted">Categoría principal del producto</small>
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.categories.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-tags me-1 text-primary"></i>Categorías Secundarias
+                </label>
+                {{ form.categories }}
+                {% if form.categories.errors %}
+                  <div class="invalid-feedback d-block">{{ form.categories.errors }}</div>
+                {% endif %}
+                <small class="form-text text-muted">Puede seleccionar múltiples categorías</small>
+              </div>
             </div>
           </div>
 
           <!-- 2. Costos y Precios -->
-          <div class="tab-pane fade" id="pricing">
-            <div class="row g-3">
-              <div class="col-md-4">{{ form.cost.label_tag }} {{ form.cost }}</div>
-              <div class="col-md-4">{{ form.tax_percentage.label_tag }} {{ form.tax_percentage }}</div>
-              <div class="col-md-4">{{ form.markup_percentage.label_tag }} {{ form.markup_percentage }}</div>
-            </div>
-            <div class="alert alert-info mt-3">
-              <strong>💡 Precio sugerido:</strong>
-              <span id="suggested-price">—</span>
-              <button type="button" class="btn btn-sm btn-outline-success ms-2" id="accept-price">Aceptar</button>
-              <br>
-              <small>Se calcula automáticamente con costo + IVA + margen de ganancia.</small>
-            </div>
-            <div class="mt-3">
-              {{ form.price.label_tag }} {{ form.price }}
-              <small class="text-muted">Puede aceptar el precio sugerido o definir uno manualmente.</small>
+          <div class="tab-pane fade" id="pricing" role="tabpanel">
+            <div class="row g-4">
+              <div class="col-md-4">
+                <label for="{{ form.cost.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-calculator me-1 text-warning"></i>{{ form.cost.label }}
+                </label>
+                {{ form.cost }}
+                {% if form.cost.errors %}
+                  <div class="invalid-feedback d-block">{{ form.cost.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4">
+                <label for="{{ form.tax_percentage.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-percent me-1 text-warning"></i>{{ form.tax_percentage.label }}
+                </label>
+                {{ form.tax_percentage }}
+                {% if form.tax_percentage.errors %}
+                  <div class="invalid-feedback d-block">{{ form.tax_percentage.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-md-4">
+                <label for="{{ form.markup_percentage.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-graph-up me-1 text-success"></i>{{ form.markup_percentage.label }}
+                </label>
+                {{ form.markup_percentage }}
+                {% if form.markup_percentage.errors %}
+                  <div class="invalid-feedback d-block">{{ form.markup_percentage.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12">
+                <div class="alert alert-info border-left-primary">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Precio Sugerido: </strong>
+                    <span id="suggested-price" class="fw-bold ms-2">—</span>
+                    <button type="button" class="btn btn-sm btn-outline-success ms-3" id="accept-price">
+                      <i class="bi bi-check2 me-1"></i>Aceptar
+                    </button>
+                  </div>
+                  <small class="text-muted">Se calcula automáticamente: (Costo + IVA) + Margen de ganancia</small>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="{{ form.price.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-currency-dollar me-1 text-success"></i>{{ form.price.label }}
+                </label>
+                {{ form.price }}
+                {% if form.price.errors %}
+                  <div class="invalid-feedback d-block">{{ form.price.errors }}</div>
+                {% endif %}
+                <small class="form-text text-muted">Puede usar el precio sugerido o definir uno manualmente</small>
+              </div>
             </div>
           </div>
 
           <!-- 3. Inventario -->
-          <div class="tab-pane fade" id="inventory">
-            <div class="row g-3">
+          <div class="tab-pane fade" id="inventory" role="tabpanel">
+            <div class="row g-4">
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  {{ form.has_variants }}
+                  <label class="form-check-label fw-semibold" for="{{ form.has_variants.id_for_label }}">
+                    <i class="bi bi-collection me-1 text-info"></i>{{ form.has_variants.label }}
+                  </label>
+                  <small class="form-text text-muted d-block mt-1">
+                    Si se activa, el stock se controlará por variantes individuales
+                  </small>
+                </div>
+              </div>
+
               <div class="col-md-6 field-stock">
-                {{ form.stock.label_tag }} {{ form.stock }} {{ form.stock.errors }}
+                <label for="{{ form.stock.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-boxes me-1 text-primary"></i>{{ form.stock.label }}
+                </label>
+                {{ form.stock }}
+                {% if form.stock.errors %}
+                  <div class="invalid-feedback d-block">{{ form.stock.errors }}</div>
+                {% endif %}
               </div>
+
               <div class="col-md-6">
-                {{ form.min_stock.label_tag }} {{ form.min_stock }}
-                <small class="text-muted">⚠️ Se enviará alerta cuando stock ≤ mínimo.</small>
+                <label for="{{ form.min_stock.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-exclamation-triangle me-1 text-warning"></i>{{ form.min_stock.label }}
+                </label>
+                {{ form.min_stock }}
+                {% if form.min_stock.errors %}
+                  <div class="invalid-feedback d-block">{{ form.min_stock.errors }}</div>
+                {% endif %}
+                <small class="form-text text-muted">Se enviará alerta cuando el stock sea menor o igual a este valor</small>
               </div>
-            </div>
-            <div class="form-check mt-3">
-              {{ form.has_variants }} {{ form.has_variants.label_tag }}
-              <small class="text-muted">Si se marca, el stock se controlará por variantes (no editable aquí).</small>
             </div>
           </div>
 
           <!-- 4. Imágenes -->
-        <div class="tab-pane fade" id="images">
-          <h5>Imágenes del producto</h5>
+          <div class="tab-pane fade" id="images" role="tabpanel">
+            <div class="mb-4">
+              <h5 class="fw-semibold mb-3">
+                <i class="bi bi-images me-2 text-primary"></i>Galería de Imágenes
+              </h5>
 
-          {{ image_formset.management_form }}
-          <div id="image-empty-form" style="display:none;">
-            {{ image_formset.empty_form.as_p }}
+              {{ image_formset.management_form }}
+              <div id="image-empty-form" style="display:none;">
+                {{ image_formset.empty_form.as_p }}
+              </div>
+
+              <div class="row g-3" id="image-gallery">
+                {% for form in image_formset %}
+                  <div class="col-lg-3 col-md-4 col-sm-6 image-card">
+                    <div class="card h-100 shadow-sm border-0">
+                      <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                        {% if form.instance.pk and form.instance.image %}
+                          <img src="{{ form.instance.image.url }}" class="img-fluid preview gallery-thumb">
+                        {% else %}
+                          <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview gallery-thumb">
+                        {% endif %}
+                      </div>
+                      <div class="card-body p-3">
+                        <div class="mb-2">
+                          {{ form.image }}
+                          {% if form.image.errors %}
+                            <div class="invalid-feedback d-block">{{ form.image.errors }}</div>
+                          {% endif %}
+                        </div>
+
+                        <div class="row g-2 mb-2">
+                          <div class="col-6">
+                            <div class="form-check form-check-sm">
+                              {{ form.is_main }}
+                              <label class="form-check-label small fw-semibold" for="{{ form.is_main.id_for_label }}">
+                                Principal
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <label class="form-label small fw-semibold" for="{{ form.order.id_for_label }}">Orden</label>
+                            {{ form.order }}
+                          </div>
+                        </div>
+
+                        {{ form.DELETE }}
+                      </div>
+                      <div class="card-footer bg-light p-2 text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete"
+                                data-bs-toggle="tooltip" title="Eliminar imagen">
+                          <i class="bi bi-trash me-1"></i>Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+
+              <div class="mt-4 text-center">
+                <button type="button" class="btn btn-outline-primary" id="add-image">
+                  <i class="bi bi-plus-circle me-1"></i>Agregar Imagen
+                </button>
+                <small class="form-text text-muted d-block mt-2">
+                  Puede definir una imagen principal y el orden de aparición
+                </small>
+              </div>
+            </div>
           </div>
 
-          <div class="row" id="image-gallery">
-            {% for form in image_formset %}
-              <div class="col-md-3 mb-3 image-card">
-                <div class="card h-100">
-                  <div class="card-img-top text-center p-2">
-                    {% if form.instance.pk and form.instance.image %}
-                      <img src="{{ form.instance.image.url }}" class="img-fluid preview" style="max-height:150px;">
-                    {% else %}
-                      <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview" style="max-height:150px;">
-                    {% endif %}
-                  </div>
-                  <div class="card-body p-2">
-                    {{ form.image }} {{ form.image.errors }}
+          <!-- 5. Confirmar -->
+          <div class="tab-pane fade" id="confirm" role="tabpanel">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <label for="{{ form.status.id_for_label }}" class="form-label fw-semibold">
+                  <i class="bi bi-toggle-on me-1 text-success"></i>{{ form.status.label }}
+                </label>
+                {{ form.status }}
+                {% if form.status.errors %}
+                  <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
+                {% endif %}
+              </div>
 
-                    <div class="form-check mt-2">
-                      {{ form.is_main }} <label>Principal</label>
+              <div class="col-12">
+                <div class="alert alert-success border-left-success">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <div>
+                      <strong>¿Listo para crear el producto?</strong>
+                      <p class="mb-0 mt-1">Revise que toda la información sea correcta antes de guardar.</p>
                     </div>
-                    <div class="mt-2">
-                      {{ form.order.label_tag }} {{ form.order }}
-                    </div>
-                    {{ form.DELETE }}  <!-- Se oculta, lo usamos con JS -->
-                  </div>
-                  <div class="card-footer text-center">
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete">
-                      🗑 Eliminar
-                    </button>
                   </div>
                 </div>
               </div>
-            {% endfor %}
+            </div>
           </div>
-
-          <div class="mt-3">
-            <button type="button" class="btn btn-outline-primary" id="add-image">➕ Agregar imagen</button>
-          </div>
-          <small class="text-muted d-block mt-2">Puede definir una imagen principal y el orden de aparición.</small>
         </div>
 
-          <!-- 5. Confirmar -->
-          <div class="tab-pane fade" id="confirm">
-            <div class="mb-3">{{ form.status.label_tag }} {{ form.status }}</div>
-            <div class="d-flex justify-content-end gap-2 mt-4">
-              <a href="{% url 'backoffice:products:product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-              <button type="submit" class="btn btn-success">
-                <i class="bi bi-check2-circle"></i> Guardar Producto
+        <!-- Botones de acción -->
+        <div class="row mt-5">
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center border-top pt-4">
+              <a href="{% url 'backoffice:products:product_list' %}" class="btn btn-outline-secondary px-4">
+                <i class="bi bi-x-circle me-1"></i>Cancelar
+              </a>
+              <button type="submit" class="btn btn-success px-4">
+                <i class="bi bi-check-circle me-1"></i>Crear Producto
               </button>
             </div>
           </div>
@@ -153,9 +359,11 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<!-- Scripts -->
+{% block extra_js %}
 <script>
+document.addEventListener('DOMContentLoaded', function() {
   // === Cálculo dinámico de precio sugerido ===
   function calcSuggested() {
     const cost = parseFloat(document.getElementById("id_cost").value) || 0;
@@ -168,6 +376,7 @@
     document.getElementById("suggested-price").innerText = "$" + suggested.toFixed(2);
     return suggested;
   }
+
   document.getElementById("id_cost").addEventListener("input", calcSuggested);
   document.getElementById("id_tax_percentage").addEventListener("change", calcSuggested);
   document.getElementById("id_markup_percentage").addEventListener("input", calcSuggested);
@@ -176,44 +385,44 @@
   });
 
   // === Mostrar/ocultar campo stock según has_variants ===
-  document.addEventListener("DOMContentLoaded", function() {
-    const hasVariants = document.getElementById("id_has_variants");
-    const stockField = document.querySelector(".field-stock");
+  const hasVariants = document.getElementById("id_has_variants");
+  const stockField = document.querySelector(".field-stock");
 
-    function toggleStock() {
-      if (hasVariants.checked) {
-        stockField.style.display = "none";
-      } else {
-        stockField.style.display = "block";
-      }
+  function toggleStock() {
+    if (hasVariants.checked) {
+      stockField.style.display = "none";
+    } else {
+      stockField.style.display = "block";
     }
-    toggleStock();
-    hasVariants.addEventListener("change", toggleStock);
-  });
+  }
+  toggleStock();
+  hasVariants.addEventListener("change", toggleStock);
 
   // === Formset dinámico de imágenes ===
-  document.addEventListener("DOMContentLoaded", function () {
   const formPrefix = "{{ image_formset.prefix }}";
   const totalFormsInput = document.getElementById("id_" + formPrefix + "-TOTAL_FORMS");
   const gallery = document.getElementById("image-gallery");
   const addButton = document.getElementById("add-image");
 
-  // función para crear tarjeta nueva
   function addImageForm() {
     let formCount = parseInt(totalFormsInput.value, 10);
     let templateHtml = document.getElementById("image-empty-form").innerHTML;
     let newHtml = templateHtml.replace(/__prefix__/g, formCount);
 
     const col = document.createElement("div");
-    col.className = "col-md-3 mb-3 image-card";
+    col.className = "col-lg-3 col-md-4 col-sm-6 image-card";
     col.innerHTML = `
-      <div class="card h-100">
-        <div class="card-img-top text-center p-2">
-          <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview" style="max-height:150px;">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+          <img src="{% static 'img/placeholder.png' %}" class="img-fluid preview gallery-thumb">
         </div>
-        <div class="card-body p-2">${newHtml}</div>
-        <div class="card-footer text-center">
-          <button type="button" class="btn btn-sm btn-outline-danger btn-delete">🗑 Eliminar</button>
+        <div class="card-body p-3">
+          <div class="mb-2">${newHtml}</div>
+        </div>
+        <div class="card-footer bg-light p-2 text-center">
+          <button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-bs-toggle="tooltip" title="Eliminar imagen">
+            <i class="bi bi-trash me-1"></i>Eliminar
+          </button>
         </div>
       </div>
     `;
@@ -221,16 +430,14 @@
     gallery.appendChild(col);
     totalFormsInput.value = formCount + 1;
 
-    // preview automática al seleccionar archivo
     initPreview(col);
-    // eliminar tarjeta
     initDelete(col);
-    // abrir file dialog inmediatamente
+
+    // Abrir file dialog inmediatamente
     const fileInput = col.querySelector('input[type="file"]');
     if (fileInput) fileInput.click();
   }
 
-  // función preview
   function initPreview(container) {
     const fileInput = container.querySelector('input[type="file"]');
     const previewImg = container.querySelector(".preview");
@@ -246,27 +453,32 @@
     }
   }
 
-  // función eliminar
   function initDelete(container) {
     const btnDelete = container.querySelector(".btn-delete");
     const deleteInput = container.querySelector("input[type=checkbox][name$='-DELETE']");
 
     btnDelete.addEventListener("click", function () {
       if (deleteInput) {
-        deleteInput.checked = true; // marcar para borrado
-        container.style.display = "none"; // ocultar visualmente
+        deleteInput.checked = true;
+        container.style.display = "none";
       } else {
-        container.remove(); // si es nuevo y no tiene DELETE
+        container.remove();
       }
     });
   }
 
-  // inicializar en los forms ya existentes
+  // Inicializar en los forms ya existentes
   document.querySelectorAll(".image-card").forEach(initPreview);
   document.querySelectorAll(".image-card").forEach(initDelete);
 
-  // botón agregar
+  // Botón agregar
   addButton.addEventListener("click", addImageForm);
+
+  // Inicializar tooltips
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
 });
 </script>
 {% endblock %}

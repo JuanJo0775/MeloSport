@@ -1,58 +1,316 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
+{% load static %}
 
 {% block title %}Detalle Variante - {{ object.sku }}{% endblock %}
 
-{% block breadcrumb %}
-{% breadcrumb "Productos|backoffice:products:product_list" "Detalle|backoffice:products:product_detail product.id" "Detalle Variante"%}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/styles_inventario.css' %}">
 {% endblock %}
 
+{% block breadcrumb %}
+  {% breadcrumb "Productos|backoffice:products:product_list" "Detalle Producto|backoffice:products:product_detail:object.product.pk" "Detalle Variante" %}
+{% endblock %}
+
+
 {% block content %}
-<div class="container mt-4">
-  <div class="card shadow-sm rounded">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h4 class="mb-0">Variante de {{ object.product.name }}</h4>
+
+<div class="container-fluid">
+
+  <!-- Encabezado con acciones -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center">
+      <div class="stats-icon me-3">
+        <i class="bi bi-collection"></i>
+      </div>
       <div>
-        <a href="{% url 'backoffice:products:variant_update' object.pk %}" class="btn btn-sm btn-primary">
-          <i class="bi bi-pencil"></i> Editar
-        </a>
-        <a href="{% url 'backoffice:products:variant_delete' object.pk %}" class="btn btn-sm btn-danger">
-          <i class="bi bi-trash"></i> Eliminar
-        </a>
+        <h2 class="h4 mb-1">Detalle de Variante</h2>
+        <p class="text-muted mb-0">{{ object.product.name }}</p>
       </div>
     </div>
-    <div class="card-body">
-      <dl class="row">
-        <dt class="col-sm-3">SKU</dt>
-        <dd class="col-sm-9">{{ object.sku }}</dd>
 
-        <dt class="col-sm-3">Talla</dt>
-        <dd class="col-sm-9">{{ object.size|default:"-" }}</dd>
-
-        <dt class="col-sm-3">Color</dt>
-        <dd class="col-sm-9">{{ object.color|default:"-" }}</dd>
-
-        <dt class="col-sm-3">Stock</dt>
-        <dd class="col-sm-9">{{ object.stock }}</dd>
-
-        <dt class="col-sm-3">Ajuste de precio</dt>
-        <dd class="col-sm-9">{{ object.price_modifier }}</dd>
-
-        <dt class="col-sm-3">Estado</dt>
-        <dd class="col-sm-9">
-          {% if object.is_active %}
-            <span class="badge bg-success">Activo</span>
-          {% else %}
-            <span class="badge bg-secondary">Inactivo</span>
-          {% endif %}
-        </dd>
-      </dl>
-    </div>
-    <div class="card-footer text-end">
-      <a href="{% url 'backoffice:products:product_detail' object.product.pk %}" class="btn btn-secondary">
-        Volver al Producto
+    <!-- Acciones rápidas -->
+    <div class="d-flex gap-2">
+      <a href="{% url 'backoffice:products:variant_update' object.pk %}"
+         class="btn btn-outline-secondary"
+         data-bs-toggle="tooltip" title="Editar variante">
+        <i class="bi bi-pencil me-1"></i>
+        Editar
+      </a>
+      <a href="{% url 'backoffice:products:variant_delete' object.pk %}"
+         class="btn btn-outline-danger"
+         data-bs-toggle="tooltip" title="Eliminar variante">
+        <i class="bi bi-trash me-1"></i>
+        Eliminar
       </a>
     </div>
   </div>
+
+  <div class="row">
+
+    <!-- Información principal -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            Información General
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+
+            <!-- SKU y identificación -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-start">
+                <div class="stats-icon text-primary me-3">
+                  <i class="bi bi-upc-scan"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1">SKU de la Variante</h6>
+                  <p class="h5 mb-0 text-mono">{{ object.sku }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Producto padre -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-start">
+                <div class="stats-icon text-info me-3">
+                  <i class="bi bi-box"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1">Producto</h6>
+                  <p class="mb-0">
+                    <a href="{% url 'backoffice:products:product_detail' object.product.pk %}"
+                       class="text-decoration-none fw-medium">
+                      {{ object.product.name }}
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Talla -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-start">
+                <div class="stats-icon text-success me-3">
+                  <i class="bi bi-rulers"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1">Talla</h6>
+                  <p class="mb-0 fw-medium">
+                    {% if object.size %}
+                      {{ object.size }}
+                    {% else %}
+                      <span class="text-muted">No especificada</span>
+                    {% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Color -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-start">
+                <div class="stats-icon text-warning me-3">
+                  <i class="bi bi-palette"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1">Color</h6>
+                  <p class="mb-0 fw-medium">
+                    {% if object.color %}
+                      {{ object.color }}
+                    {% else %}
+                      <span class="text-muted">No especificado</span>
+                    {% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ajuste de precio -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-start">
+                <div class="stats-icon text-primary me-3">
+                  <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1">Modificador de Precio</h6>
+                  <p class="mb-0">
+                    {% if object.price_modifier %}
+                      <span class="fw-medium text-mono">
+                        {% if object.price_modifier > 0 %}+{% endif %}${{ object.price_modifier }}
+                      </span>
+                    {% else %}
+                      <span class="text-muted">Sin ajuste</span>
+                    {% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Estado -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-start">
+                <div class="stats-icon text-secondary me-3">
+                  <i class="bi bi-activity"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1">Estado</h6>
+                  <p class="mb-0">
+                    {% if object.is_active %}
+                      <span class="badge bg-success px-2 py-1">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Activa
+                      </span>
+                    {% else %}
+                      <span class="badge bg-secondary px-2 py-1">
+                        <i class="bi bi-pause-circle me-1"></i>
+                        Inactiva
+                      </span>
+                    {% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel lateral con estadísticas -->
+    <div class="col-lg-4">
+
+      <!-- Inventario -->
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-bottom">
+          <h6 class="mb-0">
+            <i class="bi bi-box-seam me-2"></i>
+            Inventario
+          </h6>
+        </div>
+        <div class="card-body text-center">
+          <div class="stats-icon text-primary mb-2">
+            <i class="bi bi-stack"></i>
+          </div>
+          <h3 class="mb-1">{{ object.stock }}</h3>
+          <p class="text-muted mb-0">Unidades disponibles</p>
+
+          {% if object.stock <= 5 %}
+            <div class="alert alert-warning border-0 mt-3 py-2">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              <small>Stock bajo</small>
+            </div>
+          {% elif object.stock == 0 %}
+            <div class="alert alert-danger border-0 mt-3 py-2">
+              <i class="bi bi-x-circle me-1"></i>
+              <small>Agotado</small>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Precio calculado -->
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-bottom">
+          <h6 class="mb-0">
+            <i class="bi bi-tags me-2"></i>
+            Precio de Venta
+          </h6>
+        </div>
+        <div class="card-body text-center">
+          <div class="stats-icon text-success mb-2">
+            <i class="bi bi-currency-dollar"></i>
+          </div>
+          {% with calculated_price=object.product.price|add:object.price_modifier %}
+          <h3 class="mb-1">${{ calculated_price|floatformat:2 }}</h3>
+          {% endwith %}
+          <p class="text-muted mb-0">
+            Precio base: ${{ object.product.price|floatformat:2 }}
+            {% if object.price_modifier %}
+              <br>
+              <small class="text-muted">
+                Ajuste:
+                {% if object.price_modifier > 0 %}+{% endif %}${{ object.price_modifier }}
+              </small>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Acciones rápidas -->
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom">
+          <h6 class="mb-0">
+            <i class="bi bi-lightning me-2"></i>
+            Acciones Rápidas
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="{% url 'backoffice:products:variant_update' object.pk %}"
+               class="btn btn-outline-secondary">
+              <i class="bi bi-pencil me-2"></i>
+              Editar Variante
+            </a>
+
+            <a href="{% url 'backoffice:products:product_detail' object.product.pk %}"
+               class="btn btn-outline-primary">
+              <i class="bi bi-arrow-left me-2"></i>
+              Ver Producto
+            </a>
+
+            <hr class="my-2">
+
+            <a href="{% url 'backoffice:products:variant_delete' object.pk %}"
+               class="btn btn-outline-danger">
+              <i class="bi bi-trash me-2"></i>
+              Eliminar Variante
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Información adicional del producto -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white border-bottom">
+          <h6 class="mb-0">
+            <i class="bi bi-info-square me-2"></i>
+            Información del Producto Padre
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-4">
+            <div class="col-md-4">
+              <h6 class="text-muted mb-2">SKU Producto</h6>
+              <p class="mb-0 text-mono">{{ object.product.sku }}</p>
+            </div>
+            <div class="col-md-4">
+              <h6 class="text-muted mb-2">Categoría Principal</h6>
+              <p class="mb-0">
+                {% if object.product.absolute_category %}
+                  {{ object.product.absolute_category.name }}
+                {% else %}
+                  <span class="text-muted">Sin categoría</span>
+                {% endif %}
+              </p>
+            </div>
+            <div class="col-md-4">
+              <h6 class="text-muted mb-2">Total de Variantes</h6>
+              <p class="mb-0">{{ object.product.variants.count }} variante{{ object.product.variants.count|pluralize:"s" }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
