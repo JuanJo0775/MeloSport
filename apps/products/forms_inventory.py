@@ -260,3 +260,20 @@ class BulkVariantsStockForm(forms.Form):
         if not ids:
             raise forms.ValidationError("Debe seleccionar al menos una variante.")
         return ids
+
+
+class PasswordConfirmForm(forms.Form):
+    password = forms.CharField(
+        label="Contraseña",
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Introduce tu contraseña"}),
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+        if not self.user.check_password(password):
+            raise forms.ValidationError("Contraseña incorrecta.")
+        return password

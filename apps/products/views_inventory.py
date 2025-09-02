@@ -11,7 +11,7 @@ from django.http import JsonResponse
 
 from .models import InventoryMovement, Product, ProductVariant
 from apps.users.models import AuditLog
-from .forms_inventory import InventoryMovementForm, BulkAddStockForm, BulkVariantsStockForm
+from .forms_inventory import InventoryMovementForm, BulkAddStockForm, BulkVariantsStockForm, PasswordConfirmForm
 
 
 # ----------------------------
@@ -134,14 +134,39 @@ class InventoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVie
 
 
 class InventoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
-    """Eliminar movimiento (solo Admin)."""
+    """Eliminar movimiento con validación de contraseña (solo Admin)."""
     permission_required = "products.delete_inventorymovement"
     model = InventoryMovement
     template_name = "backoffice/inventory/delete.html"
     success_url = reverse_lazy("backoffice:products:inventory:inventory_list")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Si ya se confirmó la advertencia, mostramos form de contraseña
+        if self.request.POST.get("confirm_step") == "1":
+            context["password_form"] = PasswordConfirmForm(user=self.request.user)
+            context["confirm_step"] = True
+        return context
+
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
+
+        # Paso 1 → mostrar advertencia + botón "Continuar"
+        if "confirm_step" not in request.POST:
+            context = self.get_context_data(object=self.object)
+            context["confirm_step"] = True
+            context["password_form"] = PasswordConfirmForm(user=request.user)
+            return self.render_to_response(context)
+
+        # Paso 2 → validar contraseña
+        form = PasswordConfirmForm(user=request.user, data=request.POST)
+        if not form.is_valid():
+            context = self.get_context_data(object=self.object)
+            context["password_form"] = form
+            context["confirm_step"] = True
+            return self.render_to_response(context)
+
+        # ✅ Eliminar con rollback de stock
         try:
             with transaction.atomic():
                 signed = self.object._signed_qty()
