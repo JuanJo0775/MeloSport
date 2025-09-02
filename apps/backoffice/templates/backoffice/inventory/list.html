@@ -40,15 +40,10 @@
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
       <span>Listado de Movimientos</span>
-      {% if perms.products.add_inventorymovement %}
-        <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-success btn-sm">
-          ➕ Nuevo Movimiento
-        </a>
-      {% endif %}
     </div>
     <div class="card-body p-0">
       <table class="table table-striped table-hover mb-0">
-        <thead>
+        <thead class="table-light">
           <tr>
             <th>ID</th>
             <th>Producto</th>
@@ -59,7 +54,7 @@
             <th>Total</th>
             <th>Usuario</th>
             <th>Fecha</th>
-            <th></th>
+            <th class="text-end">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -67,7 +62,15 @@
           <tr>
             <td>{{ mov.id }}</td>
             <td>{{ mov.product.name }}</td>
-            <td>{{ mov.variant.name|default:"-" }}</td>
+            <td>
+              {% if mov.variant %}
+                {% if mov.variant.sku %}SKU: {{ mov.variant.sku }}{% endif %}
+                {% if mov.variant.size %}<br><small>Talla: {{ mov.variant.size }}</small>{% endif %}
+                {% if mov.variant.color %}<br><small>Color: {{ mov.variant.color }}</small>{% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
             <td>{{ mov.get_movement_type_display }}</td>
             <td>{{ mov.quantity }}</td>
             <td>{{ mov.unit_price|cop }}</td>

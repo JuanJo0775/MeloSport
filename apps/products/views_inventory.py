@@ -1,4 +1,5 @@
 # apps/products/views_inventory.py
+from decimal import Decimal
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView, View
 from django.shortcuts import get_object_or_404, redirect
@@ -55,14 +56,39 @@ class InventoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
 
 class InventoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    """Crear movimiento de inventario (entrada/salida)."""
+    """Crear movimiento de inventario (solo entradas de stock)."""
+
     permission_required = "products.add_inventorymovement"
     model = InventoryMovement
-    fields = ["product", "variant", "movement_type", "quantity", "unit_price", "discount_percentage", "notes"]
+    form_class = InventoryMovementForm
     template_name = "backoffice/inventory/create.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # En creación ocultamos precio/descuento y movement_type (siempre será "in")
+        kwargs.update({
+            "hide_price_fields": True,
+            "hide_movement_type": True,   # 👈 ahora se oculta el select
+        })
+        return kwargs
 
     def form_valid(self, form):
         form.instance.user = self.request.user
+        form.instance.movement_type = "in"  # 🚀 siempre será entrada
+
+        # Calcular unit_price desde producto + variante (si aplica)
+        product = form.cleaned_data.get("product")
+        variant = form.cleaned_data.get("variant", None)
+        base_price = Decimal(product.price or 0)
+        if variant:
+            modifier = Decimal(variant.price_modifier or 0)
+            computed_price = (base_price + modifier).quantize(Decimal("0.01"))
+        else:
+            computed_price = base_price.quantize(Decimal("0.01"))
+
+        form.instance.unit_price = computed_price
+        form.instance.discount_percentage = Decimal("0.00")
+
         with transaction.atomic():
             self.object = form.save()
             AuditLog.log_action(
@@ -70,9 +96,9 @@ class InventoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateVie
                 action="Create",
                 model=InventoryMovement,
                 obj=self.object,
-                description=f"Movimiento '{self.object.id}' ({self.object.get_movement_type_display()}) sobre '{self.object.product.name}'"
+                description=f"Entrada de stock '{self.object.id}' sobre '{self.object.product.name}'"
             )
-        messages.success(self.request, "Movimiento creado correctamente.")
+        messages.success(self.request, "Entrada de stock registrada correctamente.")
         return redirect(reverse("backoffice:products:inventory:inventory_list"))
 
 
@@ -80,8 +106,18 @@ class InventoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVie
     """Actualizar movimiento (solo Admin)."""
     permission_required = "products.change_inventorymovement"
     model = InventoryMovement
-    fields = ["product", "variant", "movement_type", "quantity", "unit_price", "discount_percentage", "notes"]
+    form_class = InventoryMovementForm
     template_name = "backoffice/inventory/update.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # Mostrar precios/descuentos pero como solo lectura
+        kwargs.update({
+            "hide_price_fields": False,
+            "disable_product": True,
+            "disable_variant": True,
+        })
+        return kwargs
 
     def form_valid(self, form):
         with transaction.atomic():
@@ -91,7 +127,7 @@ class InventoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateVie
                 action="Update",
                 model=InventoryMovement,
                 obj=self.object,
-                description=f"Movimiento '{self.object.id}' ({self.object.get_movement_type_display()}) sobre '{self.object.product.name}'"
+                description=f"Movimiento '{self.object.id}' actualizado"
             )
         messages.success(self.request, "Movimiento actualizado correctamente.")
         return redirect(reverse("backoffice:products:inventory:inventory_list"))
@@ -180,17 +216,15 @@ class ProductVariantsJSONView(LoginRequiredMixin, PermissionRequiredMixin, View)
 
     def get(self, request, pk, *args, **kwargs):
         product = get_object_or_404(Product, pk=pk)
-        variants = list(product.variants.all().values("id", "name", "stock"))
+        variants = []
+        for v in product.variants.all():
+            label = ", ".join(filter(None, [v.size, v.color])) or (v.sku or f"Variante {v.id}")
+            variants.append({"id": v.id, "label": label, "stock": v.stock})
         return JsonResponse({"variants": variants})
 
 
-class InventoryCreateFromProductView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+class InventoryCreateFromProductView(InventoryCreateView):
     """Crear movimiento de inventario desde un producto específico."""
-    permission_required = "products.add_inventorymovement"
-    model = InventoryMovement
-    form_class = InventoryMovementForm
-    template_name = "backoffice/inventory/create.html"
-
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         product_id = self.request.GET.get("product")
@@ -200,20 +234,6 @@ class InventoryCreateFromProductView(LoginRequiredMixin, PermissionRequiredMixin
         if variant_id:
             kwargs["variant_id"] = variant_id
         return kwargs
-
-    def form_valid(self, form):
-        form.instance.user = self.request.user
-        with transaction.atomic():
-            self.object = form.save()
-            AuditLog.log_action(
-                request=self.request,
-                action="Create",
-                model=InventoryMovement,
-                obj=self.object,
-                description=f"Movimiento '{self.object.id}' ({self.object.get_movement_type_display()}) sobre '{self.object.product.name}'"
-            )
-        messages.success(self.request, "Movimiento creado correctamente.")
-        return redirect(reverse("backoffice:products:inventory:inventory_list"))
 
 
 class BulkAddStockView(LoginRequiredMixin, PermissionRequiredMixin, View):
@@ -251,7 +271,12 @@ class BulkVariantsStockView(LoginRequiredMixin, PermissionRequiredMixin, View):
         form = BulkVariantsStockForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Error en la acción masiva (variantes).")
-            return redirect(request.META.get("HTTP_REFERER", reverse("backoffice:products:inventory:product_variants", kwargs={"pk": form.data.get("product_id")})))
+            return redirect(
+                request.META.get(
+                    "HTTP_REFERER",
+                    reverse("backoffice:products:inventory:product_variants", kwargs={"pk": form.data.get("product_id")})
+                )
+            )
 
         product_id = form.cleaned_data["product_id"]
         variant_ids = form.cleaned_data["variant_ids"]

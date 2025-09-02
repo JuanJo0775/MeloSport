@@ -4,21 +4,70 @@
 {% block title %}Editar Movimiento{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb  "Inventario|backoffice:products:inventory:inventory_list" "Editar Movimiento" %}
+  {% breadcrumb "Inventario|backoffice:products:inventory:inventory_list" "Editar Movimiento" %}
 {% endblock %}
 
 {% block content %}
-<div class="card">
-  <div class="card-header">
-    <h5 class="mb-0">Editar Movimiento #{{ object.id }}</h5>
-  </div>
-  <div class="card-body">
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-primary">Actualizar</button>
-      <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-secondary">Cancelar</a>
-    </form>
+<div class="container">
+  <div class="card shadow-sm">
+    <div class="card-header">
+      <h5 class="mb-0">Editar Movimiento #{{ object.id }}</h5>
+    </div>
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+
+        <div class="col-md-6">
+          {% if form.product_display %}
+            {{ form.product_display.label_tag }}
+            {{ form.product_display }}
+            {{ form.product }} {# hidden input con valor real #}
+          {% else %}
+            {{ form.product.label_tag }}
+            {{ form.product }}
+          {% endif %}
+        </div>
+
+        {% if form.variant %}
+        <div class="col-md-6">
+          {{ form.variant.label_tag }}
+          {{ form.variant }}
+        </div>
+        {% endif %}
+
+        <div class="col-md-4">
+          {{ form.movement_type.label_tag }}
+          {{ form.movement_type }}
+        </div>
+        <div class="col-md-4">
+          {{ form.quantity.label_tag }}
+          {{ form.quantity }}
+        </div>
+
+        {% if form.unit_price %}
+        <div class="col-md-4">
+          {{ form.unit_price.label_tag }}
+          {{ form.unit_price }}
+        </div>
+        {% endif %}
+
+        {# ⚠️ El descuento se oculta por completo, no se renderiza #}
+
+        <div class="col-md-12">
+          {{ form.notes.label_tag }}
+          {{ form.notes }}
+        </div>
+
+        <div class="col-12 mt-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Actualizar
+          </button>
+          <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-secondary">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}
