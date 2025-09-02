@@ -250,21 +250,15 @@ canvas.chart-canvas {
     border-left-width: 5px !important;
 }
 
-.border-left-primary {
-    border-left: 5px solid var(--primary-color) !important;
-}
+/* Bordes izquierdos característicos */
+.border-left-primary   { border-left: 5px solid var(--primary-color) !important; }
+.border-left-success   { border-left: 5px solid #198754 !important; }
+.border-left-warning   { border-left: 5px solid #ffc107 !important; }
+.border-left-info      { border-left: 5px solid #0dcaf0 !important; }
+.border-left-danger    { border-left: 5px solid #dc3545 !important; }
+.border-left-secondary { border-left: 5px solid #6c757d !important; } /* 👈 para inactivos */
+.border-left-light     { border-left: 5px solid #adb5bd !important; } /* 👈 gris clarito opcional */
 
-.border-left-success {
-    border-left: 5px solid #28a745 !important;
-}
-
-.border-left-warning {
-    border-left: 5px solid #ffc107 !important;
-}
-
-.border-left-info {
-    border-left: 5px solid #17a2b8 !important;
-}
 
 /* Ajusta el breadcrumb para no chocar con el botón toggle */
 .breadcrumb-wrapper {
@@ -332,3 +326,5 @@ body.sidebar-collapsed .breadcrumb-wrapper {
   .text-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
   .gallery-thumb { aspect-ratio: 1 / 1; object-fit: cover; border-radius: .75rem; }
+
+

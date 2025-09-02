@@ -22,41 +22,55 @@
     {% endif %}
   </div>
 
-  <!-- Estadísticas rápidas -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card border-0 bg-success bg-opacity-10 stats-card">
-        <div class="card-body text-center">
-          <h4 class="text-success mb-1">{{ productos_activos|default:"0" }}</h4>
-          <p class="text-muted mb-0">Productos Activos</p>
+  <!-- 📊 Estadísticas rápidas -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card stats-card border-left-success">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title text-success mb-1">{{ productos_activos|default:"0" }}</h5>
+              <p class="card-text text-muted small mb-0">Productos Activos</p>
+            </div>
+            <div class="stats-icon text-success"><i class="bi bi-check-circle"></i></div>
+          </div>
+        </div>
+      </div>
+        <div class="col-md-3">
+          <div class="card stats-card" style="border-left: 5px solid #6c757d;">
+            <div class="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1" style="color: #6c757d;">{{ productos_inactivos|default:"0" }}</h5>
+                <p class="card-text text-muted small mb-0">Productos Inactivos</p>
+              </div>
+              <div class="stats-icon" style="color: #6c757d;">
+                <i class="bi bi-x-circle"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      <div class="col-md-3">
+        <div class="card stats-card border-left-primary">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title text-primary mb-1">{{ variantes_count|default:"0" }}</h5>
+              <p class="card-text text-muted small mb-0">Variantes Totales</p>
+            </div>
+            <div class="stats-icon text-primary"><i class="bi bi-diagram-3"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card stats-card border-left-info">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title text-info mb-1">{{ imagenes_count|default:"0" }}</h5>
+              <p class="card-text text-muted small mb-0">Imágenes Asociadas</p>
+            </div>
+            <div class="stats-icon text-info"><i class="bi bi-image"></i></div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card border-0 bg-secondary bg-opacity-10 stats-card">
-        <div class="card-body text-center">
-          <h4 class="text-secondary mb-1">{{ productos_inactivos|default:"0" }}</h4>
-          <p class="text-muted mb-0">Productos Inactivos</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 bg-primary bg-opacity-10 stats-card">
-        <div class="card-body text-center">
-          <h4 class="text-primary mb-1">{{ variantes_count|default:"0" }}</h4>
-          <p class="text-muted mb-0">Variantes Totales</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 bg-info bg-opacity-10 stats-card">
-        <div class="card-body text-center">
-          <h4 class="text-info mb-1">{{ imagenes_count|default:"0" }}</h4>
-          <p class="text-muted mb-0">Imágenes Asociadas</p>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- Formulario de filtros -->
   <div class="card shadow-sm mb-4">
