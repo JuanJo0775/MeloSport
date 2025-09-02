@@ -10,8 +10,6 @@ from decimal import Decimal, InvalidOperation
 
 
 
-
-
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
@@ -446,7 +444,7 @@ class InventoryMovementAdmin(admin.ModelAdmin):
         'final_price_display',
         'total_amount_display',
         'user_link',
-        'created_at'
+        'created_at',
     )
     list_filter = ('movement_type', 'created_at', 'user')
     search_fields = (
@@ -454,7 +452,7 @@ class InventoryMovementAdmin(admin.ModelAdmin):
         'variant__sku',
         'user__username',
         'user__first_name',
-        'user__last_name'
+        'user__last_name',
     )
     readonly_fields = ('created_at', 'final_unit_price_display', 'total_amount_display')
     date_hierarchy = 'created_at'
@@ -469,7 +467,7 @@ class InventoryMovementAdmin(admin.ModelAdmin):
                 'unit_price',
                 'discount_percentage',
                 'final_unit_price_display',
-                'total_amount_display'
+                'total_amount_display',
             ),
             'classes': ('collapse',)
         }),
@@ -483,55 +481,61 @@ class InventoryMovementAdmin(admin.ModelAdmin):
         }),
     )
 
-    def unit_price_display(self, obj):
-        return f"${obj.unit_price:,.2f}" if obj.unit_price else "-"
+    # ----------------------
+    # Ajustes clave
+    # ----------------------
+    def get_readonly_fields(self, request, obj=None):
+        """
+        Los campos calculados siempre deben estar en readonly_fields
+        si están en fieldsets.
+        """
+        return self.readonly_fields
 
+    # ----------------------
+    # Displays
+    # ----------------------
+    def unit_price_display(self, obj):
+        return f"${obj.unit_price:,.2f}" if obj.unit_price is not None else "-"
     unit_price_display.short_description = "Precio Unit."
 
     def discount_display(self, obj):
-        return f"{obj.discount_percentage}%" if obj.discount_percentage else "-"
-
+        return f"{obj.discount_percentage:.2f}%" if obj.discount_percentage else "-"
     discount_display.short_description = "Desc."
 
     def final_price_display(self, obj):
         return f"${obj.final_unit_price:,.2f}" if obj.final_unit_price else "-"
-
     final_price_display.short_description = "Precio Final"
 
     def total_amount_display(self, obj):
         return f"${obj.total_amount:,.2f}" if obj.total_amount else "-"
-
     total_amount_display.short_description = "Total"
 
     def final_unit_price_display(self, obj):
         return f"${obj.final_unit_price:,.2f}" if obj.final_unit_price else "-"
-
     final_unit_price_display.short_description = "Precio con Descuento"
 
     def product_link(self, obj):
         url = reverse('admin:products_product_change', args=[obj.product.id])
         return format_html('<a href="{}">{}</a>', url, obj.product.name)
-
     product_link.short_description = "Producto"
     product_link.admin_order_field = 'product__name'
 
     def variant_display(self, obj):
         if obj.variant:
-            attributes = []
+            attrs = []
             if obj.variant.size:
-                attributes.append(obj.variant.size)
+                attrs.append(obj.variant.size)
             if obj.variant.color:
-                attributes.append(obj.variant.color)
-            return ", ".join(attributes) or "-"
+                attrs.append(obj.variant.color)
+            return ", ".join(attrs) or "-"
         return "-"
-
     variant_display.short_description = "Variante"
 
     def movement_type_display(self, obj):
         type_map = {
             'in': ('↗', 'Entrada'),
             'out': ('↘', 'Salida'),
-            'adjust': ('↔', 'Ajuste')
+            'adjust': ('↔', 'Ajuste'),
         }
         symbol, text = type_map.get(obj.movement_type, ('?', 'Desconocido'))
         return format_html(
@@ -539,17 +543,22 @@ class InventoryMovementAdmin(admin.ModelAdmin):
             symbol,
             text
         )
-
     movement_type_display.short_description = "Tipo"
 
     def quantity_display(self, obj):
+        # Colores: verde entrada, rojo salida, gris ajuste
+        if obj.movement_type == 'in':
+            color, sign = 'green', '+'
+        elif obj.movement_type == 'out':
+            color, sign = 'red', '-'
+        else:
+            color, sign = 'gray', ''  # ajuste muestra tal cual
         return format_html(
             '<span style="font-weight: bold; color: {};">{}{}</span>',
-            'green' if obj.movement_type == 'in' else 'red',
-            '+' if obj.movement_type == 'in' else '-',
+            color,
+            sign,
             obj.quantity
         )
-
     quantity_display.short_description = "Cantidad"
 
     def user_link(self, obj):
@@ -558,9 +567,8 @@ class InventoryMovementAdmin(admin.ModelAdmin):
             return format_html(
                 '<a href="{}">{} {}</a>',
                 url,
-                obj.user.first_name,
-                obj.user.last_name
+                obj.user.first_name or obj.user.username,
+                obj.user.last_name or ""
             )
         return "-"
-
     user_link.short_description = "Usuario"

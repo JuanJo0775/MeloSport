@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.categories.models import Category
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 
@@ -303,13 +303,18 @@ class InventoryMovement(models.Model):
         ('adjust', 'Ajuste'),
     ]
 
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='movements')
-    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey(
+        'Product', on_delete=models.CASCADE, related_name='movements'
+    )
+    variant = models.ForeignKey(
+        'ProductVariant', on_delete=models.CASCADE, null=True, blank=True
+    )
     movement_type = models.CharField(max_length=10, choices=MOVEMENT_TYPES)
     quantity = models.IntegerField()
     notes = models.TextField(blank=True)
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
     unit_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -320,7 +325,7 @@ class InventoryMovement(models.Model):
     discount_percentage = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        default=0,
+        default=Decimal('0.00'),
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="% Descuento"
     )
@@ -331,25 +336,180 @@ class InventoryMovement(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.get_movement_type_display()} de {self.quantity} unidades"
+        return f"{self.get_movement_type_display()} de {self.quantity} unidades - {self.product}"
 
+    # ------------------------
+    # Validaciones
+    # ------------------------
+    def clean(self):
+        """
+        Validaciones coherentes antes de guardar:
+        - Variante debe pertenecer al producto si está presente
+        - Para 'in'/'out' cantidad positiva (>0)
+        - Para 'adjust' cantidad distinta de 0 (puede ser negativa o positiva)
+        - Discounts y precios no negativos
+        """
+        super().clean()
+
+        if not self.product_id:
+            raise ValidationError("Debe seleccionar un producto.")
+
+        if self.variant_id and self.variant.product_id != self.product_id:
+            raise ValidationError("La variante seleccionada no pertenece al producto seleccionado.")
+
+        if self.movement_type in ('in', 'out'):
+            if self.quantity is None or self.quantity <= 0:
+                raise ValidationError("Para entradas y salidas la cantidad debe ser un entero positivo (> 0).")
+
+        if self.movement_type == 'adjust':
+            if self.quantity is None or int(self.quantity) == 0:
+                raise ValidationError("Para ajustes la cantidad no puede ser 0. Use número positivo o negativo según corresponda.")
+
+        # Normalizar discount si vino None
+        if self.discount_percentage is None:
+            self.discount_percentage = Decimal('0.00')
+
+        # Si hay precio unitario, no puede ser negativo
+        if self.unit_price is not None and Decimal(self.unit_price) < 0:
+            raise ValidationError("El precio unitario no puede ser negativo.")
+
+    # ------------------------
+    # Helpers internos
+    # ------------------------
+    def _signed_qty(self) -> int:
+        """
+        Devuelve la cantidad con signo según movement_type:
+          - 'in'  -> +quantity
+          - 'out' -> -quantity
+          - 'adjust' -> quantity tal cual (permite negativos)
+        Notar: quantity debe validarse en clean().
+        """
+        q = int(self.quantity or 0)
+        if self.movement_type == 'in':
+            return q
+        if self.movement_type == 'out':
+            return -q
+        # 'adjust' permite que el campo sea negativo o positivo
+        return q
+
+    # ------------------------
+    # Propiedades monetarias (seguros)
+    # ------------------------
+    @property
+    def final_unit_price(self) -> Decimal:
+        """
+        Precio unitario final tras aplicar descuento. Siempre devuelve Decimal con 2 decimales.
+        Si unit_price es None, devuelve Decimal('0.00') (evita errores en admin add).
+        """
+        unit = Decimal(self.unit_price) if self.unit_price is not None else Decimal('0.00')
+        discount = Decimal(self.discount_percentage or 0)
+        result = unit * (Decimal('1') - (discount / Decimal('100')))
+        return result.quantize(Decimal('0.01'))
+
+    @property
+    def total_amount(self) -> Decimal:
+        """
+        Total = cantidad * precio_final. Seguro ante quantity == None.
+        """
+        qty = Decimal(self.quantity or 0)
+        return (qty * self.final_unit_price).quantize(Decimal('0.01'))
+
+    def final_unit_price_display(self):
+        return f"{self.final_unit_price:.2f}"
+    final_unit_price_display.short_description = "Precio final"
+
+    def total_amount_display(self):
+        return f"{self.total_amount:.2f}"
+    total_amount_display.short_description = "Total"
+
+    # ------------------------
+    # Guardado atómico: apply/revert stock según create/update (y cambio de target)
+    # ------------------------
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        """
+        Lógica robusta de persistencia:
+         - En create: aplica _signed_qty() al stock del producto/variante seleccionado.
+         - En update: revierte el efecto antiguo y aplica el nuevo (maneja cambio de variante/producto).
+        Se usan select_for_update() sobre Product/ProductVariant para evitar race conditions.
+        """
+        is_create = self.pk is None
+        old = None
+
+        if not is_create:
+            # obtener la versión antigua y bloquearla para coherencia
+            old = InventoryMovement.objects.select_for_update().get(pk=self.pk)
+
+        # Determinar qué filas de stock necesitamos bloquear (productos y variantes)
+        variant_ids = set()
+        product_ids = set()
+
+        if old:
+            if old.variant_id:
+                variant_ids.add(old.variant_id)
+            else:
+                product_ids.add(old.product_id)
+
+        if self.variant_id:
+            variant_ids.add(self.variant_id)
+        else:
+            product_ids.add(self.product_id)
+
+        # Lockear las filas necesarias
+        locked_variants = {}
+        locked_products = {}
+
+        for vid in variant_ids:
+            locked_variants[vid] = ProductVariant.objects.select_for_update().get(pk=vid)
+
+        for pid in product_ids:
+            locked_products[pid] = Product.objects.select_for_update().get(pk=pid)
+
+        # Calcular valores firmados antes de persistir
+        new_signed = int(self._signed_qty())
+        old_signed = int(old._signed_qty()) if old else 0
+
+        # Persistir movimiento (ya dentro de la transacción)
         super().save(*args, **kwargs)
 
-        if self.variant:
-            self.variant.stock += self.quantity if self.movement_type == 'in' else -self.quantity
-            self.variant.save()
+        # Si existía un movimiento previo: revertir su efecto sobre su target antiguo
+        if old:
+            if old.variant_id:
+                v_old = locked_variants.get(old.variant_id) or ProductVariant.objects.select_for_update().get(pk=old.variant_id)
+                v_old.stock = (v_old.stock or 0) - old_signed
+                v_old.save(update_fields=['stock'])
+            else:
+                p_old = locked_products.get(old.product_id) or Product.objects.select_for_update().get(pk=old.product_id)
+                p_old._stock = (p_old._stock or 0) - old_signed
+                p_old.save(update_fields=['_stock'])
+
+        # Aplicar el efecto del nuevo movimiento sobre su target actual
+        if self.variant_id:
+            v_new = locked_variants.get(self.variant_id) or ProductVariant.objects.select_for_update().get(pk=self.variant_id)
+            v_new.stock = (v_new.stock or 0) + new_signed
+            v_new.save(update_fields=['stock'])
         else:
-            # usar el campo real de BD
-            self.product._stock += self.quantity if self.movement_type == 'in' else -self.quantity
-            self.product.save()
+            p_new = locked_products.get(self.product_id) or Product.objects.select_for_update().get(pk=self.product_id)
+            p_new._stock = (p_new._stock or 0) + new_signed
+            p_new.save(update_fields=['_stock'])
 
-    @property
-    def final_unit_price(self):
-        if self.unit_price:
-            return round(self.unit_price * (1 - self.discount_percentage / 100), 2)
-        return 0
+    # ------------------------
+    # Borrado: revertir movimiento
+    # ------------------------
+    @transaction.atomic
+    def delete(self, *args, **kwargs):
+        """
+        Al borrar un movimiento, revertimos su efecto sobre stock para mantener consistencia.
+        """
+        signed = int(self._signed_qty())
 
-    @property
-    def total_amount(self):
-        return round(self.quantity * self.final_unit_price, 2)
+        if self.variant_id:
+            v = ProductVariant.objects.select_for_update().get(pk=self.variant_id)
+            v.stock = (v.stock or 0) - signed
+            v.save(update_fields=['stock'])
+        else:
+            p = Product.objects.select_for_update().get(pk=self.product_id)
+            p._stock = (p._stock or 0) - signed
+            p.save(update_fields=['_stock'])
+
+        super().delete(*args, **kwargs)
