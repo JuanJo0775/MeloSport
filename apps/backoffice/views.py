@@ -7,6 +7,7 @@ from django_ratelimit.decorators import ratelimit
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.models import Permission
+from django.db.models import F
 
 from apps.categories.models import Category, AbsoluteCategory
 from apps.products.models import Product
@@ -20,10 +21,14 @@ from apps.users.models import AuditLog
 def dashboard(request):
     user = request.user
 
-    # Totales
-    total_products = Product.objects.count()
-    inventory_value = sum(p.stock * p.price for p in Product.objects.all())
-    low_stock = sum(1 for p in Product.objects.all() if p.stock <= p.min_stock)
+    products = Product.objects.all()
+
+    total_products = products.count()
+    inventory_value = sum(p.stock * p.price for p in products)  # ✅ usa property stock
+
+    # Alertas de stock calculadas en Python (no con _stock directo)
+    low_stock_qs = [p for p in products if 0 < p.stock <= p.min_stock]
+    no_stock_qs = [p for p in products if p.stock == 0]
 
     qs = AuditLog.objects.filter(user__isnull=False)
 
@@ -35,8 +40,8 @@ def dashboard(request):
             try:
                 app_label, codename = perm.split(".")
                 if codename.startswith(("view_", "add_", "change_", "delete_")):
-                    model_name = codename.split("_", 1)[1]  # ej: "product"
-                    allowed_models.add(model_name.capitalize())  # Coincide con AuditLog.model
+                    model_name = codename.split("_", 1)[1]
+                    allowed_models.add(model_name.capitalize())
             except ValueError:
                 continue
 
@@ -54,14 +59,16 @@ def dashboard(request):
         "stats": {
             "products_count": total_products,
             "inventory_value": inventory_value,
-            "low_stock": low_stock,
+            "low_stock": len(low_stock_qs),
+            "no_stock": len(no_stock_qs),
             "categories_count": Category.objects.count(),
             "absolute_categories_count": AbsoluteCategory.objects.count(),
         },
+        "stock_alerts": low_stock_qs + no_stock_qs,
         "recent_activity": recent_activity,
     }
-    return render(request, "backoffice/dashboard.html", context)
 
+    return render(request, "backoffice/dashboard.html", context)
 
 
 # ==========================

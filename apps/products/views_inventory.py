@@ -17,6 +17,8 @@ from .forms_inventory import InventoryMovementForm, BulkAddStockForm, BulkVarian
 # ----------------------------
 # Index de Inventario (antesala)
 # ----------------------------
+from django.db.models import Count, Q, Sum
+
 class InventoryIndexView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     """Página inicial de Inventario (antesala sin tablas)."""
     permission_required = "products.view_inventorymovement"
@@ -24,9 +26,46 @@ class InventoryIndexView(LoginRequiredMixin, PermissionRequiredMixin, TemplateVi
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+
+        LOW_STOCK_THRESHOLD = 5  # ajusta el umbral a tu necesidad
+
+        # -----------------------
+        # Productos SIN variantes
+        # -----------------------
+        productos_sin_variantes = Product.objects.filter(variants__isnull=True).distinct()
+
+        low_stock_prod = productos_sin_variantes.filter(
+            _stock__gt=0, _stock__lte=LOW_STOCK_THRESHOLD
+        ).count()
+
+        no_stock_prod = productos_sin_variantes.filter(
+            Q(_stock__isnull=True) | Q(_stock__lte=0)
+        ).count()
+
+        # ----------
+        # Variantes
+        # ----------
+        low_stock_var = ProductVariant.objects.filter(
+            stock__gt=0, stock__lte=LOW_STOCK_THRESHOLD
+        ).count()
+
+        no_stock_var = ProductVariant.objects.filter(
+            Q(stock__isnull=True) | Q(stock__lte=0)
+        ).count()
+
+        # Totales consolidados (sin doble conteo)
+        ctx["low_stock_count"] = low_stock_prod + low_stock_var
+        ctx["no_stock_count"] = no_stock_prod + no_stock_var
+
+        # Movimientos → Entradas y Salidas
+        ctx["entries_count"] = InventoryMovement.objects.filter(movement_type="in").count()
+        ctx["exits_count"] = InventoryMovement.objects.filter(movement_type="out").count()
+
+        # Otros que ya tenías
         ctx["products_count"] = Product.objects.count()
         ctx["variants_count"] = ProductVariant.objects.count()
         ctx["movements_count"] = InventoryMovement.objects.count()
+
         return ctx
 
 
@@ -44,15 +83,49 @@ class InventoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     def get_queryset(self):
         qs = InventoryMovement.objects.select_related("product", "variant", "user").all()
         q = Q()
+
         if t := self.request.GET.get("type"):
             q &= Q(movement_type=t)
+
         if u := self.request.GET.get("user"):
-            q &= Q(user_id=u)
+            q &= (
+                Q(user__username__icontains=u)
+                | Q(user__first_name__icontains=u)
+                | Q(user__last_name__icontains=u)
+            )
+
+        if p := self.request.GET.get("product"):
+            q &= (
+                Q(product__name__icontains=p)
+                | Q(product__sku__icontains=p)
+                | Q(variant__sku__icontains=p)
+            )
+
         if df := self.request.GET.get("date_from"):
             q &= Q(created_at__date__gte=df)
+
         if dt := self.request.GET.get("date_to"):
             q &= Q(created_at__date__lte=dt)
+
         return qs.filter(q).order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        ctx["filters"] = {
+            "type": self.request.GET.get("type", ""),
+            "user": self.request.GET.get("user", ""),
+            "product": self.request.GET.get("product", ""),
+            "date_from": self.request.GET.get("date_from", ""),
+            "date_to": self.request.GET.get("date_to", ""),
+        }
+
+        base_qs = self.get_queryset()
+        ctx["entries_count"] = base_qs.filter(movement_type="in").count()
+        ctx["exits_count"] = base_qs.filter(movement_type="out").count()
+        ctx["adjustments_count"] = base_qs.filter(movement_type="adjust").count()
+
+        return ctx
 
 
 class InventoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -99,7 +172,7 @@ class InventoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateVie
                 description=f"Entrada de stock '{self.object.id}' sobre '{self.object.product.name}'"
             )
         messages.success(self.request, "Entrada de stock registrada correctamente.")
-        return redirect(reverse("backoffice:products:inventory:inventory_list"))
+        return redirect(reverse("backoffice:products:inventory:products_inventory_list"))
 
 
 class InventoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -206,20 +279,87 @@ class InventoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteVie
 # ----------------------------
 # Gestión operativa (productos / variantes / masivos)
 # ----------------------------
+from django.db.models import Q
+
 class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     """Listado de productos para gestionar stock."""
     permission_required = "products.view_product"
     template_name = "backoffice/inventory/products_list_inventory.html"
 
+    LOW_STOCK_THRESHOLD = 5
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+
         q = self.request.GET.get("q", "")
+        stock_filter = self.request.GET.get("stock_filter", "")
+
+        # Base queryset
         qs = Product.objects.all()
+
+        # Búsqueda por texto
         if q:
-            qs = qs.filter(name__icontains=q)
-        ctx["products"] = qs.order_by("name")
+            qs = qs.filter(
+                Q(name__icontains=q) |
+                Q(sku__icontains=q) |
+                Q(description__icontains=q)
+            )
+
+        # ============================
+        # Filtro por estado de stock
+        # ============================
+        if stock_filter == "with_stock":
+            qs = qs.filter(
+                Q(_stock__gt=0) |
+                Q(variants__stock__gt=0)
+            ).distinct()
+        elif stock_filter == "low_stock":
+            qs = qs.filter(
+                Q(_stock__gt=0, _stock__lte=self.LOW_STOCK_THRESHOLD) |
+                Q(variants__stock__gt=0, variants__stock__lte=self.LOW_STOCK_THRESHOLD)
+            ).distinct()
+        elif stock_filter == "no_stock":
+            qs = qs.filter(
+                Q(_stock__isnull=True) | Q(_stock__lte=0),
+                Q(variants__stock__isnull=True) | Q(variants__stock__lte=0)
+            ).distinct()
+
+        qs = qs.order_by("name")
+
+        ctx["products"] = qs
         ctx["query"] = q
+        ctx["stock_filter"] = stock_filter
+
+        # ============================
+        # Estadísticas de inventario
+        # ============================
+        # Productos sin variantes
+        productos_sin_variantes = Product.objects.filter(variants__isnull=True).distinct()
+
+        with_stock_prod = productos_sin_variantes.filter(_stock__gt=0).count()
+        low_stock_prod = productos_sin_variantes.filter(
+            _stock__gt=0, _stock__lte=self.LOW_STOCK_THRESHOLD
+        ).count()
+        no_stock_prod = productos_sin_variantes.filter(
+            Q(_stock__isnull=True) | Q(_stock__lte=0)
+        ).count()
+
+        # Variantes
+        with_stock_var = ProductVariant.objects.filter(stock__gt=0).count()
+        low_stock_var = ProductVariant.objects.filter(
+            stock__gt=0, stock__lte=self.LOW_STOCK_THRESHOLD
+        ).count()
+        no_stock_var = ProductVariant.objects.filter(
+            Q(stock__isnull=True) | Q(stock__lte=0)
+        ).count()
+
+        # Totales combinados
+        ctx["products_with_stock"] = with_stock_prod + with_stock_var
+        ctx["low_stock_count"] = low_stock_prod + low_stock_var
+        ctx["no_stock_count"] = no_stock_prod + no_stock_var
+
         return ctx
+
 
 
 class ProductVariantsView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):

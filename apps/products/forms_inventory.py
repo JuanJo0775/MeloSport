@@ -183,14 +183,25 @@ class InventoryMovementForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        product = cleaned.get("product", getattr(self.instance, "product", None))
         movement_type = cleaned.get("movement_type", self.initial.get("movement_type"))
         qty = cleaned.get("quantity")
 
+        # --- Validaciones de cantidad ---
         if movement_type in ("in", "out") and (qty is None or qty <= 0):
             raise forms.ValidationError("Para entradas/salidas la cantidad debe ser un entero positivo.")
         if movement_type == "adjust" and (qty is None or int(qty) == 0):
             raise forms.ValidationError("Para ajustes la cantidad no puede ser 0.")
 
+        # --- Validar stock negativo ---
+        if product and movement_type == "out" and qty:
+            if qty > product.stock:
+                raise forms.ValidationError(
+                    f"No se puede realizar la salida de {qty} unidades. "
+                    f"El producto '{product.name}' solo tiene {product.stock} en stock."
+                )
+
+        # --- Defaults ---
         if "discount_percentage" in cleaned and cleaned.get("discount_percentage") is None:
             cleaned["discount_percentage"] = Decimal("0.00")
 

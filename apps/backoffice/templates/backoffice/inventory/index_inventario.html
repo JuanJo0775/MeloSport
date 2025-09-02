@@ -8,13 +8,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid">
   <!-- Encabezado principal -->
   <div class="row mb-4">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <h1 class="h3 mb-2">Gestión de Inventario</h1>
+          <h1 class="h2 mb-2">Gestión de Inventario</h1>
           <p class="text-muted mb-0">Administra movimientos de inventario y entradas de stock de productos</p>
         </div>
       </div>
@@ -22,23 +22,37 @@
   </div>
 
   <!-- Información didáctica -->
-  <div class="row mb-4">
+  <div class="row mb-5">
     <div class="col-12">
       <div class="alert alert-info border-0 shadow-sm">
         <div class="d-flex">
           <div class="flex-shrink-0">
-            <i class="bi bi-info-circle fs-4 text-info"></i>
+            <i class="bi bi-info-circle fs-3 text-info"></i>
           </div>
           <div class="flex-grow-1 ms-3">
-            <h5 class="alert-heading mb-2">¿Qué puedes hacer aquí?</h5>
-            <div class="row">
+            <h5 class="alert-heading mb-3">¿Qué puedes hacer aquí?</h5>
+            <div class="row g-3">
               <div class="col-md-6">
-                <p class="mb-1"><strong>Movimientos de Inventario:</strong></p>
-                <p class="mb-0 small">Consulta entradas, salidas y ajustes de inventario ya registrados. Los administradores pueden además editar o eliminar movimientos.</p>
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <i class="bi bi-arrow-left-right text-primary fs-5 me-2"></i>
+                  </div>
+                  <div>
+                    <h6 class="mb-1">Movimientos de Inventario</h6>
+                    <p class="mb-0 small text-muted">Consulta entradas, salidas y ajustes de inventario ya registrados. Los administradores pueden además editar o eliminar movimientos.</p>
+                  </div>
+                </div>
               </div>
               <div class="col-md-6">
-                <p class="mb-1"><strong>Entradas de Stock:</strong></p>
-                <p class="mb-0 small">Agrega nuevas unidades a tus productos. Si el producto tiene variantes, podrás asignar stock a cada variante en particular.</p>
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <i class="bi bi-box-seam text-success fs-5 me-2"></i>
+                  </div>
+                  <div>
+                    <h6 class="mb-1">Entradas de Stock</h6>
+                    <p class="mb-0 small text-muted">Agrega nuevas unidades a tus productos. Si el producto tiene variantes, podrás asignar stock a cada variante en particular.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -51,33 +65,33 @@
   <div class="row g-4">
     <!-- Movimientos de Inventario -->
     <div class="col-lg-6">
-      <div class="card h-100 border-0 shadow-sm">
+      <div class="card h-100 border-0 shadow-sm stats-card">
         <div class="card-body p-4">
-          <div class="d-flex align-items-center mb-3">
-            <div class="icon-wrapper bg-primary bg-opacity-10 rounded-3 p-3 me-3">
-              <i class="bi bi-arrow-left-right text-primary fs-2"></i>
+          <div class="d-flex align-items-center mb-4">
+            <div class="stats-icon bg-primary bg-opacity-10 rounded-3 p-3 me-3">
+              <i class="bi bi-arrow-left-right text-primary fs-1"></i>
             </div>
             <div class="flex-grow-1">
-              <h4 class="card-title mb-1">Movimientos</h4>
+              <h4 class="card-title mb-1">Movimientos de Inventario</h4>
               <p class="text-muted mb-0">Entradas, salidas y ajustes</p>
             </div>
-            <span class="badge bg-primary rounded-pill">Histórico</span>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">Histórico</span>
           </div>
 
           <p class="text-muted mb-4">
-            Consulta el historial de movimientos de inventario de tus productos.
-            Los administradores pueden también editar o eliminar registros.
+            Consulta el historial completo de movimientos de inventario de tus productos.
+            Los administradores pueden también editar o eliminar registros cuando sea necesario.
           </p>
 
           <div class="d-flex gap-2">
-              <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-outline-primary flex-fill">
-                <i class="bi bi-list-task me-2"></i>Ver Movimientos
-              </a>
-              {% if perms.products.add_inventorymovement %}
-              <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-primary flex-fill">
-                <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
-              </a>
-              {% endif %}
+            <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-outline-primary flex-fill">
+              <i class="bi bi-eye me-2"></i>Ver Movimientos
+            </a>
+            {% if perms.products.add_inventorymovement %}
+            <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-primary flex-fill">
+              <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -85,36 +99,97 @@
 
     <!-- Entradas de Stock -->
     <div class="col-lg-6">
-      <div class="card h-100 border-0 shadow-sm">
+      <div class="card h-100 border-0 shadow-sm stats-card">
         <div class="card-body p-4">
-          <div class="d-flex align-items-center mb-3">
-            <div class="icon-wrapper bg-success bg-opacity-10 rounded-3 p-3 me-3">
-              <i class="bi bi-box-seam text-success fs-2"></i>
+          <div class="d-flex align-items-center mb-4">
+            <div class="stats-icon bg-success bg-opacity-10 rounded-3 p-3 me-3">
+              <i class="bi bi-box-seam text-success fs-1"></i>
             </div>
             <div class="flex-grow-1">
               <h4 class="card-title mb-1">Entradas de Stock</h4>
               <p class="text-muted mb-0">Agregar unidades a productos</p>
             </div>
-            <span class="badge bg-success rounded-pill">Gestión</span>
+            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">Gestión</span>
           </div>
 
           <p class="text-muted mb-4">
-            Ingresa nuevas unidades al inventario.
-            Si seleccionas un producto con variantes, podrás distribuir el stock en cada variante.
+            Ingresa nuevas unidades al inventario de forma rápida y eficiente.
+            Si seleccionas un producto con variantes, podrás distribuir el stock en cada variante específica.
           </p>
 
           <div class="d-flex gap-2">
-              <a href="{% url 'backoffice:products:inventory:products_inventory_list' %}" class="btn btn-outline-success flex-fill">
-                <i class="bi bi-list-task me-2"></i>Ver Productos
-              </a>
-              <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-success flex-fill">
-                <i class="bi bi-plus-circle me-2"></i>Agregar Stock
-              </a>
+            <a href="{% url 'backoffice:products:inventory:products_inventory_list' %}" class="btn btn-outline-success flex-fill">
+              <i class="bi bi-eye me-2"></i>Ver Productos
+            </a>
+            <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-success flex-fill">
+              <i class="bi bi-plus-circle me-2"></i>Agregar Stock
+            </a>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+<!-- Estadísticas rápidas -->
+<div class="row mt-5 g-3">
+  <div class="col-12">
+    <h5 class="mb-3">Resumen del Sistema</h5>
+  </div>
+
+  <!-- Stock Bajo -->
+  <div class="col-md-3">
+    <div class="card stats-card border-left-warning">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title text-warning mb-1">{{ low_stock_count|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Stock Bajo</p>
+        </div>
+        <div class="stats-icon text-warning"><i class="bi bi-exclamation-triangle"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sin Stock -->
+  <div class="col-md-3">
+    <div class="card stats-card" style="border-left: 5px solid #dc3545;"> <!-- rojo danger -->
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title mb-1" style="color: #dc3545;">{{ no_stock_count|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Sin Stock</p>
+        </div>
+        <div class="stats-icon" style="color: #dc3545;"><i class="bi bi-x-circle"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entradas -->
+  <div class="col-md-3">
+    <div class="card stats-card border-left-success">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title text-success mb-1">{{ entries_count|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Entradas</p>
+        </div>
+        <div class="stats-icon text-success"><i class="bi bi-box-arrow-in-down"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Salidas -->
+  <div class="col-md-3">
+    <div class="card stats-card" style="border-left: 5px solid #dc3545;"> <!-- rojo danger -->
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title mb-1" style="color: #dc3545;">{{ exits_count|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Salidas</p>
+        </div>
+        <div class="stats-icon" style="color: #dc3545;"><i class="bi bi-box-arrow-up"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 </div>
 {% endblock %}
 
@@ -122,15 +197,26 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   // Animaciones suaves para las tarjetas
-  const cards = document.querySelectorAll('.card');
+  const cards = document.querySelectorAll('.stats-card');
   cards.forEach((card, index) => {
     card.style.opacity = '0';
     card.style.transform = 'translateY(20px)';
     setTimeout(() => {
-      card.style.transition = 'all 0.3s ease';
+      card.style.transition = 'all 0.4s ease';
       card.style.opacity = '1';
       card.style.transform = 'translateY(0)';
-    }, index * 100);
+    }, index * 150);
+  });
+
+  // Efecto hover mejorado para accesos rápidos
+  const quickActions = document.querySelectorAll('.row.g-3 .btn');
+  quickActions.forEach(btn => {
+    btn.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-2px)';
+    });
+    btn.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(0)';
+    });
   });
 });
 </script>

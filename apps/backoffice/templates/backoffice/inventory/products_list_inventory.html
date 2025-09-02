@@ -8,119 +8,381 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-  <h1 class="mb-4">Inventario — Seleccione Productos</h1>
+<div class="container-fluid">
+  <!-- Encabezado -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <!-- Título -->
+  <div>
+    <h1 class="h3 mb-1">Inventario por Productos</h1>
+    <p class="text-muted mb-0">Selecciona productos para gestionar su inventario</p>
+  </div>
 
-  <!-- Buscador -->
-  <form method="get" class="row g-2 mb-3">
-    <div class="col-md-4">
-      <input class="form-control" name="q" value="{{ query }}" placeholder="Buscar producto por nombre...">
-    </div>
-    <div class="col-md-2">
-      <button class="btn btn-primary">Buscar</button>
-    </div>
-  </form>
-
-  <!-- Acciones masivas -->
-  <form method="post" action="{% url 'backoffice:products:inventory:bulk_add_products' %}" id="bulk-products-form">
-    {% csrf_token %}
-    <div class="mb-2 d-flex gap-2 align-items-center">
-      <select id="bulk-action" class="form-select w-auto" name="movement_type">
-        <option value="in">Añadir stock (entrada)</option>
-        <option value="adjust">Ajuste</option>
-      </select>
-      <input type="number" name="quantity" id="bulk-quantity" class="form-control w-auto" placeholder="Cantidad" min="1">
-      <button type="submit" class="btn btn-success">Aplicar a seleccionados</button>
-      <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-secondary ms-auto">
-        Nuevo Movimiento
-      </a>
-    </div>
-
-    <input type="hidden" name="product_ids" id="product-ids-field" value="">
-
-    <!-- Tabla -->
-    <table class="table table-striped align-middle">
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="select-all"></th>
-          <th>Nombre</th>
-          <th>SKU</th>
-          <th>Stock</th>
-          <th>Variantes</th>
-          <th class="text-end">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in products %}
-        <tr>
-          <td>
-            {% if p.variants.exists %}
-              <!-- Producto con variantes: no se permite en acción masiva -->
-              <input type="checkbox" disabled title="Producto con variantes: gestionar desde Variantes">
-            {% else %}
-              <input type="checkbox" class="product-checkbox" value="{{ p.id }}">
-            {% endif %}
-          </td>
-          <td>{{ p.name }}</td>
-          <td>{{ p.sku|default:"—" }}</td>
-          <td>{{ p.stock }}</td>
-          <td>
-            {% if p.variants.exists %}
-              <a href="{% url 'backoffice:products:inventory:product_variants' p.id %}"
-                 class="btn btn-sm btn-outline-info">
-                Variantes
-              </a>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td class="text-end">
-            {% if p.variants.exists %}
-              <a href="{% url 'backoffice:products:inventory:product_variants' p.id %}"
-                 class="btn btn-sm btn-primary">
-                <i class="bi bi-layers me-1"></i> Gestionar
-              </a>
-            {% else %}
-              <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ p.id }}"
-                 class="btn btn-sm btn-success">
-                <i class="bi bi-plus-circle me-1"></i> Agregar Stock
-              </a>
-            {% endif %}
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-center text-muted">No hay productos.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </form>
+  <!-- Botones de acción -->
+  <div class="d-flex gap-2">
+    <a href="{% url 'backoffice:products:inventory:index' %}"
+       class="btn btn-outline-secondary"
+       data-bs-toggle="tooltip"
+       title="Volver a la lista">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+    <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-primary">
+      <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
+    </a>
+  </div>
 </div>
 
-<!-- JS para manejar selección masiva -->
+
+ <!-- Estadísticas rápidas -->
+    <div class="row g-3 mb-4">
+      <!-- Total Productos -->
+      <div class="col-md-3">
+        <div class="card stats-card border-left-primary">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title text-primary mb-1">{{ products.count }}</h5>
+              <p class="card-text text-muted small mb-0">Total Productos</p>
+            </div>
+            <div class="stats-icon text-primary"><i class="bi bi-box-seam"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Con Stock -->
+      <div class="col-md-3">
+        <div class="card stats-card border-left-success">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title text-success mb-1">{{ products_with_stock|default:0 }}</h5>
+              <p class="card-text text-muted small mb-0">Con Stock</p>
+            </div>
+            <div class="stats-icon text-success"><i class="bi bi-check-circle"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stock Bajo -->
+      <div class="col-md-3">
+        <div class="card stats-card border-left-warning">
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title text-warning mb-1">{{ low_stock_count|default:0 }}</h5>
+              <p class="card-text text-muted small mb-0">Stock Bajo</p>
+            </div>
+            <div class="stats-icon text-warning"><i class="bi bi-exclamation-triangle"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sin Stock (inline danger) -->
+      <div class="col-md-3">
+        <div class="card stats-card" style="border-left: 5px solid #dc3545;"> <!-- rojo danger -->
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="card-title mb-1" style="color: #dc3545;">{{ no_stock_count|default:0 }}</h5>
+              <p class="card-text text-muted small mb-0">Sin Stock</p>
+            </div>
+            <div class="stats-icon" style="color: #dc3545;"><i class="bi bi-x-circle"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- Búsqueda -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h6 class="card-title mb-0"><i class="bi bi-search me-2"></i>Buscar Productos</h6>
+    </div>
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-6">
+          <label for="q" class="form-label">Nombre del producto</label>
+          <input class="form-control" name="q" id="q" value="{{ query }}"
+                 placeholder="Buscar por nombre, SKU o descripción...">
+        </div>
+        <div class="col-md-3">
+          <label for="stock_filter" class="form-label">Filtro de stock</label>
+          <select name="stock_filter" id="stock_filter" class="form-select">
+            <option value="">Todos los productos</option>
+            <option value="with_stock" {% if request.GET.stock_filter == 'with_stock' %}selected{% endif %}>Con stock</option>
+            <option value="low_stock" {% if request.GET.stock_filter == 'low_stock' %}selected{% endif %}>Stock bajo</option>
+            <option value="no_stock" {% if request.GET.stock_filter == 'no_stock' %}selected{% endif %}>Sin stock</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-primary me-2" type="submit">
+            <i class="bi bi-search me-1"></i>Buscar
+          </button>
+          <a href="{% url 'backoffice:products:inventory:products_inventory_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle me-1"></i>Limpiar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Acciones masivas -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h6 class="card-title mb-0"><i class="bi bi-layers me-2"></i>Acciones Masivas</h6>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'backoffice:products:inventory:bulk_add_products' %}" id="bulk-products-form">
+        {% csrf_token %}
+        <input type="hidden" name="product_ids" id="product-ids-field" value="">
+
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label for="bulk-action" class="form-label">Tipo de movimiento</label>
+            <select id="bulk-action" class="form-select" name="movement_type">
+              <option value="in">Añadir stock (entrada)</option>
+              <option value="adjust">Ajuste de inventario</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label for="bulk-quantity" class="form-label">Cantidad</label>
+            <input type="number" name="quantity" id="bulk-quantity"
+                   class="form-control" placeholder="Cantidad" min="1">
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-success w-100">
+              <i class="bi bi-check-circle me-2"></i>Aplicar a seleccionados
+            </button>
+          </div>
+          <div class="col-md-3 text-end">
+            <small class="text-muted">
+              <span id="selected-products-count">0</span> producto(s) seleccionado(s)
+            </small>
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <small class="text-warning">
+            <i class="bi bi-info-circle me-1"></i>
+            Nota: Solo se pueden seleccionar productos sin variantes para acciones masivas.
+          </small>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tabla de productos -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-list-task me-2"></i>Productos Disponibles</span>
+      <div class="d-flex align-items-center gap-3">
+        <small class="text-muted">{{ products.count }} producto{{ products.count|pluralize }}</small>
+        <div class="form-check">
+          <input type="checkbox" id="select-all-products" class="form-check-input">
+          <label for="select-all-products" class="form-check-label small">Seleccionar válidos</label>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th width="50">
+                <div class="form-check">
+                  <input type="checkbox" id="select-all-products-header" class="form-check-input">
+                </div>
+              </th>
+              <th>Producto</th>
+              <th>SKU</th>
+              <th class="text-center">Stock</th>
+              <th class="text-center">Variantes</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in products %}
+            <tr>
+              <td>
+                {% if p.variants.exists %}
+                  <!-- Producto con variantes: no se permite en acción masiva -->
+                  <div class="form-check">
+                    <input type="checkbox" class="form-check-input" disabled
+                           title="Producto con variantes: gestionar desde Variantes">
+                  </div>
+                {% else %}
+                  <div class="form-check">
+                    <input type="checkbox" class="product-checkbox form-check-input"
+                           value="{{ p.id }}" id="product-{{ p.id }}">
+                  </div>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ p.name }}</div>
+                    {% if p.description %}
+                      <small class="text-muted">{{ p.description|truncatechars:80 }}</small>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if p.sku %}
+                  <span class="badge bg-light text-dark text-mono">{{ p.sku }}</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <span class="fw-semibold
+                  {% if p.stock <= 0 %}text-danger{% elif p.stock <= 5 %}text-warning{% else %}text-success{% endif %}">
+                  {{ p.stock }}
+                </span>
+              </td>
+              <td class="text-center">
+                {% if p.variants.exists %}
+                  <a href="{% url 'backoffice:products:inventory:product_variants' p.id %}"
+                     class="btn btn-sm btn-outline-info"
+                     data-bs-toggle="tooltip" title="Gestionar {{ p.variants.count }} variante(s)">
+                    <i class="bi bi-layers me-1"></i>{{ p.variants.count }}
+                  </a>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if p.stock <= 0 %}
+                  <span class="badge bg-danger">Sin stock</span>
+                {% elif p.stock <= 5 %}
+                  <span class="badge bg-warning text-dark">Stock bajo</span>
+                {% else %}
+                  <span class="badge bg-success">Disponible</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex justify-content-center">
+                  {% if p.variants.exists %}
+                    <a href="{% url 'backoffice:products:inventory:product_variants' p.id %}"
+                       class="btn btn-sm btn-outline-primary"
+                       data-bs-toggle="tooltip" title="Gestionar variantes">
+                      <i class="bi bi-layers me-1"></i>Variantes
+                    </a>
+                  {% else %}
+                    <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ p.id }}"
+                       class="btn btn-sm btn-outline-primary"
+                       data-bs-toggle="tooltip" title="Agregar stock directo">
+                      <i class="bi bi-plus-circle me-1"></i>Stock
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-4">
+                <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                No hay productos disponibles con los filtros aplicados.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% if products %}
+    <div class="card-footer text-end">
+      <small class="text-muted">Total de productos: {{ products.count }}</small>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <script>
-document.getElementById("select-all").addEventListener("change", function(e){
-  const checked = e.target.checked;
-  document.querySelectorAll(".product-checkbox").forEach(ch => ch.checked = checked);
-  updateHiddenIds();
-});
-document.querySelectorAll(".product-checkbox").forEach(cb=>{
-  cb.addEventListener("change", updateHiddenIds);
-});
-function updateHiddenIds(){
-  const ids = Array.from(document.querySelectorAll(".product-checkbox:checked")).map(i=>i.value);
-  document.getElementById("product-ids-field").value = ids.join(",");
-}
-document.getElementById("bulk-products-form").addEventListener("submit", function(e){
-  const ids = document.getElementById("product-ids-field").value;
-  const qty = document.getElementById("bulk-quantity").value;
-  if(!ids){
-    e.preventDefault(); alert("Seleccione al menos un producto válido para acción masiva.");
-    return;
+(function() {
+  const selectAllCheckbox = document.getElementById("select-all-products");
+  const selectAllHeaderCheckbox = document.getElementById("select-all-products-header");
+  const productCheckboxes = document.querySelectorAll(".product-checkbox");
+  const selectedCountSpan = document.getElementById("selected-products-count");
+  const bulkForm = document.getElementById("bulk-products-form");
+  const productIdsField = document.getElementById("product-ids-field");
+  const quantityInput = document.getElementById("bulk-quantity");
+
+  // Sincronizar checkboxes de "seleccionar todo"
+  [selectAllCheckbox, selectAllHeaderCheckbox].forEach(checkbox => {
+    checkbox.addEventListener("change", function(e) {
+      const isChecked = e.target.checked;
+
+      // Actualizar el otro checkbox de "seleccionar todo"
+      [selectAllCheckbox, selectAllHeaderCheckbox].forEach(cb => {
+        if (cb !== e.target) cb.checked = isChecked;
+      });
+
+      // Actualizar todos los checkboxes de productos válidos
+      productCheckboxes.forEach(cb => cb.checked = isChecked);
+
+      updateSelection();
+    });
+  });
+
+  // Manejar selección individual
+  productCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener("change", updateSelection);
+  });
+
+  function updateSelection() {
+    const checkedBoxes = document.querySelectorAll(".product-checkbox:checked");
+    const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+    // Actualizar campo oculto
+    productIdsField.value = selectedIds.join(",");
+
+    // Actualizar contador
+    selectedCountSpan.textContent = selectedIds.length;
+
+    // Actualizar estado de "seleccionar todo"
+    const allChecked = checkedBoxes.length === productCheckboxes.length && productCheckboxes.length > 0;
+    const someChecked = checkedBoxes.length > 0;
+
+    [selectAllCheckbox, selectAllHeaderCheckbox].forEach(cb => {
+      cb.checked = allChecked;
+      cb.indeterminate = someChecked && !allChecked;
+    });
   }
-  if(!qty || Number(qty) <= 0){
-    e.preventDefault(); alert("Ingrese una cantidad válida.");
-    return;
+
+  // Validación del formulario
+  bulkForm.addEventListener("submit", function(e) {
+    const selectedIds = productIdsField.value;
+    const quantity = quantityInput.value;
+
+    if (!selectedIds) {
+      e.preventDefault();
+      alert("Por favor, selecciona al menos un producto válido para la acción masiva.");
+      return;
+    }
+
+    if (!quantity || Number(quantity) <= 0) {
+      e.preventDefault();
+      alert("Por favor, ingresa una cantidad válida mayor a 0.");
+      quantityInput.focus();
+      return;
+    }
+
+    // Confirmación
+    const selectedCount = selectedIds.split(",").length;
+    const actionType = document.getElementById("bulk-action").selectedOptions[0].textContent;
+    const confirmMessage = `¿Aplicar "${actionType}" de ${quantity} unidades a ${selectedCount} producto(s) seleccionado(s)?`;
+
+    if (!confirm(confirmMessage)) {
+      e.preventDefault();
+    }
+  });
+
+  // Inicializar tooltips
+  if (typeof bootstrap !== 'undefined') {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
   }
-});
+
+  // Inicializar contador
+  updateSelection();
+})();
 </script>
 {% endblock %}
