@@ -84,6 +84,13 @@
                 </a>
                 {% endif %}
 
+                <!-- Categorías (Admins y Vendedores) -->
+                {% if perms.categories.view_category %}
+                <a href="{% url 'backoffice:categories:home' %}" class="sidebar-link">
+                    <i class="bi bi-tags"></i> Categorías
+                </a>
+                {% endif %}
+
                 <!-- Inventario -->
                 {% if perms.products.change_product %}
                 <a href="#" class="sidebar-link">
@@ -91,12 +98,6 @@
                 </a>
                 {% endif %}
 
-                <!-- Categorías (Admins y Vendedores) -->
-                {% if perms.categories.view_category %}
-                <a href="{% url 'backoffice:categories:home' %}" class="sidebar-link">
-                    <i class="bi bi-tags"></i> Categorías
-                </a>
-                {% endif %}
 
                 <!-- Reportes (solo admin) -->
                 {% if perms.reports.view_report %}

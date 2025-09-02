@@ -98,7 +98,6 @@ urlpatterns = [
     # ==========================
     # Rutas dummy (temporal)
     # ==========================
-    path("productos/crear/", views.placeholder_view, name="product-create"),
     path("inventario/subir/", views.placeholder_view, name="inventory-upload"),
     path("reportes/lista/", views.placeholder_view, name="report-list"),
     path("respaldos/crear/", views.placeholder_view, name="backup-create"),

@@ -255,51 +255,64 @@
                 <div class="card-header">
                     <h6 class="m-0 font-weight-bold text-primary">Actividad Reciente</h6>
                 </div>
-                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                    <div class="timeline">
-                        <div class="d-flex mb-3">
-                            <div class="flex-shrink-0">
-                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
-                                     style="width: 32px; height: 32px;">
-                                    <i class="bi bi-plus text-white"></i>
-                                </div>
-                            </div>
-                            <div class="flex-grow-1 ms-3">
-                                <div class="fw-bold">Producto agregado</div>
-                                <small class="text-muted">Se agregó "Balón Basketball Pro" hace 2 horas</small>
-                            </div>
+                <div class="card-body p-3" style="max-height: 300px; overflow-y: auto;">
+                    {% if recent_activity %}
+                        <ul class="list-unstyled mb-0">
+                            {% for log in recent_activity %}
+                                <li class="d-flex align-items-start mb-3 pb-2 border-bottom">
+                                    <div class="flex-shrink-0">
+                                        {% if log.action == "create" %}
+                                            <span class="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width:32px;height:32px;">
+                                                <i class="bi bi-plus"></i>
+                                            </span>
+                                        {% elif log.action == "update" %}
+                                            <span class="d-flex align-items-center justify-content-center bg-success text-white rounded-circle" style="width:32px;height:32px;">
+                                                <i class="bi bi-pencil"></i>
+                                            </span>
+                                        {% elif log.action == "delete" %}
+                                            <span class="d-flex align-items-center justify-content-center bg-danger text-white rounded-circle" style="width:32px;height:32px;">
+                                                <i class="bi bi-trash"></i>
+                                            </span>
+                                        {% elif log.action == "login" %}
+                                            <span class="d-flex align-items-center justify-content-center bg-info text-white rounded-circle" style="width:32px;height:32px;">
+                                                <i class="bi bi-person-check"></i>
+                                            </span>
+                                        {% elif log.action == "logout" %}
+                                            <span class="d-flex align-items-center justify-content-center bg-warning text-white rounded-circle" style="width:32px;height:32px;">
+                                                <i class="bi bi-box-arrow-right"></i>
+                                            </span>
+                                        {% else %}
+                                            <span class="d-flex align-items-center justify-content-center bg-secondary text-white rounded-circle" style="width:32px;height:32px;">
+                                                <i class="bi bi-activity"></i>
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="fw-semibold">{{ log.get_action_display }}</div>
+                                        <small class="text-muted">
+                                            {{ log.user.username }} • {{ log.created_at|timesince }} atrás
+                                        </small>
+                                        {% if log.description %}
+                                            <div class="small text-muted">{{ log.description }}</div>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-center text-muted p-3">
+                            <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                            No hay actividad reciente
                         </div>
+                    {% endif %}
 
-                        <div class="d-flex mb-3">
-                            <div class="flex-shrink-0">
-                                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center"
-                                     style="width: 32px; height: 32px;">
-                                    <i class="bi bi-check text-white"></i>
-                                </div>
-                            </div>
-                            <div class="flex-grow-1 ms-3">
-                                <div class="fw-bold">Stock actualizado</div>
-                                <small class="text-muted">Inventario de "Camisetas XL" actualizado hace 4 horas</small>
-                            </div>
+                    {% if request.user.is_superuser %}
+                        <div class="text-center mt-2">
+                            <a href="{% url 'backoffice:users:auditlog_list' %}" class="btn btn-sm btn-outline-primary">
+                                Ver historial completo
+                            </a>
                         </div>
-
-                        <div class="d-flex mb-3">
-                            <div class="flex-shrink-0">
-                                <div class="bg-info rounded-circle d-flex align-items-center justify-content-center"
-                                     style="width: 32px; height: 32px;">
-                                    <i class="bi bi-person text-white"></i>
-                                </div>
-                            </div>
-                            <div class="flex-grow-1 ms-3">
-                                <div class="fw-bold">Nuevo usuario</div>
-                                <small class="text-muted">Usuario "vendedor2" creado hace 1 día</small>
-                            </div>
-                        </div>
-
-                        <div class="text-center">
-                            <a href="#" class="btn btn-sm btn-outline-primary">Ver historial completo</a>
-                        </div>
-                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -315,7 +328,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-3 col-sm-6 mb-3">
-                                <a href="{% url 'backoffice:product-create' %}" class="btn btn-outline-primary w-100 p-3">
+                                <a href="{% url 'backoffice:products:product_create' %}" class="btn btn-outline-primary w-100 p-3">
                                     <i class="bi bi-plus-circle d-block mb-2" style="font-size: 2rem;"></i>
                                     Agregar Producto
                                 </a>

@@ -1,10 +1,12 @@
 # apps/backoffice/views.py
+from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
 from django_ratelimit.decorators import ratelimit
 from django.contrib import messages
 from django.utils import timezone
+from django.contrib.auth.models import Permission
 
 from apps.categories.models import Category, AbsoluteCategory
 from apps.products.models import Product
@@ -18,14 +20,33 @@ from apps.users.models import AuditLog
 def dashboard(request):
     user = request.user
 
-    # Total productos
+    # Totales
     total_products = Product.objects.count()
+    inventory_value = sum(p.stock * p.price for p in Product.objects.all())
+    low_stock = sum(1 for p in Product.objects.all() if p.stock <= p.min_stock)
 
-    # Valor de inventario: stock real * precio
-    inventory_value = sum([p.stock * p.price for p in Product.objects.all()])
+    qs = AuditLog.objects.filter(user__isnull=False)
 
-    # Productos con stock bajo
-    low_stock = sum([1 for p in Product.objects.all() if p.stock <= p.min_stock])
+    if user.is_superuser:
+        recent_activity = qs.order_by("-created_at")[:10]
+    else:
+        allowed_models = set()
+        for perm in user.get_all_permissions():
+            try:
+                app_label, codename = perm.split(".")
+                if codename.startswith(("view_", "add_", "change_", "delete_")):
+                    model_name = codename.split("_", 1)[1]  # ej: "product"
+                    allowed_models.add(model_name.capitalize())  # Coincide con AuditLog.model
+            except ValueError:
+                continue
+
+        recent_activity = (
+            qs.filter(
+                action__in=["create", "update", "delete"],
+                model__in=allowed_models
+            )
+            .order_by("-created_at")[:10]
+        )
 
     context = {
         "last_login": user.last_access,
@@ -37,8 +58,10 @@ def dashboard(request):
             "categories_count": Category.objects.count(),
             "absolute_categories_count": AbsoluteCategory.objects.count(),
         },
+        "recent_activity": recent_activity,
     }
     return render(request, "backoffice/dashboard.html", context)
+
 
 
 # ==========================

@@ -189,7 +189,7 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
 
             AuditLog.log_action(
                 request=self.request,
-                action="create",
+                action="Create",
                 model=self.model,
                 obj=self.object,
                 description=f"Producto '{self.object.name}' creado",
@@ -255,7 +255,7 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             # Audit log
             AuditLog.log_action(
                 request=self.request,
-                action="update",
+                action="Update",
                 model=self.model,
                 obj=self.object,
                 description=f"Producto '{self.object.name}' actualizado",
@@ -301,7 +301,7 @@ class ProductDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
                 response = super().delete(request, *args, **kwargs)
                 AuditLog.log_action(
                     request=request,
-                    action="delete",
+                    action="Delete",
                     model=self.model,
                     obj=self.object,
                     description=f"Producto '{nombre}' eliminado",
@@ -363,7 +363,7 @@ class VariantCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         response = super().form_valid(form)
         AuditLog.log_action(
             request=self.request,
-            action="create",
+            action="Create",
             model=self.model,
             obj=self.object,
             description=f"Variante '{self.object.sku}' creada para producto '{self.product.name}'",
@@ -385,7 +385,7 @@ class VariantUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         response = super().form_valid(form)
         AuditLog.log_action(
             request=self.request,
-            action="update",
+            action="Update",
             model=self.model,
             obj=self.object,
             description=f"Variante '{self.object.sku}' actualizada",
@@ -421,7 +421,7 @@ class VariantDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView)
                 response = super().delete(request, *args, **kwargs)
                 AuditLog.log_action(
                     request=request,
-                    action="delete",
+                    action="Delete",
                     model=self.model,
                     obj=self.object,
                     description=f"Variante '{sku}' eliminada del producto '{product.name}'",
@@ -452,7 +452,7 @@ def product_variants_manage(request, pk):
         formset.save()
         AuditLog.log_action(
             request=request,
-            action="update",
+            action="Update",
             model=ProductVariant,
             obj=product,
             description=f"Variantes de producto '{product.name}' gestionadas desde detalle",
@@ -479,7 +479,7 @@ def variant_quick_create(request, pk):
             variant.save()
             AuditLog.log_action(
                 request=request,
-                action="create",
+                action="Create",
                 model=ProductVariant,
                 obj=variant,
                 description=f"Variante rápida '{variant.sku}' creada para producto '{product.name}'",

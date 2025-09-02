@@ -122,7 +122,7 @@ class CategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView
         response = super().form_valid(form)
         AuditLog.log_action(
             request=self.request,
-            action="create",
+            action="Create",
             model=self.model,
             obj=self.object,
             description=f"Categoría '{self.object.name}' creada"
@@ -141,7 +141,7 @@ class CategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView
         response = super().form_valid(form)
         AuditLog.log_action(
             request=self.request,
-            action="update",
+            action="Update",
             model=self.model,
             obj=self.object,
             description=f"Categoría '{self.object.name}' actualizada"
@@ -204,7 +204,7 @@ class CategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView
             self.object.delete()
             AuditLog.log_action(
                 request=request,
-                action="delete",
+                action="Delete",
                 model=self.model,
                 obj=self.object,
                 description=f"Categoría '{nombre}' eliminada"
@@ -274,7 +274,7 @@ class AbsoluteCategoryCreateView(LoginRequiredMixin, PermissionRequiredMixin, Cr
         response = super().form_valid(form)
         AuditLog.log_action(
             request=self.request,
-            action="create",
+            action="Create",
             model=self.model,
             obj=self.object,
             description=f"Deporte '{self.object.nombre}' creado"
@@ -293,7 +293,7 @@ class AbsoluteCategoryUpdateView(LoginRequiredMixin, PermissionRequiredMixin, Up
         response = super().form_valid(form)
         AuditLog.log_action(
             request=self.request,
-            action="update",
+            action="Update",
             model=self.model,
             obj=self.object,
             description=f"Deporte '{self.object.nombre}' actualizado"
@@ -351,7 +351,7 @@ class AbsoluteCategoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, De
             self.object.delete()
             AuditLog.log_action(
                 request=request,
-                action="delete",
+                action="Delete",
                 model=self.model,
                 obj=self.object,
                 description=f"Deporte '{nombre}' eliminado"
@@ -370,7 +370,7 @@ def absolute_activate(request, pk):
     deporte.save()
     AuditLog.log_action(
         request=request,
-        action="update",
+        action="Update",
         model=AbsoluteCategory,
         obj=deporte,
         description=f"Deporte '{deporte.nombre}' activado"
@@ -385,7 +385,7 @@ def absolute_deactivate(request, pk):
     deporte.save()
     AuditLog.log_action(
         request=request,
-        action="update",
+        action="Update",
         model=AbsoluteCategory,
         obj=deporte,
         description=f"Deporte '{deporte.nombre}' desactivado"
@@ -405,11 +405,11 @@ def category_bulk_action(request):
 
         qs = Category.objects.filter(pk__in=ids)
 
-        if action == 'activate':
+        if action == 'Activate':
             qs.update(is_active=True)
-        elif action == 'deactivate':
+        elif action == 'Deactivate':
             qs.update(is_active=False)
-        elif action == 'delete':
+        elif action == 'Delete':
             qs.delete()
 
         # Auditoría
@@ -433,16 +433,16 @@ def absolute_bulk_action(request):
         action = data.get('action')
         ids = data.get('ids', [])
 
-        if not ids or action not in ['activate', 'deactivate', 'delete']:
+        if not ids or action not in ['Activate', 'Deactivate', 'Delete']:
             return JsonResponse({'success': False, 'message': 'Parámetros inválidos'}, status=400)
 
         qs = AbsoluteCategory.objects.filter(pk__in=ids)
 
-        if action == 'activate':
+        if action == 'Activate':
             qs.update(activo=True)
-        elif action == 'deactivate':
+        elif action == 'Deactivate':
             qs.update(activo=False)
-        elif action == 'delete':
+        elif action == 'Delete':
             qs.delete()
 
         # Auditoría
