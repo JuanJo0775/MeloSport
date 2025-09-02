@@ -1,0 +1,101 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+{% load static %}
+{% block title %}Nuevo Movimiento{% endblock %}
+{% block breadcrumb %}
+  {% breadcrumb "Inventario|backoffice:products:inventory:inventory_list" "Nuevo Movimiento" %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 class="mb-4">Registrar Movimiento</h1>
+
+  <form method="post" id="movement-form">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-4">
+        {{ form.product.label_tag }}
+        {{ form.product }}
+      </div>
+      <div class="col-md-4" id="variant-container">
+        {% if form.variant %}
+          {{ form.variant.label_tag }}
+          {{ form.variant }}
+        {% endif %}
+      </div>
+      <div class="col-md-2">
+        {{ form.movement_type.label_tag }}
+        {{ form.movement_type }}
+      </div>
+      <div class="col-md-2">
+        {{ form.quantity.label_tag }}
+        {{ form.quantity }}
+      </div>
+
+      <div class="col-md-3">
+        {{ form.unit_price.label_tag }}
+        {{ form.unit_price }}
+      </div>
+      <div class="col-md-3">
+        {{ form.discount_percentage.label_tag }}
+        {{ form.discount_percentage }}
+      </div>
+      <div class="col-12">
+        {{ form.notes.label_tag }}
+        {{ form.notes }}
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <button class="btn btn-primary">Guardar</button>
+      <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const productSelect = document.querySelector("select[name='product']");
+  const variantContainer = document.getElementById("variant-container");
+
+  function loadVariants(productId){
+    if(!productId){
+      // remover variant select si existe
+      variantContainer.innerHTML = "";
+      return;
+    }
+    fetch("{% url 'backoffice:products:inventory:product_variants_json' 0 %}".replace("/0/", "/" + productId + "/"))
+      .then(r => r.json())
+      .then(data => {
+        const variants = data.variants || [];
+        if(!variants.length){
+          variantContainer.innerHTML = ""; // ocultar si no tiene
+          return;
+        }
+        // construir select
+        let html = "<label for='id_variant'>Variante</label>";
+        html += "<select name='variant' id='id_variant' class='form-select'>";
+        html += "<option value=''>-- Seleccionar variante --</option>";
+        for(const v of variants){
+          html += `<option value='${v.id}'>${v.name} — stock: ${v.stock}</option>`;
+        }
+        html += "</select>";
+        variantContainer.innerHTML = html;
+      }).catch(err=>{
+        console.error(err);
+      });
+  }
+
+  // Si hay un product en querystring, cargar variantes onload
+  if(productSelect){
+    const initial = productSelect.value;
+    if(initial){
+      loadVariants(initial);
+    }
+    productSelect.addEventListener("change", function(e){
+      loadVariants(e.target.value);
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -145,6 +145,11 @@ body {
     color: white;
 }
 
+.badge-orange {
+    background-color: #fd7e14;
+    color: white;
+}
+
 .progress {
     height: 12px;
     border-radius: 6px;

@@ -14,6 +14,8 @@ app_name = "products"
 urlpatterns = [
     path('api/', include(router.urls)),
 
+    path("inventory/", include(("apps.products.urls_inventory", "inventory"))),
+
     # Productos
     path("", ProductListView.as_view(), name="product_list"),
     path("create/", ProductCreateView.as_view(), name="product_create"),

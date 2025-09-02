@@ -20,11 +20,22 @@ class Command(BaseCommand):
         allowed = []
 
         # Solo lectura de productos y categorías
-        allowed += list(Permission.objects.filter(codename__startswith="view_", content_type__app_label="products"))
-        allowed += list(Permission.objects.filter(codename__startswith="view_", content_type__app_label="categories"))
+        allowed += list(
+            Permission.objects.filter(
+                codename__startswith="view_", content_type__app_label="products"
+            )
+        )
+        allowed += list(
+            Permission.objects.filter(
+                codename__startswith="view_", content_type__app_label="categories"
+            )
+        )
 
-        # Gestión completa de movimientos de inventario
-        allowed += list(Permission.objects.filter(content_type__app_label="products", codename__icontains="inventorymovement"))
+        # Movimientos de inventario: solo ver y agregar
+        inventory_perms = Permission.objects.filter(
+            content_type__app_label="products", codename__in=["view_inventorymovement", "add_inventorymovement"]
+        )
+        allowed += list(inventory_perms)
 
         vendedor_group.permissions.set(allowed)
 
@@ -33,6 +44,10 @@ class Command(BaseCommand):
             User.objects.create_superuser(
                 "admin", "admin@melosport.com", "Bocato0731@"
             )
-            self.stdout.write(self.style.SUCCESS("✅ Superusuario creado: admin / Bocato0731@"))
+            self.stdout.write(
+                self.style.SUCCESS("✅ Superusuario creado: admin / Bocato0731@")
+            )
 
-        self.stdout.write(self.style.SUCCESS("✅ Roles y permisos iniciales configurados"))
+        self.stdout.write(
+            self.style.SUCCESS("✅ Roles y permisos iniciales configurados")
+        )

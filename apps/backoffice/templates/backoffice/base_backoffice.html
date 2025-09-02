@@ -92,8 +92,8 @@
                 {% endif %}
 
                 <!-- Inventario -->
-                {% if perms.products.change_product %}
-                <a href="#" class="sidebar-link">
+                {% if perms.products.view_inventorymovement %}
+                <a href="{% url 'backoffice:products:inventory:index' %}" class="sidebar-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
                     <i class="bi bi-stack"></i> Inventario
                 </a>
                 {% endif %}

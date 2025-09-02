@@ -1,0 +1,92 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Variantes — {{ product.name }}{% endblock %}
+
+{% block breadcrumb %}
+{% breadcrumb "Inventario|backoffice:products:inventory:index" "Productos|backoffice:products:inventory:products_inventory_list" product.name  %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1 class="mb-4">Variantes de {{ product.name }}</h1>
+
+  <!-- Formulario masivo -->
+  <form method="post" action="{% url 'backoffice:products:inventory:bulk_add_variants' %}" id="bulk-variants-form">
+    {% csrf_token %}
+    <input type="hidden" name="product_id" value="{{ product.id }}">
+    <input type="hidden" name="variant_ids" id="variant-ids-field" value="">
+
+    <div class="mb-3 d-flex gap-2 align-items-center">
+      <select name="movement_type" class="form-select w-auto">
+        <option value="in">Añadir stock (entrada)</option>
+        <option value="adjust">Ajuste</option>
+      </select>
+      <input type="number" name="quantity" id="variant-quantity" class="form-control w-auto" placeholder="Cantidad" min="1">
+      <button type="submit" class="btn btn-success">Aplicar a seleccionadas</button>
+      <a href="{% url 'backoffice:products:inventory:products_inventory_list' %}" class="btn btn-secondary ms-auto">
+        Volver a Productos
+      </a>
+    </div>
+
+    <!-- Tabla de variantes -->
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select-all-variants"></th>
+          <th>Nombre</th>
+          <th>SKU</th>
+          <th>Stock</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in variants %}
+        <tr>
+          <td><input type="checkbox" class="variant-checkbox" value="{{ v.id }}"></td>
+          <td>{{ v.name }}</td>
+          <td>{{ v.sku|default:"—" }}</td>
+          <td>{{ v.stock }}</td>
+          <td class="text-end">
+            <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ product.id }}&variant={{ v.id }}"
+               class="btn btn-sm btn-success">
+              <i class="bi bi-plus-circle me-1"></i> Stock
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted">Este producto no tiene variantes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </form>
+</div>
+
+<!-- JS selección masiva -->
+<script>
+document.getElementById("select-all-variants").addEventListener("change", function(e){
+  const checked = e.target.checked;
+  document.querySelectorAll(".variant-checkbox").forEach(ch => ch.checked = checked);
+  updateVariantHidden();
+});
+document.querySelectorAll(".variant-checkbox").forEach(cb=>{
+  cb.addEventListener("change", updateVariantHidden);
+});
+function updateVariantHidden(){
+  const ids = Array.from(document.querySelectorAll(".variant-checkbox:checked")).map(i=>i.value);
+  document.getElementById("variant-ids-field").value = ids.join(",");
+}
+document.getElementById("bulk-variants-form").addEventListener("submit", function(e){
+  const ids = document.getElementById("variant-ids-field").value;
+  const qty = document.getElementById("variant-quantity").value;
+  if(!ids){
+    e.preventDefault(); alert("Seleccione al menos una variante.");
+    return;
+  }
+  if(!qty || Number(qty) <= 0){
+    e.preventDefault(); alert("Ingrese una cantidad válida.");
+    return;
+  }
+});
+</script>
+{% endblock %}

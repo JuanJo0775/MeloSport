@@ -1,0 +1,24 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Editar Movimiento{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb  "Inventario|backoffice:products:inventory:inventory_list" "Editar Movimiento" %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Editar Movimiento #{{ object.id }}</h5>
+  </div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="btn btn-primary">Actualizar</button>
+      <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

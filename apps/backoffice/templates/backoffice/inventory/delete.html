@@ -1,0 +1,25 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Eliminar Movimiento{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb  "Inventario|backoffice:products:inventory:inventory_list" "Eliminar Movimiento" %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0 text-danger">Eliminar Movimiento</h5>
+  </div>
+  <div class="card-body">
+    <p>¿Estás seguro de que deseas eliminar el movimiento <strong>#{{ object.id }}</strong>
+    ({{ object.get_movement_type_display }} de {{ object.quantity }} {{ object.product.name }})?</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Eliminar</button>
+      <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
