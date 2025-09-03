@@ -4,7 +4,7 @@
 {% block title %}Auditoría de Usuarios{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Usuarios|backoffice:users:list" "Auditoría" %}
+  {% breadcrumb  "Auditoría" %}
 {% endblock %}
 
 {% block content %}
@@ -22,7 +22,7 @@
         </button>
           <a href="{% url 'backoffice:users:list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>
-            Volver
+            Ir a usuarios
           </a>
       </div>
     </div>
@@ -58,8 +58,9 @@
           <div class="stats-icon me-3 text-info"><i class="bi bi-box-seam"></i></div>
           <div>
             <div class="text-muted small">Modelos Afectados</div>
-            <div class="fw-bold h5 mb-0">{{ unique_models }}</div>
-            <small class="text-muted">Último: {{ last_model }}</small>
+            <div class="fw-bold h5 mb-0">{{ unique_models }}
+                <small class="text-muted h10 mb-0">Último: {{ last_model }}</small>
+            </div>
           </div>
         </div>
       </div>

@@ -79,14 +79,16 @@
 
                 <!-- Productos -->
                 {% if perms.products.view_product %}
-                <a href="{% url 'backoffice:products:product_list' %}" class="sidebar-link">
+                <a href="{% url 'backoffice:products:product_list' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}">
                     <i class="bi bi-box"></i> Productos
                 </a>
                 {% endif %}
 
-                <!-- Categorías (Admins y Vendedores) -->
+                <!-- Categorías -->
                 {% if perms.categories.view_category %}
-                <a href="{% url 'backoffice:categories:home' %}" class="sidebar-link">
+                <a href="{% url 'backoffice:categories:home' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
                     <i class="bi bi-tags"></i> Categorías
                 </a>
                 {% endif %}
@@ -98,18 +100,25 @@
                 </a>
                 {% endif %}
 
-
-                <!-- Reportes (solo admin) -->
-                {% if perms.reports.view_report %}
-                <a href="#" class="sidebar-link">
-                    <i class="bi bi-graph-up"></i> Reportes
-                </a>
-                {% endif %}
-
                 <!-- Usuarios (solo admin) -->
                 {% if perms.auth.view_user %}
                 <a href="{% url 'backoffice:users:list' %}" class="sidebar-link">
                     <i class="bi bi-people"></i> Usuarios
+                </a>
+                {% endif %}
+
+                <!-- Auditoria -->
+                {% if perms.users.view_auditlog %}
+                <a href="{% url 'backoffice:users:auditlog_list' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'auditlog_list' %}active{% endif %}">
+                    <i class="bi bi-clipboard-data"></i> Auditorías
+                </a>
+                {% endif %}
+
+                 <!-- Reportes (solo admin) -->
+                {% if perms.reports.view_report %}
+                <a href="#" class="sidebar-link">
+                    <i class="bi bi-graph-up"></i> Reportes
                 </a>
                 {% endif %}
 
@@ -131,7 +140,8 @@
                 {% endif %}
 
                 <!-- Configuración -->
-                <a href="{% url 'backoffice:configuraciones' %}" class="sidebar-link">
+                <a href="{% url 'backoffice:configuraciones' %}"
+                   class="sidebar-link {% if request.resolver_match.url_name == 'configuraciones' %}active{% endif %}">
                     <i class="bi bi-gear"></i> Configuración
                 </a>
             </div>
