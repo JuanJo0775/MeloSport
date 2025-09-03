@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'apps.reports',
     'apps.users',
     'apps.database',
+    "apps.billing",
 
     # nuestro api central
     'apps.api',
