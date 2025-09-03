@@ -5,20 +5,16 @@ from . import views
 app_name = "billing"
 
 urlpatterns = [
-    # Ventas
-    path("sales/register/", views.register_sale, name="register_sale"),
+    # 1️⃣ Ventas
+    path("sales/register/", views.SaleCreateView.as_view(), name="sale_create"),
 
-    # Reservas
-    path("reservations/", views.reservation_list, name="reservation_list"),
-    path("reservations/create/", views.create_reservation, name="create_reservation"),
-    path("reservations/<int:pk>/", views.reservation_detail, name="reservation_detail"),
+    # 2️⃣ Reservas
+    path("reservations/", views.ReservationListView.as_view(), name="reservation_list"),
+    path("reservations/create/", views.ReservationCreateView.as_view(), name="reservation_create"),
+    path("reservations/<int:pk>/", views.ReservationDetailView.as_view(), name="reservation_detail"),
 
-    # Facturas
-    path("invoices/", views.invoice_list, name="invoice_list"),
-    path("invoices/<int:pk>/", views.invoice_detail, name="invoice_detail"),
-    path("invoices/<int:pk>/html/", views.invoice_html, name="invoice_html"),
-
-    # Descuentos
-    path("discounts/", views.discount_list, name="discount_list"),
-    path("discounts/create/", views.discount_create, name="discount_create"),
+    # 3️⃣ Facturas
+    path("invoices/", views.InvoiceListView.as_view(), name="invoice_list"),
+    path("invoices/<int:pk>/", views.InvoiceDetailView.as_view(), name="invoice_detail"),
+    path("invoices/<int:pk>/html/", views.InvoiceHTMLView.as_view(), name="invoice_html"),
 ]
