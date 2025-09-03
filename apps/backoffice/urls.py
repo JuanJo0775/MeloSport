@@ -94,6 +94,7 @@ urlpatterns = [
     path("frontend/", include(("apps.frontend.urls", "frontend"), namespace="frontend")),
     path("users/", include(("apps.users.urls", "users"), namespace="users")),
     path("reports/", include(("apps.reports.urls", "reports"), namespace="reports")),
+    path("billing/", include(("apps.billing.urls", "billing"), namespace="billing")),
 
     # ==========================
     # Rutas dummy (temporal)

@@ -2,6 +2,7 @@ from decimal import Decimal
 from datetime import timedelta
 from django.db import models, transaction
 from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from apps.products.models import Product, ProductVariant, InventoryMovement
 from apps.users.models import AuditLog
@@ -16,28 +17,6 @@ def add_business_days(start_date, days):
         if current.weekday() < 5:
             added += 1
     return current
-
-
-class Discount(models.Model):
-    """Descuentos aplicables en ventas."""
-    name = models.CharField("Nombre del descuento", max_length=120)
-    percentage = models.DecimalField("Porcentaje (%)", max_digits=5, decimal_places=2, null=True, blank=True)
-    fixed_amount = models.DecimalField("Valor fijo", max_digits=12, decimal_places=2, null=True, blank=True)
-    active = models.BooleanField("Activo", default=True)
-
-    class Meta:
-        verbose_name = "Descuento"
-        verbose_name_plural = "Descuentos"
-
-    def compute(self, total: Decimal) -> Decimal:
-        if self.percentage:
-            return (total * (Decimal(self.percentage) / Decimal("100.00"))).quantize(Decimal("0.01"))
-        if self.fixed_amount:
-            return Decimal(self.fixed_amount)
-        return Decimal("0.00")
-
-    def __str__(self):
-        return self.name
 
 
 class Reservation(models.Model):
@@ -147,10 +126,20 @@ class Invoice(models.Model):
 
     created_at = models.DateTimeField("Creado el", auto_now_add=True)
     reservation = models.ForeignKey(Reservation, verbose_name="Apartado relacionado", null=True, blank=True, on_delete=models.SET_NULL)
-    discount = models.ForeignKey(Discount, verbose_name="Descuento", null=True, blank=True, on_delete=models.SET_NULL)
+
+    # 👇 Descuento directo en la venta
+    discount_percentage = models.DecimalField(
+        "% Descuento",
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
     discount_amount = models.DecimalField("Monto descuento", max_digits=12, decimal_places=2, default=0)
+
     subtotal = models.DecimalField("Subtotal", max_digits=12, decimal_places=2, default=0)
     total = models.DecimalField("Total", max_digits=12, decimal_places=2, default=0)
+
     code = models.CharField("Código de factura", max_length=50, unique=True, blank=True)
     notes = models.TextField("Notas", blank=True)
     paid = models.BooleanField("Pagada", default=False)
@@ -164,7 +153,7 @@ class Invoice(models.Model):
     def compute_totals(self):
         subtotal = sum([li.subtotal for li in self.items.all()]) if hasattr(self, "items") else Decimal("0.00")
         self.subtotal = Decimal(subtotal).quantize(Decimal("0.01"))
-        self.discount_amount = self.discount.compute(self.subtotal) if self.discount else Decimal("0.00")
+        self.discount_amount = (self.subtotal * self.discount_percentage / Decimal("100.00")).quantize(Decimal("0.01"))
         self.total = (self.subtotal - self.discount_amount).quantize(Decimal("0.01"))
 
     def generate_code(self):
@@ -183,6 +172,7 @@ class Invoice(models.Model):
             return
         with transaction.atomic():
             for item in self.items.select_related("product", "variant").all():
+                # Si viene de reserva y ya se descontó stock, no repetir
                 if self.reservation and self.reservation.movement_created:
                     continue
                 InventoryMovement.objects.create(
@@ -192,7 +182,7 @@ class Invoice(models.Model):
                     quantity=item.quantity,
                     user=user,
                     unit_price=item.unit_price,
-                    discount_percentage=Decimal("0.00"),
+                    discount_percentage=self.discount_percentage,
                     notes=f"Venta factura {self.code or self.pk}"
                 )
             self.inventory_moved = True
