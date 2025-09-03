@@ -303,18 +303,31 @@ class InventoryMovement(models.Model):
         ('adjust', 'Ajuste'),
     ]
 
+    # Relaciones
     product = models.ForeignKey(
         'Product', on_delete=models.CASCADE, related_name='movements'
     )
     variant = models.ForeignKey(
         'ProductVariant', on_delete=models.CASCADE, null=True, blank=True
     )
+
+    # Datos de movimiento
     movement_type = models.CharField(max_length=10, choices=MOVEMENT_TYPES)
     quantity = models.IntegerField()
     notes = models.TextField(blank=True)
+
+    # Motivo específico para ajustes (auditoría)
+    adjust_reason = models.TextField(
+        blank=True,
+        verbose_name="Motivo del ajuste",
+        help_text="Explica por qué se realiza el ajuste (obligatorio para auditoría)."
+    )
+
+    # Metadatos
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Precios
     unit_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -338,15 +351,15 @@ class InventoryMovement(models.Model):
     def __str__(self):
         return f"{self.get_movement_type_display()} de {self.quantity} unidades - {self.product}"
 
-    # ------------------------
     # Validaciones
-    # ------------------------
+
     def clean(self):
         """
         Validaciones coherentes antes de guardar:
         - Variante debe pertenecer al producto si está presente
         - Para 'in'/'out' cantidad positiva (>0)
         - Para 'adjust' cantidad distinta de 0 (puede ser negativa o positiva)
+        - En 'adjust' el motivo (adjust_reason) es obligatorio
         - Discounts y precios no negativos
         """
         super().clean()
@@ -362,8 +375,12 @@ class InventoryMovement(models.Model):
                 raise ValidationError("Para entradas y salidas la cantidad debe ser un entero positivo (> 0).")
 
         if self.movement_type == 'adjust':
+            # cantidad ≠ 0
             if self.quantity is None or int(self.quantity) == 0:
                 raise ValidationError("Para ajustes la cantidad no puede ser 0. Use número positivo o negativo según corresponda.")
+            # motivo obligatorio
+            if self.adjust_reason is None or str(self.adjust_reason).strip() == "":
+                raise ValidationError({"adjust_reason": "Debes indicar un motivo para el ajuste."})
 
         # Normalizar discount si vino None
         if self.discount_percentage is None:
@@ -373,16 +390,15 @@ class InventoryMovement(models.Model):
         if self.unit_price is not None and Decimal(self.unit_price) < 0:
             raise ValidationError("El precio unitario no puede ser negativo.")
 
-    # ------------------------
+
     # Helpers internos
-    # ------------------------
+
     def _signed_qty(self) -> int:
         """
         Devuelve la cantidad con signo según movement_type:
-          - 'in'  -> +quantity
-          - 'out' -> -quantity
+          - 'in'     -> +quantity
+          - 'out'    -> -quantity
           - 'adjust' -> quantity tal cual (permite negativos)
-        Notar: quantity debe validarse en clean().
         """
         q = int(self.quantity or 0)
         if self.movement_type == 'in':
@@ -392,14 +408,14 @@ class InventoryMovement(models.Model):
         # 'adjust' permite que el campo sea negativo o positivo
         return q
 
-    # ------------------------
+
     # Propiedades monetarias (seguros)
-    # ------------------------
+
     @property
     def final_unit_price(self) -> Decimal:
         """
         Precio unitario final tras aplicar descuento. Siempre devuelve Decimal con 2 decimales.
-        Si unit_price es None, devuelve Decimal('0.00') (evita errores en admin add).
+        Si unit_price es None, devuelve Decimal('0.00').
         """
         unit = Decimal(self.unit_price) if self.unit_price is not None else Decimal('0.00')
         discount = Decimal(self.discount_percentage or 0)
@@ -422,9 +438,9 @@ class InventoryMovement(models.Model):
         return f"{self.total_amount:.2f}"
     total_amount_display.short_description = "Total"
 
-    # ------------------------
+
     # Guardado atómico: apply/revert stock según create/update (y cambio de target)
-    # ------------------------
+
     @transaction.atomic
     def save(self, *args, **kwargs):
         """
@@ -493,9 +509,9 @@ class InventoryMovement(models.Model):
             p_new._stock = (p_new._stock or 0) + new_signed
             p_new.save(update_fields=['_stock'])
 
-    # ------------------------
+
     # Borrado: revertir movimiento
-    # ------------------------
+
     @transaction.atomic
     def delete(self, *args, **kwargs):
         signed = int(self._signed_qty())  # in=+, out=-, adjust=±

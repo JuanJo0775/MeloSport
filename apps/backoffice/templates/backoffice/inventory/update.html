@@ -59,144 +59,183 @@
   </div>
 
   <!-- Formulario de edición -->
-  <div class="card">
-    <div class="card-header">
-      <h6 class="card-title mb-0"><i class="bi bi-pencil me-2"></i>Editar Datos</h6>
-    </div>
-    <div class="card-body">
-      {% if form.errors %}
-      <div class="alert alert-danger mb-4">
-        <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Errores en el formulario</h6>
-        <ul class="mb-0">
-          {% for field, errors in form.errors.items %}
-            <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
-          {% endfor %}
-          {% for error in form.non_field_errors %}
-            <li>{{ error }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-
-      <form method="post" class="needs-validation" novalidate>
-        {% csrf_token %}
-
-        <div class="row g-4">
-          <!-- Producto -->
-          <div class="col-md-6">
-            <label for="{{ form.product.id_for_label }}" class="form-label fw-semibold">
-              Producto <span class="text-danger">*</span>
-            </label>
-            {% if form.product_display %}
-              {{ form.product_display }}
-              {{ form.product }}
-            {% else %}
-              {{ form.product }}
-            {% endif %}
-            {% if form.product.help_text %}
-              <div class="form-text">{{ form.product.help_text }}</div>
-            {% endif %}
-            {% if form.product.errors %}
-              <div class="invalid-feedback d-block">{{ form.product.errors|join:", " }}</div>
-            {% endif %}
-          </div>
-
-          <!-- Variante -->
-          {% if form.variant %}
-          <div class="col-md-6">
-            <label for="{{ form.variant.id_for_label }}" class="form-label fw-semibold">
-              Variante
-            </label>
-            {{ form.variant }}
-            {% if form.variant.help_text %}
-              <div class="form-text">{{ form.variant.help_text }}</div>
-            {% endif %}
-            {% if form.variant.errors %}
-              <div class="invalid-feedback d-block">{{ form.variant.errors|join:", " }}</div>
-            {% endif %}
-          </div>
-          {% endif %}
-
-          <!-- Tipo de movimiento -->
-          <div class="col-md-4">
-            <label for="{{ form.movement_type.id_for_label }}" class="form-label fw-semibold">
-              Tipo de Movimiento <span class="text-danger">*</span>
-            </label>
-            {{ form.movement_type }}
-            {% if form.movement_type.help_text %}
-              <div class="form-text">{{ form.movement_type.help_text }}</div>
-            {% endif %}
-            {% if form.movement_type.errors %}
-              <div class="invalid-feedback d-block">{{ form.movement_type.errors|join:", " }}</div>
-            {% endif %}
-          </div>
-
-          <!-- Cantidad -->
-          <div class="col-md-4">
-            <label for="{{ form.quantity.id_for_label }}" class="form-label fw-semibold">
-              Cantidad <span class="text-danger">*</span>
-            </label>
-            {{ form.quantity }}
-            <small id="qty-warning" class="text-danger d-none"></small>
-            {% if form.quantity.help_text %}
-              <div class="form-text">{{ form.quantity.help_text }}</div>
-            {% endif %}
-            {% if form.quantity.errors %}
-              <div class="invalid-feedback d-block">{{ form.quantity.errors|join:", " }}</div>
-            {% endif %}
-          </div>
-
-          <!-- Precio unitario -->
-          {% if form.unit_price %}
-          <div class="col-md-4">
-            <label for="{{ form.unit_price.id_for_label }}" class="form-label fw-semibold">Precio Unitario</label>
-            <div class="input-group">
-              <span class="input-group-text">$</span>
-              {{ form.unit_price }}
-            </div>
-            {% if form.unit_price.help_text %}
-              <div class="form-text">{{ form.unit_price.help_text }}</div>
-            {% endif %}
-            {% if form.unit_price.errors %}
-              <div class="invalid-feedback d-block">{{ form.unit_price.errors|join:", " }}</div>
-            {% endif %}
-          </div>
-          {% endif %}
-
-          <!-- Notas -->
-          <div class="col-12">
-            <label for="{{ form.notes.id_for_label }}" class="form-label fw-semibold">Notas</label>
-            {{ form.notes }}
-            {% if form.notes.help_text %}
-              <div class="form-text">{{ form.notes.help_text }}</div>
-            {% endif %}
-            {% if form.notes.errors %}
-              <div class="invalid-feedback d-block">{{ form.notes.errors|join:", " }}</div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="row mt-4">
-          <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted small">
-                <i class="bi bi-info-circle me-1"></i>
-                Los campos marcados con <span class="text-danger">*</span> son obligatorios
-              </span>
-              <div class="d-flex gap-2">
-                <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-outline-secondary">
-                  <i class="bi bi-x-circle me-1"></i>Cancelar
-                </a>
-                <button type="submit" class="btn btn-primary">
-                  <i class="bi bi-check-circle me-1"></i>Actualizar Movimiento
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </form>
-    </div>
+<div class="card">
+  <div class="card-header">
+    <h6 class="card-title mb-0"><i class="bi bi-pencil me-2"></i>Editar Datos</h6>
   </div>
+  <div class="card-body">
+    {% if form.errors %}
+    <div class="alert alert-danger mb-4">
+      <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Errores en el formulario</h6>
+      <ul class="mb-0">
+        {% for field, errors in form.errors.items %}
+          <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" class="needs-validation" novalidate>
+      {% csrf_token %}
+
+      <div class="row g-4">
+        <!-- Producto -->
+        <div class="col-md-6">
+          <label for="{{ form.product.id_for_label }}" class="form-label fw-semibold">
+            Producto <span class="text-danger">*</span>
+          </label>
+          {% if form.product_display %}
+            {{ form.product_display }}
+            {{ form.product }}
+          {% else %}
+            {{ form.product }}
+          {% endif %}
+          {% if form.product.help_text %}
+            <div class="form-text">{{ form.product.help_text }}</div>
+          {% endif %}
+          {% if form.product.errors %}
+            <div class="invalid-feedback d-block">{{ form.product.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Variante -->
+        {% if form.variant %}
+        <div class="col-md-6">
+          <label for="{{ form.variant.id_for_label }}" class="form-label fw-semibold">
+            Variante
+          </label>
+          {{ form.variant }}
+          {% if form.variant.help_text %}
+            <div class="form-text">{{ form.variant.help_text }}</div>
+          {% endif %}
+          {% if form.variant.errors %}
+            <div class="invalid-feedback d-block">{{ form.variant.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Tipo de movimiento -->
+        <div class="col-md-4">
+          <label for="{{ form.movement_type.id_for_label }}" class="form-label fw-semibold">
+            Tipo de Movimiento <span class="text-danger">*</span>
+          </label>
+          {{ form.movement_type }}
+          {% if form.movement_type.help_text %}
+            <div class="form-text">{{ form.movement_type.help_text }}</div>
+          {% endif %}
+          {% if form.movement_type.errors %}
+            <div class="invalid-feedback d-block">{{ form.movement_type.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Acción (añadir/quitar) - visible solo en ajustes -->
+        <div class="col-md-8 {% if object.movement_type != 'adjust' %}d-none{% endif %}" id="adjust-action-wrapper">
+          <label class="form-label fw-semibold d-block">{{ form.action.label }}</label>
+          <div class="d-flex gap-3">
+            <div>
+              <input type="radio" class="btn-check" name="action" id="action_add" value="add"
+                     {% if form.initial.action == "add" or form.action.value == "add" %}checked{% endif %}>
+              <label class="btn btn-outline-success fw-semibold px-4 py-2" for="action_add">
+                <i class="bi bi-plus-circle me-1"></i> Añadir stock
+              </label>
+            </div>
+            <div>
+              <input type="radio" class="btn-check" name="action" id="action_remove" value="remove"
+                     {% if form.initial.action == "remove" or form.action.value == "remove" %}checked{% endif %}>
+              <label class="btn btn-outline-danger fw-semibold px-4 py-2" for="action_remove">
+                <i class="bi bi-dash-circle me-1"></i> Quitar stock
+              </label>
+            </div>
+          </div>
+          {% if form.action.help_text %}
+            <div class="form-text mt-1">{{ form.action.help_text }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Motivo del ajuste -->
+        <div class="col-12 {% if object.movement_type != 'adjust' %}d-none{% endif %}" id="adjust-reason-wrapper">
+          <label for="{{ form.adjust_reason.id_for_label }}" class="form-label fw-semibold">
+            Motivo del ajuste <span class="text-danger">*</span>
+          </label>
+          {{ form.adjust_reason }}
+          {% if form.adjust_reason.help_text %}
+            <div class="form-text">{{ form.adjust_reason.help_text }}</div>
+          {% endif %}
+          {% if form.adjust_reason.errors %}
+            <div class="invalid-feedback d-block">{{ form.adjust_reason.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Cantidad -->
+        <div class="col-md-4">
+          <label for="{{ form.quantity.id_for_label }}" class="form-label fw-semibold">
+            Cantidad <span class="text-danger">*</span>
+          </label>
+          {{ form.quantity }}
+          <small id="qty-warning" class="text-danger d-none"></small>
+          {% if form.quantity.help_text %}
+            <div class="form-text">{{ form.quantity.help_text }}</div>
+          {% endif %}
+          {% if form.quantity.errors %}
+            <div class="invalid-feedback d-block">{{ form.quantity.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Precio unitario -->
+        {% if form.unit_price %}
+        <div class="col-md-4">
+          <label for="{{ form.unit_price.id_for_label }}" class="form-label fw-semibold">Precio Unitario</label>
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            {{ form.unit_price }}
+          </div>
+          {% if form.unit_price.help_text %}
+            <div class="form-text">{{ form.unit_price.help_text }}</div>
+          {% endif %}
+          {% if form.unit_price.errors %}
+            <div class="invalid-feedback d-block">{{ form.unit_price.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Notas -->
+        <div class="col-12">
+          <label for="{{ form.notes.id_for_label }}" class="form-label fw-semibold">Notas</label>
+          {{ form.notes }}
+          {% if form.notes.help_text %}
+            <div class="form-text">{{ form.notes.help_text }}</div>
+          {% endif %}
+          {% if form.notes.errors %}
+            <div class="invalid-feedback d-block">{{ form.notes.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+              <i class="bi bi-info-circle me-1"></i>
+              Los campos marcados con <span class="text-danger">*</span> son obligatorios
+            </span>
+            <div class="d-flex gap-2">
+              <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i>Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Actualizar Movimiento
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 
   <!-- Info adicional -->
   <div class="row mt-4">
@@ -305,6 +344,57 @@
       }
     });
   }
+})();
+
+(function(){
+  const movementSelect = document.querySelector('select[name="movement_type"]');
+  const actionWrapper = document.getElementById('adjust-action-wrapper');
+  const reasonWrapper = document.getElementById('adjust-reason-wrapper');
+  const radioAdd = document.getElementById('action_add');
+  const radioRemove = document.getElementById('action_remove');
+  const labelAdd = document.querySelector('label[for="action_add"]');
+  const labelRemove = document.querySelector('label[for="action_remove"]');
+
+  function isAdjustMode() {
+    if (movementSelect) return movementSelect.value === 'adjust';
+    // si no existe select (oculto), inferimos por radios
+    return (radioAdd && radioAdd.checked) || (radioRemove && radioRemove.checked);
+  }
+
+  function toggleAdjustUI() {
+    if (isAdjustMode()) {
+      if (actionWrapper) actionWrapper.style.display = '';
+      if (reasonWrapper) reasonWrapper.style.display = '';
+    } else {
+      if (actionWrapper) actionWrapper.style.display = 'none';
+      if (reasonWrapper) reasonWrapper.style.display = 'none';
+    }
+  }
+
+  function refreshActiveState() {
+    if (labelAdd && labelRemove && radioAdd && radioRemove) {
+      if (radioAdd.checked) {
+        labelAdd.classList.add('active');
+        labelRemove.classList.remove('active');
+      } else if (radioRemove.checked) {
+        labelRemove.classList.add('active');
+        labelAdd.classList.remove('active');
+      } else {
+        labelAdd.classList.remove('active');
+        labelRemove.classList.remove('active');
+      }
+    }
+  }
+
+  // eventos
+  if (movementSelect) movementSelect.addEventListener('change', toggleAdjustUI);
+
+  if (radioAdd) radioAdd.addEventListener('change', function(){ refreshActiveState(); toggleAdjustUI(); });
+  if (radioRemove) radioRemove.addEventListener('change', function(){ refreshActiveState(); toggleAdjustUI(); });
+
+  // init
+  toggleAdjustUI();
+  refreshActiveState();
 })();
 </script>
 {% endblock %}

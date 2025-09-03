@@ -2,10 +2,10 @@
 {% load breadcrumbs %}
 {% load static %}
 
-{% block title %}Nueva Entrada de Stock{% endblock %}
+{% block title %}Ajuste de Inventario{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Inventario|backoffice:products:inventory:index" "Productos|backoffice:products:inventory:products_inventory_list" "Entrada stock" %}
+  {% breadcrumb "Inventario|backoffice:products:inventory:index" "Productos|backoffice:products:inventory:products_inventory_list" "Ajuste stock" %}
 {% endblock %}
 
 {% block content %}
@@ -14,13 +14,12 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
-        <!-- Título -->
         <div>
-          <h1 class="h3 mb-2">Nueva Entrada de Stock</h1>
-          <p class="text-muted mb-0">Registra una nueva entrada de inventario para productos</p>
+          <h1 class="h3 mb-2">Nuevo Ajuste de Inventario</h1>
+          <p class="text-muted mb-0">
+            Registra un ajuste para corregir el stock de productos (añadir o quitar).
+          </p>
         </div>
-
-        <!-- Botón -->
         <div class="ms-auto">
           <a href="{% url 'backoffice:products:inventory:products_inventory_list' %}"
              class="btn btn-outline-secondary"
@@ -39,12 +38,13 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white border-bottom">
           <h5 class="card-title mb-0 d-flex align-items-center">
-            <i class="bi bi-plus-circle text-success me-2"></i>
-            Datos de la Entrada
+            <i class="bi bi-sliders text-warning me-2"></i>
+            Datos del Ajuste
           </h5>
         </div>
         <div class="card-body p-4">
-          <!-- Mostrar errores si el form no valida -->
+
+          <!-- Mostrar errores -->
           {% if form.errors %}
           <div class="alert alert-danger border-0 mb-4">
             <div class="d-flex">
@@ -70,15 +70,18 @@
           <div class="alert alert-info d-flex align-items-start mb-4">
             <i class="bi bi-info-circle me-2 fs-5 text-primary"></i>
             <div>
-              <strong>Nota:</strong> La cantidad registrada será agregada al inventario del producto seleccionado.
-              Si el producto tiene variantes, deberás especificar la variante correspondiente.
+              <strong>Nota:</strong> Selecciona si deseas añadir o quitar stock.
+              Ingresa una cantidad positiva (nunca negativa).
+              Si eliges quitar, no podrás exceder el stock disponible.
+              El motivo es obligatorio y se guardará en auditoría.
             </div>
           </div>
 
           <!-- Formulario -->
-          <form method="post" id="movement-form">
+          <form method="post" id="adjust-form">
             {% csrf_token %}
             <div class="row g-3">
+
               <!-- Producto -->
               <div class="col-md-6">
                 <label class="form-label fw-semibold">
@@ -96,7 +99,7 @@
                 {% endif %}
               </div>
 
-              <!-- Selector de variantes -->
+              <!-- Variante -->
               <div class="col-md-6" id="variant-container">
                 {% if form.variant %}
                   <label class="form-label fw-semibold">{{ form.variant.label }}</label>
@@ -104,40 +107,83 @@
                 {% endif %}
               </div>
 
+              <!-- Acción (añadir/quitar) -->
+              <div class="col-md-12">
+                <label class="form-label fw-semibold d-block">{{ form.action.label }}</label>
+                <div class="d-flex gap-3">
+
+                  <!-- Botón Añadir -->
+                  <div>
+                    <input type="radio"
+                           class="btn-check"
+                           name="action"
+                           id="action_add"
+                           value="add"
+                           {% if form.action.value == "add" %}checked{% endif %}>
+                    <label class="btn btn-outline-success fw-semibold px-4 py-2" for="action_add">
+                      <i class="bi bi-plus-circle me-1"></i> Añadir stock
+                    </label>
+                  </div>
+
+                  <!-- Botón Quitar -->
+                  <div>
+                    <input type="radio"
+                           class="btn-check"
+                           name="action"
+                           id="action_remove"
+                           value="remove"
+                           {% if form.action.value == "remove" %}checked{% endif %}>
+                    <label class="btn btn-outline-danger fw-semibold px-4 py-2" for="action_remove">
+                      <i class="bi bi-dash-circle me-1"></i> Quitar stock
+                    </label>
+                  </div>
+
+                </div>
+                {% if form.action.help_text %}
+                  <div class="form-text mt-1">{{ form.action.help_text }}</div>
+                {% endif %}
+              </div>
+
               <!-- Cantidad -->
               <div class="col-md-4">
                 <label class="form-label fw-semibold">{{ form.quantity.label }}</label>
                 {{ form.quantity }}
-                <div class="form-text">Cantidad a ingresar al inventario</div>
+                {% if form.quantity.help_text %}
+                  <div class="form-text">{{ form.quantity.help_text }}</div>
+                {% endif %}
               </div>
 
-            <!-- Motivo (obligatorio) -->
-            <div class="col-md-8">
-              <label class="form-label fw-semibold">{{ form.adjust_reason.label }}</label>
-              {{ form.adjust_reason }}
-              {% if form.adjust_reason.help_text %}
-                <div class="form-text">{{ form.adjust_reason.help_text }}</div>
-              {% else %}
-                <div class="form-text">Debes indicar un motivo para esta entrada (auditoría).</div>
-              {% endif %}
+              <!-- Motivo -->
+              <div class="col-md-8">
+                <label class="form-label fw-semibold">{{ form.adjust_reason.label }}</label>
+                {{ form.adjust_reason }}
+                {% if form.adjust_reason.help_text %}
+                  <div class="form-text">{{ form.adjust_reason.help_text }}</div>
+                {% endif %}
+              </div>
+
+              <!-- Notas -->
+              <div class="col-md-12">
+                <label class="form-label fw-semibold">{{ form.notes.label }}</label>
+                {{ form.notes }}
+                {% if form.notes.help_text %}
+                  <div class="form-text">{{ form.notes.help_text }}</div>
+                {% else %}
+                  <div class="form-text">Observaciones adicionales (opcional)</div>
+                {% endif %}
+              </div>
+
             </div>
 
-            <!-- Notas (opcional) -->
-            <div class="col-md-12">
-              <label class="form-label fw-semibold">{{ form.notes.label }}</label>
-              {{ form.notes }}
-              <div class="form-text">Observaciones adicionales sobre esta entrada (opcional)</div>
-            </div>
-
-            <!-- Botones de acción -->
+            <!-- Botones -->
             <div class="row mt-4">
               <div class="col-12">
                 <div class="d-flex gap-2 justify-content-end">
                   <a href="{% url 'backoffice:products:inventory:products_inventory_list' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-x-lg me-2"></i>Cancelar
                   </a>
-                  <button type="submit" class="btn btn-success">
-                    <i class="bi bi-check-lg me-2"></i>Guardar Entrada
+                  <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-check-lg me-2"></i>Guardar Ajuste
                   </button>
                 </div>
               </div>
@@ -149,7 +195,7 @@
   </div>
 </div>
 
-<!-- JavaScript para gestión de variantes -->
+<!-- JS para recargar variantes según producto -->
 <script>
 (function(){
   const productSelect = document.querySelector("select[name='product']");
@@ -176,7 +222,8 @@
       renderVariantSelect([]);
       return;
     }
-    const url = "{% url 'backoffice:products:inventory:product_variants_json' 0 %}".replace("/0/", "/" + productId + "/");
+    const url = "{% url 'backoffice:products:inventory:product_variants_json' 0 %}"
+                  .replace("/0/", "/" + productId + "/");
     fetch(url)
       .then(r => r.json())
       .then(data => renderVariantSelect(data.variants || []))

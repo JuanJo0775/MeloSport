@@ -11,8 +11,8 @@ from django.http import JsonResponse
 
 from .models import InventoryMovement, Product, ProductVariant
 from apps.users.models import AuditLog
-from .forms_inventory import InventoryMovementForm, BulkAddStockForm, BulkVariantsStockForm, PasswordConfirmForm
-
+from .forms_inventory import InventoryMovementForm, BulkAddStockForm, BulkVariantsStockForm, PasswordConfirmForm, \
+    InventoryAdjustmentForm
 
 # ----------------------------
 # Index de Inventario (antesala)
@@ -473,3 +473,47 @@ class BulkVariantsStockView(LoginRequiredMixin, PermissionRequiredMixin, View):
             messages.error(request, f"Error al crear movimientos sobre variantes: {e}")
 
         return redirect(reverse("backoffice:products:inventory:product_variants", kwargs={"pk": product_id}))
+
+
+class InventoryAdjustView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    permission_required = "products.add_inventorymovement"
+    model = InventoryMovement
+    form_class = InventoryAdjustmentForm
+    template_name = "backoffice/inventory/adjust.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # ocultamos price y movement_type en la UI (se forzará movement_type=adjust)
+        kwargs.update({
+            "hide_price_fields": True,
+            "hide_movement_type": True,
+        })
+
+        # Pasar product y variant desde GET
+        product_id = self.request.GET.get("product")
+        variant_id = self.request.GET.get("variant")
+        if product_id:
+            kwargs["product_id"] = product_id
+        if variant_id:
+            kwargs["variant_id"] = variant_id
+
+        return kwargs
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        form.instance.movement_type = "adjust"
+
+        form.instance.unit_price = form.cleaned_data.get("unit_price", None)
+        form.instance.discount_percentage = Decimal("0.00")
+
+        with transaction.atomic():
+            self.object = form.save()
+            AuditLog.log_action(
+                request=self.request,
+                action="Create",
+                model=InventoryMovement,
+                obj=self.object,
+                description=f"Ajuste de stock '{self.object.id}' sobre '{self.object.product.name}': {form.instance.adjust_reason}"
+            )
+        messages.success(self.request, "Ajuste de inventario registrado correctamente.")
+        return redirect(reverse("backoffice:products:inventory:inventory_list"))

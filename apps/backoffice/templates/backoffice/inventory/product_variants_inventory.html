@@ -47,43 +47,45 @@
   </div>
 
   <!-- Acciones masivas -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h6 class="card-title mb-0"><i class="bi bi-layers me-2"></i>Acciones Masivas</h6>
-    </div>
-    <div class="card-body">
-      <form method="post" action="{% url 'backoffice:products:inventory:bulk_add_variants' %}" id="bulk-variants-form">
-        {% csrf_token %}
-        <input type="hidden" name="product_id" value="{{ product.id }}">
-        <input type="hidden" name="variant_ids" id="variant-ids-field" value="">
-
-        <div class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label for="movement_type" class="form-label">Tipo de movimiento</label>
-            <select name="movement_type" id="movement_type" class="form-select">
-              <option value="in">Añadir stock (entrada)</option>
-              <option value="adjust">Ajuste de inventario</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label for="variant-quantity" class="form-label">Cantidad</label>
-            <input type="number" name="quantity" id="variant-quantity"
-                   class="form-control" placeholder="Cantidad" min="1">
-          </div>
-          <div class="col-md-3">
-            <button type="submit" class="btn btn-success w-100">
-              <i class="bi bi-check-circle me-2"></i>Aplicar a seleccionadas
-            </button>
-          </div>
-          <div class="col-md-3 text-end">
-            <small class="text-muted">
-              <span id="selected-count">0</span> variante(s) seleccionada(s)
-            </small>
-          </div>
-        </div>
-      </form>
-    </div>
+<div class="card mb-4">
+  <div class="card-header">
+    <h6 class="card-title mb-0"><i class="bi bi-layers me-2"></i>Acciones Masivas</h6>
   </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'backoffice:products:inventory:bulk_add_variants' %}" id="bulk-variants-form">
+      {% csrf_token %}
+      <input type="hidden" name="product_id" value="{{ product.id }}">
+      <input type="hidden" name="variant_ids" id="variant-ids-field" value="">
+      <!-- Forzar siempre entrada -->
+      <input type="hidden" name="movement_type" value="in">
+
+      <!-- Texto fijo informativo -->
+      <div class="alert alert-info py-2 mb-3">
+        <i class="bi bi-info-circle me-1"></i>
+        Esta acción masiva <strong>solo añade stock</strong> a las variantes seleccionadas.
+      </div>
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label for="variant-quantity" class="form-label">Cantidad a añadir</label>
+          <input type="number" name="quantity" id="variant-quantity"
+                 class="form-control" placeholder="Cantidad" min="1" required>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-check-circle me-2"></i>Aplicar a seleccionadas
+          </button>
+        </div>
+        <div class="col-md-6 text-end">
+          <small class="text-muted">
+            <span id="selected-count">0</span> variante(s) seleccionada(s)
+          </small>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 
   <!-- Tabla de variantes -->
   <div class="card">
@@ -152,15 +154,23 @@
                   {{ v.stock }}
                 </span>
               </td>
-              <td>
-                <div class="d-flex justify-content-center">
-                  <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ product.id }}&variant={{ v.id }}"
-                     class="btn btn-sm btn-outline-primary"
-                     data-bs-toggle="tooltip" title="Agregar stock a esta variante">
-                    <i class="bi bi-plus-circle me-1"></i>Stock
-                  </a>
-                </div>
-              </td>
+                <td>
+                  <div class="d-flex justify-content-center gap-2">
+                    <!-- Botón añadir stock -->
+                    <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ product.id }}&variant={{ v.id }}"
+                       class="btn btn-sm btn-outline-success"
+                       data-bs-toggle="tooltip" title="Añadir stock a esta variante">
+                      <i class="bi bi-plus-circle me-1"></i>Stock
+                    </a>
+
+                    <!-- Botón ajustar stock -->
+                    <a href="{% url 'backoffice:products:inventory:inventory_adjust' %}?product={{ product.id }}&variant={{ v.id }}"
+                       class="btn btn-sm btn-outline-warning"
+                       data-bs-toggle="tooltip" title="Ajustar stock de esta variante">
+                      <i class="bi bi-sliders me-1"></i>Ajustar
+                    </a>
+                  </div>
+                </td>
             </tr>
             {% empty %}
             <tr>
