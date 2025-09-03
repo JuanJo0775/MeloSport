@@ -15,12 +15,12 @@
       <h1 class="h3 mb-1">Editar Movimiento #{{ object.id }}</h1>
       <p class="text-muted mb-0">Modifica los datos del movimiento de inventario</p>
     </div>
-        <a href="{% url 'backoffice:products:inventory:inventory_list' %}"
-           class="btn btn-outline-secondary"
-           data-bs-toggle="tooltip"
-           title="Volver a la lista">
-          <i class="bi bi-arrow-left me-1"></i>Volver
-        </a>
+    <a href="{% url 'backoffice:products:inventory:inventory_list' %}"
+       class="btn btn-outline-secondary"
+       data-bs-toggle="tooltip"
+       title="Volver a la lista">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
   </div>
 
   <!-- Información del movimiento actual -->
@@ -64,7 +64,6 @@
       <h6 class="card-title mb-0"><i class="bi bi-pencil me-2"></i>Editar Datos</h6>
     </div>
     <div class="card-body">
-      <!-- Mostrar errores si los hay -->
       {% if form.errors %}
       <div class="alert alert-danger mb-4">
         <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Errores en el formulario</h6>
@@ -86,12 +85,11 @@
           <!-- Producto -->
           <div class="col-md-6">
             <label for="{{ form.product.id_for_label }}" class="form-label fw-semibold">
-              Producto
-              <span class="text-danger">*</span>
+              Producto <span class="text-danger">*</span>
             </label>
             {% if form.product_display %}
               {{ form.product_display }}
-              {{ form.product }} {# hidden input con valor real #}
+              {{ form.product }}
             {% else %}
               {{ form.product }}
             {% endif %}
@@ -99,13 +97,11 @@
               <div class="form-text">{{ form.product.help_text }}</div>
             {% endif %}
             {% if form.product.errors %}
-              <div class="invalid-feedback d-block">
-                {{ form.product.errors|join:", " }}
-              </div>
+              <div class="invalid-feedback d-block">{{ form.product.errors|join:", " }}</div>
             {% endif %}
           </div>
 
-          <!-- Variante (si existe) -->
+          <!-- Variante -->
           {% if form.variant %}
           <div class="col-md-6">
             <label for="{{ form.variant.id_for_label }}" class="form-label fw-semibold">
@@ -116,9 +112,7 @@
               <div class="form-text">{{ form.variant.help_text }}</div>
             {% endif %}
             {% if form.variant.errors %}
-              <div class="invalid-feedback d-block">
-                {{ form.variant.errors|join:", " }}
-              </div>
+              <div class="invalid-feedback d-block">{{ form.variant.errors|join:", " }}</div>
             {% endif %}
           </div>
           {% endif %}
@@ -126,43 +120,36 @@
           <!-- Tipo de movimiento -->
           <div class="col-md-4">
             <label for="{{ form.movement_type.id_for_label }}" class="form-label fw-semibold">
-              Tipo de Movimiento
-              <span class="text-danger">*</span>
+              Tipo de Movimiento <span class="text-danger">*</span>
             </label>
             {{ form.movement_type }}
             {% if form.movement_type.help_text %}
               <div class="form-text">{{ form.movement_type.help_text }}</div>
             {% endif %}
             {% if form.movement_type.errors %}
-              <div class="invalid-feedback d-block">
-                {{ form.movement_type.errors|join:", " }}
-              </div>
+              <div class="invalid-feedback d-block">{{ form.movement_type.errors|join:", " }}</div>
             {% endif %}
           </div>
 
           <!-- Cantidad -->
           <div class="col-md-4">
             <label for="{{ form.quantity.id_for_label }}" class="form-label fw-semibold">
-              Cantidad
-              <span class="text-danger">*</span>
+              Cantidad <span class="text-danger">*</span>
             </label>
             {{ form.quantity }}
+            <small id="qty-warning" class="text-danger d-none"></small>
             {% if form.quantity.help_text %}
               <div class="form-text">{{ form.quantity.help_text }}</div>
             {% endif %}
             {% if form.quantity.errors %}
-              <div class="invalid-feedback d-block">
-                {{ form.quantity.errors|join:", " }}
-              </div>
+              <div class="invalid-feedback d-block">{{ form.quantity.errors|join:", " }}</div>
             {% endif %}
           </div>
 
-          <!-- Precio unitario (si existe) -->
+          <!-- Precio unitario -->
           {% if form.unit_price %}
           <div class="col-md-4">
-            <label for="{{ form.unit_price.id_for_label }}" class="form-label fw-semibold">
-              Precio Unitario
-            </label>
+            <label for="{{ form.unit_price.id_for_label }}" class="form-label fw-semibold">Precio Unitario</label>
             <div class="input-group">
               <span class="input-group-text">$</span>
               {{ form.unit_price }}
@@ -171,40 +158,31 @@
               <div class="form-text">{{ form.unit_price.help_text }}</div>
             {% endif %}
             {% if form.unit_price.errors %}
-              <div class="invalid-feedback d-block">
-                {{ form.unit_price.errors|join:", " }}
-              </div>
+              <div class="invalid-feedback d-block">{{ form.unit_price.errors|join:", " }}</div>
             {% endif %}
           </div>
           {% endif %}
 
           <!-- Notas -->
           <div class="col-12">
-            <label for="{{ form.notes.id_for_label }}" class="form-label fw-semibold">
-              Notas
-            </label>
+            <label for="{{ form.notes.id_for_label }}" class="form-label fw-semibold">Notas</label>
             {{ form.notes }}
             {% if form.notes.help_text %}
               <div class="form-text">{{ form.notes.help_text }}</div>
             {% endif %}
             {% if form.notes.errors %}
-              <div class="invalid-feedback d-block">
-                {{ form.notes.errors|join:", " }}
-              </div>
+              <div class="invalid-feedback d-block">{{ form.notes.errors|join:", " }}</div>
             {% endif %}
           </div>
         </div>
 
-        <!-- Botones de acción -->
         <div class="row mt-4">
           <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <span class="text-muted small">
-                  <i class="bi bi-info-circle me-1"></i>
-                  Los campos marcados con <span class="text-danger">*</span> son obligatorios
-                </span>
-              </div>
+              <span class="text-muted small">
+                <i class="bi bi-info-circle me-1"></i>
+                Los campos marcados con <span class="text-danger">*</span> son obligatorios
+              </span>
               <div class="d-flex gap-2">
                 <a href="{% url 'backoffice:products:inventory:inventory_list' %}" class="btn btn-outline-secondary">
                   <i class="bi bi-x-circle me-1"></i>Cancelar
@@ -220,7 +198,7 @@
     </div>
   </div>
 
-  <!-- Información adicional -->
+  <!-- Info adicional -->
   <div class="row mt-4">
     <div class="col-md-6">
       <div class="card">
@@ -231,10 +209,8 @@
           <dl class="row mb-0">
             <dt class="col-sm-5">Creado:</dt>
             <dd class="col-sm-7">{{ object.created_at|date:"Y-m-d H:i:s" }}</dd>
-
             <dt class="col-sm-5">Usuario:</dt>
             <dd class="col-sm-7">{{ object.user.get_full_name|default:object.user.username }}</dd>
-
             {% if object.updated_at and object.updated_at != object.created_at %}
             <dt class="col-sm-5">Modificado:</dt>
             <dd class="col-sm-7">{{ object.updated_at|date:"Y-m-d H:i:s" }}</dd>
@@ -254,16 +230,13 @@
             {% if object.unit_price %}
             <dt class="col-sm-6">Precio unitario:</dt>
             <dd class="col-sm-6">{{ object.unit_price|floatformat:0 }}</dd>
-
             <dt class="col-sm-6">Cantidad:</dt>
             <dd class="col-sm-6">{{ object.quantity }}</dd>
-
             <dt class="col-sm-6">Total:</dt>
             <dd class="col-sm-6 fw-semibold">{{ object.total|floatformat:0 }}</dd>
             {% else %}
             <dt class="col-sm-6">Cantidad:</dt>
             <dd class="col-sm-6 fw-semibold">{{ object.quantity }}</dd>
-
             <dt class="col-sm-6">Precio:</dt>
             <dd class="col-sm-6 text-muted">No especificado</dd>
             {% endif %}
@@ -276,32 +249,53 @@
 
 <script>
 (function() {
-  // Validación básica del formulario
+  // Validación básica
   const form = document.querySelector('.needs-validation');
-
   if (form) {
     form.addEventListener('submit', function(event) {
       if (!form.checkValidity()) {
         event.preventDefault();
         event.stopPropagation();
       }
-
       form.classList.add('was-validated');
     });
   }
 
-  // Mejorar la experiencia del usuario con el campo de cantidad
+  // Normalizar cantidad negativa
   const quantityInput = document.querySelector('input[name="quantity"]');
+  const qtyWarning = document.getElementById('qty-warning');
+
   if (quantityInput) {
     quantityInput.addEventListener('input', function(e) {
       const value = parseInt(e.target.value);
       if (value < 0) {
         e.target.value = Math.abs(value);
       }
+
+      const mtype = e.target.dataset.mtype;
+      const oldQty = parseInt(e.target.dataset.old || "0", 10);
+      const available = parseInt(e.target.dataset.available || "0", 10);
+
+      if (mtype === "out") {
+        const maxAllowed = oldQty + available;
+        if (value > maxAllowed) {
+          qtyWarning.textContent = `No hay suficiente stock. Máximo permitido: ${maxAllowed}.`;
+          qtyWarning.classList.remove('d-none');
+          e.target.classList.add('is-invalid');
+        } else {
+          qtyWarning.textContent = "";
+          qtyWarning.classList.add('d-none');
+          e.target.classList.remove('is-invalid');
+        }
+      } else {
+        qtyWarning.textContent = "";
+        qtyWarning.classList.add('d-none');
+        e.target.classList.remove('is-invalid');
+      }
     });
   }
 
-  // Formatear el campo de precio
+  // Formatear precio
   const priceInput = document.querySelector('input[name="unit_price"]');
   if (priceInput) {
     priceInput.addEventListener('blur', function(e) {

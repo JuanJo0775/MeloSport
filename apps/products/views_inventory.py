@@ -239,41 +239,30 @@ class InventoryDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteVie
             context["confirm_step"] = True
             return self.render_to_response(context)
 
-        # ✅ Eliminar con rollback de stock
+        # ✅ Eliminar usando delete() del modelo (que ajusta stock)
         try:
             with transaction.atomic():
-                signed = self.object._signed_qty()
-                if self.object.variant_id:
-                    variant = ProductVariant.objects.select_for_update().get(pk=self.object.variant_id)
-                    new_stock = variant.stock - signed
-                    if new_stock < 0:
-                        messages.error(request, "No se puede eliminar: stock negativo en variante.")
-                        return redirect(self.success_url)
-                    variant.stock = new_stock
-                    variant.save(update_fields=["stock"])
-                else:
-                    product = Product.objects.select_for_update().get(pk=self.object.product_id)
-                    new_stock = product._stock - signed
-                    if new_stock < 0:
-                        messages.error(request, "No se puede eliminar: stock negativo en producto.")
-                        return redirect(self.success_url)
-                    product._stock = new_stock
-                    product.save(update_fields=["_stock"])
-
                 AuditLog.log_action(
                     request=request,
                     action="Delete",
                     model=InventoryMovement,
                     obj=self.object,
-                    description=f"Movimiento '{self.object.id}' ({self.object.get_movement_type_display()}) sobre '{self.object.product.name}' eliminado"
+                    description=(
+                        f"Movimiento '{self.object.id}' "
+                        f"({self.object.get_movement_type_display()}) "
+                        f"sobre '{self.object.product.name}' eliminado"
+                    )
                 )
                 response = super().delete(request, *args, **kwargs)
         except Exception as e:
             messages.error(request, f"Error al eliminar: {e}")
-            return redirect(self.success_url)
+            return self.redirect_to_success_url()
 
         messages.success(request, "Movimiento eliminado correctamente.")
         return response
+
+    def redirect_to_success_url(self):
+        return redirect(self.success_url)
 
 
 # ----------------------------
@@ -415,16 +404,27 @@ class BulkAddStockView(LoginRequiredMixin, PermissionRequiredMixin, View):
         qty = form.cleaned_data["quantity"]
         movement_type = form.cleaned_data["movement_type"]
 
-        with transaction.atomic():
-            for pid in product_ids:
-                product = Product.objects.select_for_update().get(pk=pid)
-                InventoryMovement.objects.create(
-                    product=product,
-                    movement_type=movement_type,
-                    quantity=qty,
-                    user=request.user
-                )
-        messages.success(request, "Movimientos creados correctamente.")
+        try:
+            with transaction.atomic():
+                for pid in product_ids:
+                    product = Product.objects.select_for_update().get(pk=pid)
+
+                    # Calcula precio unitario
+                    computed_price = Decimal(product.price or 0).quantize(Decimal("0.01"))
+
+                    InventoryMovement.objects.create(
+                        product=product,
+                        movement_type=movement_type,  # "in" o "adjust"
+                        quantity=qty,
+                        user=request.user,
+                        unit_price=computed_price,
+                        discount_percentage=Decimal("0.00"),
+                    )
+
+            messages.success(request, "Movimientos creados correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al crear movimientos: {e}")
+
         return redirect(reverse("backoffice:products:inventory:inventory_list"))
 
 
@@ -448,15 +448,28 @@ class BulkVariantsStockView(LoginRequiredMixin, PermissionRequiredMixin, View):
         qty = form.cleaned_data["quantity"]
         movement_type = form.cleaned_data["movement_type"]
 
-        with transaction.atomic():
-            for vid in variant_ids:
-                variant = ProductVariant.objects.select_for_update().get(pk=vid)
-                InventoryMovement.objects.create(
-                    product_id=product_id,
-                    variant=variant,
-                    movement_type=movement_type,
-                    quantity=qty,
-                    user=request.user
-                )
-        messages.success(request, "Movimientos creados correctamente sobre variantes.")
+        try:
+            with transaction.atomic():
+                for vid in variant_ids:
+                    variant = ProductVariant.objects.select_for_update().get(pk=vid)
+
+                    # Calcula precio unitario: precio base + modificador de la variante
+                    base_price = Decimal(variant.product.price or 0)
+                    mod_price = Decimal(variant.price_modifier or 0)
+                    computed_price = (base_price + mod_price).quantize(Decimal("0.01"))
+
+                    InventoryMovement.objects.create(
+                        product=variant.product,
+                        variant=variant,
+                        movement_type=movement_type,
+                        quantity=qty,
+                        user=request.user,
+                        unit_price=computed_price,
+                        discount_percentage=Decimal("0.00"),
+                    )
+
+            messages.success(request, "Movimientos creados correctamente sobre variantes.")
+        except Exception as e:
+            messages.error(request, f"Error al crear movimientos sobre variantes: {e}")
+
         return redirect(reverse("backoffice:products:inventory:product_variants", kwargs={"pk": product_id}))

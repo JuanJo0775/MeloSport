@@ -498,18 +498,21 @@ class InventoryMovement(models.Model):
     # ------------------------
     @transaction.atomic
     def delete(self, *args, **kwargs):
-        """
-        Al borrar un movimiento, revertimos su efecto sobre stock para mantener consistencia.
-        """
-        signed = int(self._signed_qty())
+        signed = int(self._signed_qty())  # in=+, out=-, adjust=±
 
         if self.variant_id:
-            v = ProductVariant.objects.select_for_update().get(pk=self.variant_id)
-            v.stock = (v.stock or 0) - signed
-            v.save(update_fields=['stock'])
+            variant = ProductVariant.objects.select_for_update().get(pk=self.variant_id)
+            new_stock = variant.stock - signed
+            if new_stock < 0:
+                raise ValidationError("No se puede eliminar: el stock de la variante quedaría negativo.")
+            variant.stock = new_stock
+            variant.save(update_fields=["stock"])
         else:
-            p = Product.objects.select_for_update().get(pk=self.product_id)
-            p._stock = (p._stock or 0) - signed
-            p.save(update_fields=['_stock'])
+            product = Product.objects.select_for_update().get(pk=self.product_id)
+            new_stock = product._stock - signed
+            if new_stock < 0:
+                raise ValidationError("No se puede eliminar: el stock del producto quedaría negativo.")
+            product._stock = new_stock
+            product.save(update_fields=["_stock"])
 
-        super().delete(*args, **kwargs)
+        return super().delete(*args, **kwargs)

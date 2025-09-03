@@ -149,108 +149,109 @@
 </div>
 
 
-  <!-- Tabla de movimientos -->
-  <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span><i class="bi bi-list-task me-2"></i>Listado de Movimientos</span>
-      <small class="text-muted">{{ movements.count }} movimiento{{ movements.count|pluralize }}</small>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>ID</th>
-              <th>Producto</th>
-              <th>Variante</th>
-              <th>Tipo</th>
-              <th class="text-center">Cantidad</th>
-              <th class="text-end">Precio Unit.</th>
-              <th class="text-end">Total</th>
-              <th>Usuario</th>
-              <th>Fecha</th>
-              <th class="text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for mov in movements %}
-            <tr>
-              <td class="text-mono">#{{ mov.id }}</td>
-              <td>
-                <div class="fw-semibold">{{ mov.product.name }}</div>
-                {% if mov.product.sku %}
-                  <small class="text-muted">SKU: {{ mov.product.sku }}</small>
-                {% endif %}
-              </td>
-              <td>
-                {% if mov.variant %}
-                  <div>
-                    {% if mov.variant.sku %}
-                      <span class="badge bg-light text-dark">{{ mov.variant.sku }}</span>
+    <!-- Tabla de movimientos -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-task me-2"></i>Listado de Movimientos</span>
+        <small class="text-muted">{{ movements.count }} movimiento{{ movements.count|pluralize }}</small>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Variante</th>
+                <th>Tipo</th>
+                <th class="text-center">Cantidad</th>
+                <th class="text-end">Precio Unit.</th>
+                <th class="text-end">Total</th>
+                <th>Usuario</th>
+                <th>Fecha</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for mov in movements %}
+              <tr>
+                <td class="text-mono">#{{ mov.id }}</td>
+                <td>
+                  <div class="fw-semibold">{{ mov.product.name }}</div>
+                  {% if mov.product.sku %}
+                    <small class="text-muted">SKU: {{ mov.product.sku }}</small>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if mov.variant %}
+                    <div>
+                      {% if mov.variant.sku %}
+                        <span class="badge bg-light text-dark">{{ mov.variant.sku }}</span>
+                      {% endif %}
+                      {% if mov.variant.size %}
+                        <div><small class="text-muted">Talla: {{ mov.variant.size }}</small></div>
+                      {% endif %}
+                      {% if mov.variant.color %}
+                        <div><small class="text-muted">Color: {{ mov.variant.color }}</small></div>
+                      {% endif %}
+                    </div>
+                  {% else %}
+                    <span class="text-muted">N/A</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if mov.movement_type == 'in' %}
+                    <span class="badge bg-success">{{ mov.get_movement_type_display }}</span>
+                  {% elif mov.movement_type == 'out' %}
+                    <span class="badge bg-danger">{{ mov.get_movement_type_display }}</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">{{ mov.get_movement_type_display }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-center fw-semibold">{{ mov.quantity }}</td>
+                <td class="text-end">{{ mov.final_unit_price|cop }}</td>
+                <td class="text-end fw-semibold">{{ mov.total_amount|cop }}</td>
+                <td>
+                  <div class="fw-semibold">{{ mov.user.get_full_name|default:mov.user.username }}</div>
+                  <small class="text-muted">{{ mov.user.username }}</small>
+                </td>
+                <td>
+                  <div>{{ mov.created_at|date:"Y-m-d" }}</div>
+                  <small class="text-muted">{{ mov.created_at|date:"H:i" }}</small>
+                </td>
+                <td>
+                  <div class="d-flex justify-content-center">
+                    {% if perms.products.change_inventorymovement %}
+                      <a href="{% url 'backoffice:products:inventory:inventory_update' mov.id %}"
+                         class="btn btn-sm btn-outline-secondary me-1"
+                         data-bs-toggle="tooltip" title="Editar movimiento">
+                        <i class="bi bi-pencil"></i>
+                      </a>
                     {% endif %}
-                    {% if mov.variant.size %}
-                      <div><small class="text-muted">Talla: {{ mov.variant.size }}</small></div>
-                    {% endif %}
-                    {% if mov.variant.color %}
-                      <div><small class="text-muted">Color: {{ mov.variant.color }}</small></div>
+                    {% if perms.products.delete_inventorymovement %}
+                      <a href="{% url 'backoffice:products:inventory:inventory_delete' mov.id %}"
+                         class="btn btn-sm btn-outline-danger"
+                         data-bs-toggle="tooltip" title="Eliminar movimiento">
+                        <i class="bi bi-trash"></i>
+                      </a>
                     {% endif %}
                   </div>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if mov.movement_type == 'in' %}
-                  <span class="badge bg-success">{{ mov.get_movement_type_display }}</span>
-                {% elif mov.movement_type == 'out' %}
-                  <span class="badge bg-danger">{{ mov.get_movement_type_display }}</span>
-                {% else %}
-                  <span class="badge bg-warning text-dark">{{ mov.get_movement_type_display }}</span>
-                {% endif %}
-              </td>
-              <td class="text-center fw-semibold">{{ mov.quantity }}</td>
-              <td class="text-end">{{ mov.unit_price|cop }}</td>
-              <td class="text-end fw-semibold">{{ mov.total|cop }}</td>
-              <td>
-                <div class="fw-semibold">{{ mov.user.get_full_name|default:mov.user.username }}</div>
-                <small class="text-muted">{{ mov.user.username }}</small>
-              </td>
-              <td>
-                <div>{{ mov.created_at|date:"Y-m-d" }}</div>
-                <small class="text-muted">{{ mov.created_at|date:"H:i" }}</small>
-              </td>
-              <td>
-                <div class="d-flex justify-content-center">
-                  {% if perms.products.change_inventorymovement %}
-                    <a href="{% url 'backoffice:products:inventory:inventory_update' mov.id %}"
-                       class="btn btn-sm btn-outline-secondary me-1"
-                       data-bs-toggle="tooltip" title="Editar movimiento">
-                      <i class="bi bi-pencil"></i>
-                    </a>
-                  {% endif %}
-                  {% if perms.products.delete_inventorymovement %}
-                    <a href="{% url 'backoffice:products:inventory:inventory_delete' mov.id %}"
-                       class="btn btn-sm btn-outline-danger"
-                       data-bs-toggle="tooltip" title="Eliminar movimiento">
-                      <i class="bi bi-trash"></i>
-                    </a>
-                  {% endif %}
-                </div>
-              </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="10" class="text-center text-muted py-4">
-                <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
-                No hay movimientos registrados con los filtros aplicados.
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="10" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                  No hay movimientos registrados con los filtros aplicados.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
+
 
   <!-- Paginación -->
   {% if is_paginated %}
