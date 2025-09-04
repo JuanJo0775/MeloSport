@@ -67,86 +67,110 @@
 
     <!-- Sidebar -->
     <nav class="sidebar" role="navigation" aria-label="Menú lateral de administración">
-        <div class="d-flex flex-column h-100">
-            <div class="mb-4">
-                <h6 class="text-muted text-uppercase fw-bold mb-3">Menú Principal</h6>
+      <div class="d-flex flex-column h-100">
 
-                <!-- Dashboard -->
-                <a href="{% url 'backoffice:dashboard' %}"
-                   class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                  <i class="bi bi-speedometer2"></i> Dashboard
-                </a>
-
-                <!-- Productos -->
-                {% if perms.products.view_product %}
-                <a href="{% url 'backoffice:products:product_list' %}"
-                   class="sidebar-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}">
-                    <i class="bi bi-box"></i> Productos
-                </a>
-                {% endif %}
-
-                <!-- Categorías -->
-                {% if perms.categories.view_category %}
-                <a href="{% url 'backoffice:categories:home' %}"
-                   class="sidebar-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
-                    <i class="bi bi-tags"></i> Categorías
-                </a>
-                {% endif %}
-
-                <!-- Inventario -->
-                {% if perms.products.view_inventorymovement %}
-                <a href="{% url 'backoffice:products:inventory:index' %}" class="sidebar-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
-                    <i class="bi bi-stack"></i> Inventario
-                </a>
-                {% endif %}
-
-                <!-- Usuarios (solo admin) -->
-                {% if perms.auth.view_user %}
-                <a href="{% url 'backoffice:users:list' %}" class="sidebar-link">
-                    <i class="bi bi-people"></i> Usuarios
-                </a>
-                {% endif %}
-
-                <!-- Auditoria -->
-                {% if perms.users.view_auditlog %}
-                <a href="{% url 'backoffice:users:auditlog_list' %}"
-                   class="sidebar-link {% if request.resolver_match.url_name == 'auditlog_list' %}active{% endif %}">
-                    <i class="bi bi-clipboard-data"></i> Auditorías
-                </a>
-                {% endif %}
-
-                 <!-- Reportes (solo admin) -->
-                {% if perms.reports.view_report %}
-                <a href="#" class="sidebar-link">
-                    <i class="bi bi-graph-up"></i> Reportes
-                </a>
-                {% endif %}
-
-                <!-- Seguridad (ejemplo: grupos o roles) -->
-                {% if perms.auth.view_group %}
-                <a href="#" class="sidebar-link">
-                    <i class="bi bi-shield-check"></i> Seguridad
-                </a>
-                {% endif %}
-            </div>
-
-            <div class="mt-auto">
-                <hr>
-                <!-- Respaldos -->
-                {% if perms.database.view_backup %}
-                <a href="#" class="sidebar-link">
-                    <i class="bi bi-database"></i> Respaldos
-                </a>
-                {% endif %}
-
-                <!-- Configuración -->
-                <a href="{% url 'backoffice:configuraciones' %}"
-                   class="sidebar-link {% if request.resolver_match.url_name == 'configuraciones' %}active{% endif %}">
-                    <i class="bi bi-gear"></i> Configuración
-                </a>
-            </div>
+        <!-- Grupo: Dashboard -->
+        <div class="mb-4">
+          <h6 class="text-muted text-uppercase fw-bold mb-3">Dashboard</h6>
+          <a href="{% url 'backoffice:dashboard' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i> Panel Principal
+          </a>
         </div>
+
+        <!-- Grupo: Gestión de Productos -->
+        <div class="mb-4">
+          <hr>
+
+          {% if perms.products.view_product %}
+          <a href="{% url 'backoffice:products:product_list' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}">
+            <i class="bi bi-box"></i> Productos
+          </a>
+          {% endif %}
+
+          {% if perms.categories.view_category %}
+          <a href="{% url 'backoffice:categories:home' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+            <i class="bi bi-tags"></i> Categorías
+          </a>
+          {% endif %}
+
+          {% if perms.products.view_inventorymovement %}
+          <a href="{% url 'backoffice:products:inventory:index' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+            <i class="bi bi-stack"></i> Inventario
+          </a>
+          {% endif %}
+        </div>
+
+        <!-- Grupo: Ventas y Separaciones -->
+        <div class="mb-4">
+          <hr>
+
+          {% if perms.billing.view_invoice %}
+          <a href="{% url 'backoffice:billing:invoice_list' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'invoice_list' %}active{% endif %}">
+            <i class="bi bi-receipt"></i> Facturas
+          </a>
+          {% endif %}
+
+          {% if perms.billing.view_reservation %}
+          <a href="{% url 'backoffice:billing:reservation_list' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'reservation_list' %}active{% endif %}">
+            <i class="bi bi-journal-bookmark"></i> Apartados
+          </a>
+          {% endif %}
+        </div>
+
+        <!-- Grupo: Usuarios y Seguridad -->
+        <div class="mb-4">
+          <hr>
+
+          {% if perms.auth.view_user %}
+          <a href="{% url 'backoffice:users:list' %}" class="sidebar-link">
+            <i class="bi bi-people"></i> Usuarios
+          </a>
+          {% endif %}
+
+          {% if perms.users.view_auditlog %}
+          <a href="{% url 'backoffice:users:auditlog_list' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'auditlog_list' %}active{% endif %}">
+            <i class="bi bi-clipboard-data"></i> Auditorías
+          </a>
+          {% endif %}
+
+          {% if perms.reports.view_report %}
+          <a href="#" class="sidebar-link">
+            <i class="bi bi-graph-up"></i> Reportes
+          </a>
+          {% endif %}
+
+          {% if perms.auth.view_group %}
+          <a href="#" class="sidebar-link">
+            <i class="bi bi-shield-check"></i> Seguridad
+          </a>
+          {% endif %}
+        </div>
+
+        <!-- Grupo: Respaldos y Configuración -->
+        <div class="mt-auto">
+          <hr>
+          {% if perms.database.view_backup %}
+          <a href="#" class="sidebar-link">
+            <i class="bi bi-database"></i> Respaldos
+          </a>
+          {% endif %}
+
+          <a href="{% url 'backoffice:configuraciones' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'configuraciones' %}active{% endif %}">
+            <i class="bi bi-gear"></i> Configuración
+          </a>
+        </div>
+
+      </div>
     </nav>
+
 
 
     <!-- Contenido principal -->

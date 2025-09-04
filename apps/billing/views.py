@@ -135,5 +135,5 @@ class InvoiceHTMLView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     """Factura en plantilla exclusiva (HTML limpio)."""
     permission_required = "billing.view_invoice"
     model = Invoice
-    template_name = "backoffice/billing/invoice_template.html"
+    template_name = "backoffice/billing/invoice_template/invoice_template.html"
     context_object_name = "invoice"
