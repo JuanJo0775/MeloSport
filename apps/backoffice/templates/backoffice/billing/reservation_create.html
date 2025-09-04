@@ -28,6 +28,7 @@
           <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
 
+        {# Datos del cliente #}
         <div class="row g-3 mb-3">
           <div class="col-md-4">
             <label class="form-label fw-semibold">{{ form.client_first_name.label }}</label>
@@ -50,11 +51,11 @@
 
         <hr />
 
+        {# Productos seleccionados #}
         <h6 class="mb-3">Productos seleccionados</h6>
         {{ items_formset.management_form }}
 
         <div id="items-list" class="row g-3">
-          {# Render existing forms (si los hay) #}
           {% for f in items_formset.forms %}
             <div class="col-md-6 item-card">
               <div class="card h-100">
@@ -79,8 +80,44 @@
 
         <hr />
 
-        {# 🔹 Aquí cargamos el navegador de productos completo (con filtros, búsqueda y tarjetas) #}
+        {# Buscador y filtros integrados (una sola línea) #}
         <h6 class="mb-3">Buscar y agregar productos</h6>
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="bi bi-funnel me-1"></i> Filtros de Búsqueda
+          </div>
+          <div class="card-body">
+            <form id="product-filters-form" class="row g-2 align-items-center">
+              <div class="col-md-5">
+                <input type="text" name="q" id="product-search-input" class="form-control" placeholder="Nombre o SKU...">
+              </div>
+              <div class="col-md-3">
+                <select name="type" class="form-select">
+                  <option value="all">Todos</option>
+                  <option value="variants">Con variantes</option>
+                  <option value="simple">Sin variantes</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <select name="status" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="active">Activos</option>
+                  <option value="inactive">Inactivos</option>
+                </select>
+              </div>
+              <div class="col-md-1 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-search"></i>
+                </button>
+                <button type="reset" class="btn btn-outline-secondary"
+                        onclick="document.getElementById('product-filters-form').reset(); loadProductCards();">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
         <div id="product-browser"
              class="row g-3"
              style="max-height: 450px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .5rem; padding: 1rem;">
@@ -106,18 +143,18 @@
   </div>
 </div>
 
-{# ---------------- Hidden prototype from empty_form ---------------- #}
+{# Hidden prototype from empty_form #}
 <div id="empty-form-template" style="display:none;">
   {{ items_formset.empty_form.as_p|escapejs }}
 </div>
 {% endblock %}
+
 
 {% block extra_js %}
 <script>
 (function () {
   const productListEl = document.getElementById('product-browser');
   const addSelectedBtn = document.getElementById('add-selected-products');
-
   const browserUrl = "{% url 'backoffice:billing:products_browser' %}";
   const productDetailUrlTemplate = "{% url 'backoffice:billing:product_detail_json' 0 %}".replace('/0/', '/{id}/');
 
@@ -128,7 +165,7 @@
   }
   const emptyFormHtml = decodeEscapedJs(emptyFormEscaped);
 
-  // 🔹 cargar productos automáticamente al entrar
+  // 🔹 cargar productos automáticamente
   function loadProductCards(params = {}) {
     const query = new URLSearchParams(params).toString();
     productListEl.innerHTML = '<div class="text-center w-100 py-4 text-muted">Cargando productos...</div>';
@@ -140,9 +177,20 @@
         console.error(err);
       });
   }
-  loadProductCards(); // 👉 primera carga automática
+  loadProductCards();
 
-  // 🔹 evento delegado para filtros/búsqueda dentro del navegador
+  // 🔹 prevenir que Enter en buscador envíe el form principal
+  document.querySelectorAll('#product-filters-form input').forEach(input => {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('product-filters-form')
+          .dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));
+      }
+    });
+  });
+
+  // 🔹 filtros/búsqueda
   document.addEventListener('submit', function(e){
     if(e.target.id === 'product-filters-form'){
       e.preventDefault();
@@ -152,7 +200,7 @@
     }
   });
 
-  // agregar seleccionados
+  // 🔹 agregar seleccionados
   addSelectedBtn.addEventListener('click', async function () {
     const productChecks = productListEl.querySelectorAll('input.product-select-checkbox:checked');
     const variantChecks = productListEl.querySelectorAll('input.variant-select-checkbox:checked');
@@ -186,6 +234,7 @@
     }
   });
 
+  // 🔹 construir card desde data producto
   function addItemFromProductData(product) {
     const totalFormsEl = document.getElementById('id_' + '{{ items_formset.prefix }}-TOTAL_FORMS');
     let index = parseInt(totalFormsEl.value, 10);
@@ -204,7 +253,7 @@
       if (!opt) {
         opt = document.createElement('option');
         opt.value = product.id;
-        opt.text = product.name + (product.sku ? ' • ' + product.sku : '');
+        opt.text = product.name;
         productSelect.appendChild(opt);
       }
       productSelect.value = product.id;
@@ -216,7 +265,7 @@
         product.variants.forEach(v => {
           const o = document.createElement('option');
           o.value = v.id;
-          o.text = v.label;
+          o.text = v.label; // aquí ya se recibe "Talla M • Azul"
           variantSelect.appendChild(o);
         });
         if (product.type === 'variant') {
@@ -237,7 +286,7 @@
             ${product.image ? `<img src="${product.image}" style="width:48px;height:48px;object-fit:cover;border-radius:4px">` : ''}
             <div>
               <div class="fw-semibold">${product.name}</div>
-              ${product.sku ? `<small class="text-muted">${product.sku}</small>` : ''}
+              ${product.variant_label ? `<small class="text-muted">${product.variant_label}</small>` : ''}
             </div>
           </div>
           <div class="mb-2 variant-field"></div>
@@ -260,13 +309,9 @@
     row.className = 'row g-2';
     const col1 = document.createElement('div'); col1.className = 'col';
     const col2 = document.createElement('div'); col2.className = 'col';
-    const qtyLabel = document.createElement('label');
-    qtyLabel.className = 'form-label small';
-    qtyLabel.innerText = 'Cantidad';
+    const qtyLabel = document.createElement('label'); qtyLabel.className = 'form-label small'; qtyLabel.innerText = 'Cantidad';
     col1.appendChild(qtyLabel); col1.appendChild(qtyInput);
-    const priceLabel = document.createElement('label');
-    priceLabel.className = 'form-label small';
-    priceLabel.innerText = 'Precio unitario';
+    const priceLabel = document.createElement('label'); priceLabel.className = 'form-label small'; priceLabel.innerText = 'Precio unitario';
     col2.appendChild(priceLabel); col2.appendChild(priceInput);
     row.appendChild(col1); row.appendChild(col2);
     cardBody.appendChild(row);
@@ -278,7 +323,7 @@
     totalFormsEl.value = index + 1;
   }
 
-  // eliminar item
+  // 🔹 eliminar item
   document.addEventListener('click', function (e) {
     if (e.target.closest && e.target.closest('.remove-item')) {
       const card = e.target.closest('.item-card');
@@ -296,7 +341,7 @@
     }
   });
 
-  // vista previa
+  // 🔹 vista previa
   function updatePreview() {
     const preview = document.getElementById('preview-list');
     preview.innerHTML = '';
@@ -304,13 +349,13 @@
     cards.forEach(c => {
       if (c.style.display === 'none') return;
       const name = c.querySelector('.fw-semibold') ? c.querySelector('.fw-semibold').innerText : '';
-      const sku = c.querySelector('.text-muted') ? c.querySelector('.text-muted').innerText : '';
+      const variant = c.querySelector('.text-muted') ? c.querySelector('.text-muted').innerText : '';
       const qty = c.querySelector('input[name$="-quantity"]') ? c.querySelector('input[name$="-quantity"]').value : '';
       const price = c.querySelector('input[name$="-unit_price"]') ? c.querySelector('input[name$="-unit_price"]').value : '';
       if (name) {
         const li = document.createElement('div');
         li.className = 'list-group-item d-flex justify-content-between';
-        li.innerHTML = `<div>${name} ${sku ? '<small class="text-muted"> ' + sku + '</small>' : ''}</div><div>${qty || 0} x ${price || 0}</div>`;
+        li.innerHTML = `<div>${name} ${variant ? '<small class="text-muted"> ' + variant + '</small>' : ''}</div><div>${qty || 0} x ${price || 0}</div>`;
         preview.appendChild(li);
       }
     });

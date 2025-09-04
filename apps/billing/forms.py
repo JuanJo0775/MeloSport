@@ -1,10 +1,15 @@
+# apps/billing/forms.py
+
 from django import forms
+from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
 from .models import Invoice, InvoiceItem, Reservation, ReservationItem
 
 
-# --- Descuentos predefinidos ---
+# ------------------------
+# 🔹 Descuentos predefinidos
+# ------------------------
 DISCOUNT_CHOICES = [
     (0, "0%"),
     (10, "10%"),
@@ -14,7 +19,9 @@ DISCOUNT_CHOICES = [
 ]
 
 
-# --- Formulario de Factura ---
+# ------------------------
+# 🔹 Facturas
+# ------------------------
 class InvoiceForm(forms.ModelForm):
     discount_percentage = forms.ChoiceField(
         label="Descuento",
@@ -49,13 +56,13 @@ class InvoiceForm(forms.ModelForm):
 
 
 class InvoiceItemForm(forms.ModelForm):
+    """Item de factura, validamos que no se permita producto vacío."""
+
     class Meta:
         model = InvoiceItem
         fields = ["product", "variant", "quantity", "unit_price"]
         widgets = {
-            # Producto lo maneja el modal → se guarda como hidden
-            "product": forms.HiddenInput(),
-            # Variante simple (se llena con JS según producto)
+            "product": forms.HiddenInput(),  # lo maneja el modal
             "variant": forms.Select(attrs={"class": "form-control"}),
             "quantity": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "unit_price": forms.NumberInput(
@@ -63,17 +70,25 @@ class InvoiceItemForm(forms.ModelForm):
             ),
         }
 
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("product") and not self.cleaned_data.get("DELETE"):
+            raise ValidationError("Debe seleccionar un producto válido.")
+        return cleaned
+
 
 InvoiceItemFormSet = inlineformset_factory(
     Invoice,
     InvoiceItem,
     form=InvoiceItemForm,
-    extra=0,   # no necesitamos uno vacío, ya que los productos se agregan vía modal
+    extra=0,
     can_delete=True,
 )
 
 
-# --- Formulario de Apartado ---
+# ------------------------
+# 🔹 Apartados
+# ------------------------
 class ReservationForm(forms.ModelForm):
     class Meta:
         model = Reservation
@@ -94,6 +109,8 @@ class ReservationForm(forms.ModelForm):
 
 
 class ReservationItemForm(forms.ModelForm):
+    """Item de apartado, validamos que no se permita producto vacío."""
+
     class Meta:
         model = ReservationItem
         fields = ["product", "variant", "quantity", "unit_price"]
@@ -105,6 +122,12 @@ class ReservationItemForm(forms.ModelForm):
                 attrs={"class": "form-control", "step": "0.01"}
             ),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("product") and not self.cleaned_data.get("DELETE"):
+            raise ValidationError("Debe seleccionar un producto válido.")
+        return cleaned
 
 
 ReservationItemFormSet = inlineformset_factory(

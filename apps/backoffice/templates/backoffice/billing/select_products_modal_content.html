@@ -1,40 +1,32 @@
 {% load money %}
 
-<div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-  <input type="search" id="product-search-input" class="form-control flex-grow-1"
-         placeholder="Buscar por nombre o SKU...">
-  <select id="product-filter-type" class="form-select" style="max-width:200px;">
-    <option value="all">Todos</option>
-    <option value="simple">Sin variantes</option>
-    <option value="variants">Con variantes</option>
-  </select>
-  <button class="btn btn-outline-secondary" id="product-search-btn">
-    <i class="bi bi-search"></i>
-  </button>
-</div>
-
 {% if products %}
   <div class="row g-3">
     {% for p in products %}
       <div class="col-md-4">
         <div class="card h-100 shadow-sm border-0 hover-shadow">
-          {# Imagen #}
+
+          {# Imagen producto #}
           <div class="text-center p-3 bg-light rounded-top">
-            {% if p.image %}
-              <img src="{{ p.image.url }}" alt="{{ p.name }}"
-                   class="img-fluid rounded"
-                   style="max-height: 150px; object-fit: cover;">
-            {% else %}
-              <div class="d-flex align-items-center justify-content-center bg-secondary text-white rounded"
-                   style="height: 150px;">
-                <i class="bi bi-box-seam fs-1"></i>
-              </div>
-            {% endif %}
+            {% with main_image=p.images.first %}
+              {% if main_image %}
+                <img src="{{ main_image.image.url }}" alt="{{ p.name }}"
+                     class="img-fluid rounded"
+                     style="max-height: 150px; object-fit: cover;">
+              {% else %}
+                <div class="d-flex align-items-center justify-content-center bg-secondary text-white rounded"
+                     style="height: 150px;">
+                  <i class="bi bi-box-seam fs-1"></i>
+                </div>
+              {% endif %}
+            {% endwith %}
           </div>
 
           <div class="card-body">
             <h6 class="fw-bold mb-1">{{ p.name }}</h6>
-            <small class="text-muted">{{ p.sku }}</small>
+            {% if p.sku %}
+              <small class="text-muted">SKU: {{ p.sku }}</small>
+            {% endif %}
 
             <div class="d-flex justify-content-between align-items-center mt-2">
               <span class="fw-bold text-primary">
@@ -60,8 +52,11 @@
                            id="variant-{{ v.pk }}">
                     <label for="variant-{{ v.pk }}" class="form-check-label small">
                       {{ v.label }}
-                      {% if v.sku %}
-                        <small class="text-muted">({{ v.sku }})</small>
+                      {% if v.color or v.size %}
+                        <small class="text-muted">
+                          {% if v.size %}Talla: {{ v.size }}{% endif %}
+                          {% if v.color %}{% if v.size %} • {% endif %}Color: {{ v.color }}{% endif %}
+                        </small>
                       {% endif %}
                     </label>
                   </div>

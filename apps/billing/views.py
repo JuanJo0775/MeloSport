@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import timedelta
 
+from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.generic import CreateView, ListView, DetailView, TemplateView
@@ -106,6 +107,32 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))
 
 
+def _get_filtered_products(request):
+    q = request.GET.get("q", "").strip()
+    filter_type = request.GET.get("type", "all")  # all | simple | variants
+    stock_filter = request.GET.get("stock", "")   # opcional: in_stock
+
+    qs = Product.objects.filter(status="active").order_by("name").prefetch_related("variants", "images")
+
+    if q:
+        qs = qs.filter(
+            Q(name__unaccent__icontains=q) |
+            Q(sku__unaccent__icontains=q)
+        )
+
+    if filter_type == "simple":
+        qs = qs.filter(variants__isnull=True)
+    elif filter_type == "variants":
+        qs = qs.filter(variants__isnull=False)
+
+    if stock_filter == "in_stock":
+        qs = qs.filter(Q(stock__gt=0) | Q(variants__stock__gt=0)).distinct()
+
+    # Simples primero, luego con variantes
+    simples = [p for p in qs if not p.variants.exists()]
+    con_var = [p for p in qs if p.variants.exists()]
+    return simples + con_var
+
 # Apartados (reservas)
 
 class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -117,65 +144,60 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        # Si hay POST, inicializamos el formset con POST para mostrar errores si los hay
         if self.request.POST:
             data["items_formset"] = ReservationItemFormSet(self.request.POST)
         else:
             data["items_formset"] = ReservationItemFormSet()
+        # 🔹 Añadir productos filtrados al contexto
+        data["product_browser_products"] = _get_filtered_products(self.request)
         return data
 
     def form_valid(self, form):
-        """
-        Validar form + formset, calcular due_date antes de guardar la reserva (no dejar due_date NULL).
-        """
-        # Creamos instancia sin guardar aún
+        """Validar form + formset, calcular due_date antes de guardar."""
         reservation = form.save(commit=False)
-
-        # Asociar formset (no guardamos aún)
         items_formset = ReservationItemFormSet(self.request.POST, instance=reservation)
 
-        # Validar formset antes de guardar cualquier cosa
         if not items_formset.is_valid():
-            # get_context_data tomará self.request.POST y reconstruirá el formset con errores
             return self.form_invalid(form)
 
-        # Calcular total a partir de los datos limpios del formset (ignorar forms marcados para borrar)
+        # ✅ Verificar que no esté vacío
+        has_items = False
         total = Decimal("0.00")
+
         for item_form in items_formset:
-            cleaned = item_form.cleaned_data
-            if not cleaned:
+            cleaned = getattr(item_form, "cleaned_data", None)
+            if not cleaned or cleaned.get("DELETE"):
                 continue
-            if cleaned.get("DELETE"):
-                continue
+
+            has_items = True
             qty = cleaned.get("quantity") or 0
             unit_price = cleaned.get("unit_price") or Decimal("0.00")
-            # Aseguramos Decimal para multiplicación
             total += (Decimal(str(qty)) * Decimal(str(unit_price)))
 
-        # Abono
+        if not has_items:
+            form.add_error(None, "No puede enviar un formulario vacío")
+            return self.form_invalid(form)
+
         abono = reservation.amount_deposited or Decimal("0.00")
 
-        # Regla de negocio → calcular plazo antes de guardar la reserva
         if total > 0 and abono >= (Decimal("0.20") * total):
             reservation.due_date = timezone.now() + timedelta(days=30)
         else:
             reservation.due_date = timezone.now() + timedelta(days=3)
 
-        # Guardado atómico
         with transaction.atomic():
             reservation.save()
-            # Guardar los items vinculados a la reserva
             items_formset.instance = reservation
             items_formset.save()
-
-            # Crear movimientos reservando stock (si tienes ese método en el modelo)
             try:
                 reservation.mark_reserved_movements(user=self.request.user, request=self.request)
             except Exception:
-                # Si quieres capturar errores específicos, hazlo aquí; por ahora dejamos que suba si algo crítico falla
                 pass
 
-        messages.success(self.request, f"Reserva registrada. Vence el {reservation.due_date.date()}")
+        messages.success(
+            self.request,
+            f"Reserva registrada. Vence el {reservation.due_date.date()}"
+        )
         return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
 
 
@@ -228,76 +250,59 @@ class InvoiceHTMLView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     context_object_name = "invoice"
 
 
+#  Vista de productos
 class ProductBrowserView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     """
-    Vista que devuelve el listado filtrado de productos y variantes
-    (se inserta dinámicamente en reservation_create o ventas).
+    Vista que devuelve listado de productos y variantes
+    (para insertarse en reservation_create o sale_create).
     """
     permission_required = "products.view_product"
     template_name = "backoffice/billing/select_products_modal_content.html"
 
     def get(self, request, *args, **kwargs):
-        q = request.GET.get("q", "").strip()
-        filter_type = request.GET.get("type", "all")  # all | simple | variants
-        stock_filter = request.GET.get("stock", "")  # opcional: >0 para mostrar solo con stock
-
-        qs = Product.objects.all().order_by("name")
-
-        # 🔹 Búsqueda insensible a mayúsculas/tildes (requiere PostgreSQL + unaccent)
-        if q:
-            qs = qs.filter(
-                Q(name__unaccent__icontains=q) |
-                Q(sku__unaccent__icontains=q)
-            )
-
-        # 🔹 Filtrar por tipo
-        if filter_type == "simple":
-            qs = qs.filter(variants__isnull=True)
-        elif filter_type == "variants":
-            qs = qs.filter(variants__isnull=False)
-
-        # 🔹 Filtrar por stock disponible
-        if stock_filter == "in_stock":
-            qs = qs.filter(stock__gt=0)
-
-        # 🔹 Prefetch variantes
-        qs = qs.prefetch_related("variants")
-
-        # 🔹 Reordenar: simples primero, luego con variantes
-        simples = [p for p in qs if not p.variants.exists()]
-        con_var = [p for p in qs if p.variants.exists()]
-        products = simples + con_var
-
+        products = _get_filtered_products(request)
         return render(request, self.template_name, {
             "products": products,
-            "query": q,
-            "filter_type": filter_type,
-            "stock_filter": stock_filter,
+            "query": request.GET.get("q", ""),
+            "filter_type": request.GET.get("type", "all"),
+            "stock_filter": request.GET.get("stock", ""),
         })
 
 
+#  API JSON detalle producto
 def product_detail_json(request, pk):
     """
     Devuelve JSON con datos del producto y sus variantes
     para que el JS arme el formulario dinámico.
     """
-    p = get_object_or_404(Product.objects.prefetch_related("variants"), pk=pk)
+    p = get_object_or_404(Product.objects.prefetch_related("variants", "images"), pk=pk)
 
     variants = []
     for v in p.variants.all():
+        # Usamos nombre legible: si tiene atributos, los concatenamos
+        variant_label = getattr(v, "label", None) or str(v)
+        if getattr(v, "sku", None):
+            variant_label += f" • {v.sku}"
+
         variants.append({
             "id": v.pk,
-            "label": getattr(v, "label", str(v)),
+            "label": variant_label,       # 👈 este es el usado por el <select>
             "sku": getattr(v, "sku", ""),
             "stock": getattr(v, "stock", None),
             "price": str(getattr(v, "price", getattr(v, "sale_price", 0) or 0)),
         })
 
+    # label para producto principal
+    product_label = getattr(p, "name", "")
+    if getattr(p, "sku", None):
+        product_label += f" • {p.sku}"
+
     data = {
         "id": p.pk,
         "name": getattr(p, "name", ""),
+        "label": product_label,   # 👈 útil si quieres usarlo en preview
         "sku": getattr(p, "sku", ""),
-        "image": p.image.url if getattr(p, "image", None) else "",
+        "image": p.get_main_image_url() if hasattr(p, "get_main_image_url") else "",
         "price": str(getattr(p, "price", getattr(p, "sale_price", 0) or 0)),
         "variants": variants,
         "stock": getattr(p, "stock", None),
