@@ -17,4 +17,8 @@ urlpatterns = [
     path("invoices/", views.InvoiceListView.as_view(), name="invoice_list"),
     path("invoices/<int:pk>/", views.InvoiceDetailView.as_view(), name="invoice_detail"),
     path("invoices/<int:pk>/html/", views.InvoiceHTMLView.as_view(), name="invoice_html"),
+
+    # Productos: navegador/buscador y API JSON
+    path("products/browser/", views.ProductBrowserView.as_view(), name="products_browser"),
+    path("api/product/<int:pk>/", views.product_detail_json, name="product_detail_json"),
 ]

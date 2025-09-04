@@ -118,7 +118,7 @@
           {% if perms.billing.view_reservation %}
           <a href="{% url 'backoffice:billing:reservation_list' %}"
              class="sidebar-link {% if request.resolver_match.url_name == 'reservation_list' %}active{% endif %}">
-            <i class="bi bi-journal-bookmark"></i> Apartados
+            <i class="bi bi-journal-bookmark"></i> Reservas
           </a>
           {% endif %}
         </div>

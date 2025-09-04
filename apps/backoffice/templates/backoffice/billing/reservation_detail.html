@@ -1,0 +1,75 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+{% load money %}
+
+{% block title %}Apartado #{{ reservation.id }}{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb  "Apartados|backoffice:billing:reservation_list" reservation.id %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="card mb-3">
+    <div class="card-body d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="mb-0">Apartado #{{ reservation.id }}</h5>
+        <small class="text-muted">Cliente: {{ reservation.client_first_name }} {{ reservation.client_last_name }}</small>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left me-1"></i>Volver
+        </a>
+        {% if perms.billing.add_invoice %}
+          <a href="{% url 'backoffice:billing:sale_create' %}?reservation={{ reservation.id }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-currency-dollar me-1"></i>Convertir en venta
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <dl class="row">
+        <dt class="col-sm-3">Cliente</dt><dd class="col-sm-9">{{ reservation.client_first_name }} {{ reservation.client_last_name }}</dd>
+        <dt class="col-sm-3">Teléfono</dt><dd class="col-sm-9">{{ reservation.client_phone }}</dd>
+        <dt class="col-sm-3">Abono</dt><dd class="col-sm-9">{{ reservation.amount_deposited|cop }}</dd>
+        <dt class="col-sm-3">Vence</dt><dd class="col-sm-9">{{ reservation.due_date|date:"Y-m-d H:i" }}</dd>
+        <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">{{ reservation.get_status_display }}</dd>
+      </dl>
+
+      <hr />
+
+      <h6>Items</h6>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Variante</th>
+              <th>Cantidad</th>
+              <th>Precio unitario</th>
+              <th class="text-end">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in reservation.items.all %}
+            <tr>
+              <td>{{ item.product.name }}</td>
+              <td>{% if item.variant %}{{ item.variant.label }}{% else %}-{% endif %}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.unit_price|cop }}</td>
+              <td class="text-end">{{ item.subtotal|cop }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No hay items</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

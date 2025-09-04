@@ -28,6 +28,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('apps.api.urls')),
     path('backoffice/', include(('apps.backoffice.urls', 'backoffice'), namespace='backoffice')),
+
+    path("select2/", include("django_select2.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
@@ -40,10 +42,10 @@ def error_500_view(request):
 def error_403_view(request, exception):
     return render(request, 'errors/403.html', status=403)
 
-def error_400_view(request, exception):
-    return render(request, 'errors/400.html', status=400)
+def error_401_view(request, exception):
+    return render(request, 'errors/401.html', status=400)
 
 handler404 = error_404_view
 handler500 = error_500_view
 handler403 = error_403_view
-handler400 = error_400_view
+handler401 = error_401_view

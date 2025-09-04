@@ -1,0 +1,111 @@
+{% load money %}
+
+<div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+  <input type="search" id="product-search-input" class="form-control flex-grow-1"
+         placeholder="Buscar por nombre o SKU...">
+  <select id="product-filter-type" class="form-select" style="max-width:200px;">
+    <option value="all">Todos</option>
+    <option value="simple">Sin variantes</option>
+    <option value="variants">Con variantes</option>
+  </select>
+  <button class="btn btn-outline-secondary" id="product-search-btn">
+    <i class="bi bi-search"></i>
+  </button>
+</div>
+
+{% if products %}
+  <div class="row g-3">
+    {% for p in products %}
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0 hover-shadow">
+          {# Imagen #}
+          <div class="text-center p-3 bg-light rounded-top">
+            {% if p.image %}
+              <img src="{{ p.image.url }}" alt="{{ p.name }}"
+                   class="img-fluid rounded"
+                   style="max-height: 150px; object-fit: cover;">
+            {% else %}
+              <div class="d-flex align-items-center justify-content-center bg-secondary text-white rounded"
+                   style="height: 150px;">
+                <i class="bi bi-box-seam fs-1"></i>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="card-body">
+            <h6 class="fw-bold mb-1">{{ p.name }}</h6>
+            <small class="text-muted">{{ p.sku }}</small>
+
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <span class="fw-bold text-primary">
+                {{ p.get_sale_price_display|default:p.price|cop }}
+              </span>
+              {% if p.stock > 0 %}
+                <span class="badge bg-success">Stock: {{ p.stock }}</span>
+              {% else %}
+                <span class="badge bg-danger">Sin stock</span>
+              {% endif %}
+            </div>
+
+            <hr class="my-2">
+
+            {# Variantes #}
+            {% if p.variants.exists %}
+              {% for v in p.variants.all %}
+                <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-1 bg-light">
+                  <div class="form-check">
+                    <input type="checkbox"
+                           class="form-check-input variant-select-checkbox"
+                           value="{{ v.pk }}"
+                           id="variant-{{ v.pk }}">
+                    <label for="variant-{{ v.pk }}" class="form-check-label small">
+                      {{ v.label }}
+                      {% if v.sku %}
+                        <small class="text-muted">({{ v.sku }})</small>
+                      {% endif %}
+                    </label>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <input type="number" min="1" value="1"
+                           class="form-control form-control-sm variant-qty"
+                           style="width:70px">
+                    {% if v.stock > 0 %}
+                      <small class="text-success">Stock: {{ v.stock }}</small>
+                    {% else %}
+                      <small class="text-danger">Sin stock</small>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              {# Producto simple #}
+              <div class="d-flex align-items-center justify-content-between border rounded p-2 bg-light">
+                <div class="form-check">
+                  <input type="checkbox"
+                         class="form-check-input product-select-checkbox"
+                         value="{{ p.pk }}"
+                         id="chk-{{ p.pk }}">
+                  <label for="chk-{{ p.pk }}" class="form-check-label small">Seleccionar</label>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <input type="number" min="1" value="1"
+                         class="form-control form-control-sm product-qty"
+                         style="width:70px">
+                  {% if p.stock > 0 %}
+                    <small class="text-success">Stock: {{ p.stock }}</small>
+                  {% else %}
+                    <small class="text-danger">Sin stock</small>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-center w-100 text-muted py-4">
+    <i class="bi bi-search"></i> No se encontraron productos.
+  </div>
+{% endif %}
