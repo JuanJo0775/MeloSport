@@ -107,100 +107,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))
 
 
-def _get_filtered_products(request):
-    q = request.GET.get("q", "").strip()
-    filter_type = request.GET.get("type", "all")  # all | simple | variants
-    stock_filter = request.GET.get("stock", "")   # opcional: in_stock
-
-    qs = Product.objects.filter(status="active").order_by("name").prefetch_related("variants", "images")
-
-    if q:
-        qs = qs.filter(
-            Q(name__unaccent__icontains=q) |
-            Q(sku__unaccent__icontains=q)
-        )
-
-    if filter_type == "simple":
-        qs = qs.filter(variants__isnull=True)
-    elif filter_type == "variants":
-        qs = qs.filter(variants__isnull=False)
-
-    if stock_filter == "in_stock":
-        qs = qs.filter(Q(stock__gt=0) | Q(variants__stock__gt=0)).distinct()
-
-    # Simples primero, luego con variantes
-    simples = [p for p in qs if not p.variants.exists()]
-    con_var = [p for p in qs if p.variants.exists()]
-    return simples + con_var
-
-# Apartados (reservas)
-
-class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    """Registrar un apartado de productos con reglas de negocio."""
-    permission_required = "billing.add_reservation"
-    model = Reservation
-    form_class = ReservationForm
-    template_name = "backoffice/billing/reservation_create.html"
-
-    def get_context_data(self, **kwargs):
-        data = super().get_context_data(**kwargs)
-        if self.request.POST:
-            data["items_formset"] = ReservationItemFormSet(self.request.POST)
-        else:
-            data["items_formset"] = ReservationItemFormSet()
-        # 🔹 Añadir productos filtrados al contexto
-        data["product_browser_products"] = _get_filtered_products(self.request)
-        return data
-
-    def form_valid(self, form):
-        """Validar form + formset, calcular due_date antes de guardar."""
-        reservation = form.save(commit=False)
-        items_formset = ReservationItemFormSet(self.request.POST, instance=reservation)
-
-        if not items_formset.is_valid():
-            return self.form_invalid(form)
-
-        # ✅ Verificar que no esté vacío
-        has_items = False
-        total = Decimal("0.00")
-
-        for item_form in items_formset:
-            cleaned = getattr(item_form, "cleaned_data", None)
-            if not cleaned or cleaned.get("DELETE"):
-                continue
-
-            has_items = True
-            qty = cleaned.get("quantity") or 0
-            unit_price = cleaned.get("unit_price") or Decimal("0.00")
-            total += (Decimal(str(qty)) * Decimal(str(unit_price)))
-
-        if not has_items:
-            form.add_error(None, "No puede enviar un formulario vacío")
-            return self.form_invalid(form)
-
-        abono = reservation.amount_deposited or Decimal("0.00")
-
-        if total > 0 and abono >= (Decimal("0.20") * total):
-            reservation.due_date = timezone.now() + timedelta(days=30)
-        else:
-            reservation.due_date = timezone.now() + timedelta(days=3)
-
-        with transaction.atomic():
-            reservation.save()
-            items_formset.instance = reservation
-            items_formset.save()
-            try:
-                reservation.mark_reserved_movements(user=self.request.user, request=self.request)
-            except Exception:
-                pass
-
-        messages.success(
-            self.request,
-            f"Reserva registrada. Vence el {reservation.due_date.date()}"
-        )
-        return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
-
-
 class ReservationListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = "billing.view_reservation"
     model = Reservation
@@ -308,3 +214,97 @@ def product_detail_json(request, pk):
         "stock": getattr(p, "stock", None),
     }
     return JsonResponse(data)
+
+def _get_filtered_products(request):
+    q = request.GET.get("q", "").strip()
+    filter_type = request.GET.get("type", "all")  # all | simple | variants
+    stock_filter = request.GET.get("stock", "")   # opcional: in_stock
+
+    qs = Product.objects.filter(status="active").order_by("name").prefetch_related("variants", "images")
+
+    if q:
+        qs = qs.filter(
+            Q(name__unaccent__icontains=q) |
+            Q(sku__unaccent__icontains=q)
+        )
+
+    if filter_type == "simple":
+        qs = qs.filter(variants__isnull=True)
+    elif filter_type == "variants":
+        qs = qs.filter(variants__isnull=False)
+
+    if stock_filter == "in_stock":
+        qs = qs.filter(Q(stock__gt=0) | Q(variants__stock__gt=0)).distinct()
+
+    # Simples primero, luego con variantes
+    simples = [p for p in qs if not p.variants.exists()]
+    con_var = [p for p in qs if p.variants.exists()]
+    return simples + con_var
+
+# Apartados (reservas)
+
+class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    """Registrar un apartado de productos con reglas de negocio."""
+    permission_required = "billing.add_reservation"
+    model = Reservation
+    form_class = ReservationForm
+    template_name = "backoffice/billing/reservation_create.html"
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        if self.request.POST:
+            data["items_formset"] = ReservationItemFormSet(self.request.POST)
+        else:
+            data["items_formset"] = ReservationItemFormSet()
+        # 🔹 Añadir productos filtrados al contexto
+        data["product_browser_products"] = _get_filtered_products(self.request)
+        return data
+
+    def form_valid(self, form):
+        """Validar form + formset, calcular due_date antes de guardar."""
+        reservation = form.save(commit=False)
+        items_formset = ReservationItemFormSet(self.request.POST, instance=reservation)
+
+        if not items_formset.is_valid():
+            return self.form_invalid(form)
+
+        # ✅ Verificar que no esté vacío
+        has_items = False
+        total = Decimal("0.00")
+
+        for item_form in items_formset:
+            cleaned = getattr(item_form, "cleaned_data", None)
+            if not cleaned or cleaned.get("DELETE"):
+                continue
+
+            has_items = True
+            qty = cleaned.get("quantity") or 0
+            unit_price = cleaned.get("unit_price") or Decimal("0.00")
+            total += (Decimal(str(qty)) * Decimal(str(unit_price)))
+
+        if not has_items:
+            form.add_error(None, "No puede enviar un formulario vacío")
+            return self.form_invalid(form)
+
+        abono = reservation.amount_deposited or Decimal("0.00")
+
+        if total > 0 and abono >= (Decimal("0.20") * total):
+            reservation.due_date = timezone.now() + timedelta(days=30)
+        else:
+            reservation.due_date = timezone.now() + timedelta(days=3)
+
+        with transaction.atomic():
+            reservation.save()
+            items_formset.instance = reservation
+            items_formset.save()
+            try:
+                reservation.mark_reserved_movements(user=self.request.user, request=self.request)
+            except Exception:
+                pass
+
+        messages.success(
+            self.request,
+            f"Reserva registrada. Vence el {reservation.due_date.date()}"
+        )
+        return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
+
