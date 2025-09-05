@@ -156,66 +156,13 @@ class InvoiceHTMLView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     context_object_name = "invoice"
 
 
-#  Vista de productos
-class ProductBrowserView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
-    """
-    Vista que devuelve listado de productos y variantes
-    (para insertarse en reservation_create o sale_create).
-    """
-    permission_required = "products.view_product"
-    template_name = "backoffice/billing/select_products_modal_content.html"
-
-    def get(self, request, *args, **kwargs):
-        products = _get_filtered_products(request)
-        return render(request, self.template_name, {
-            "products": products,
-            "query": request.GET.get("q", ""),
-            "filter_type": request.GET.get("type", "all"),
-            "stock_filter": request.GET.get("stock", ""),
-        })
-
 
 #  API JSON detalle producto
-def product_detail_json(request, pk):
+def products_list_json(request):
     """
-    Devuelve JSON con datos del producto y sus variantes
-    para que el JS arme el formulario dinámico.
+    Devuelve JSON con todos los productos disponibles y sus variantes,
+    aplicando filtros de búsqueda y stock.
     """
-    p = get_object_or_404(Product.objects.prefetch_related("variants", "images"), pk=pk)
-
-    variants = []
-    for v in p.variants.all():
-        # Usamos nombre legible: si tiene atributos, los concatenamos
-        variant_label = getattr(v, "label", None) or str(v)
-        if getattr(v, "sku", None):
-            variant_label += f" • {v.sku}"
-
-        variants.append({
-            "id": v.pk,
-            "label": variant_label,       # 👈 este es el usado por el <select>
-            "sku": getattr(v, "sku", ""),
-            "stock": getattr(v, "stock", None),
-            "price": str(getattr(v, "price", getattr(v, "sale_price", 0) or 0)),
-        })
-
-    # label para producto principal
-    product_label = getattr(p, "name", "")
-    if getattr(p, "sku", None):
-        product_label += f" • {p.sku}"
-
-    data = {
-        "id": p.pk,
-        "name": getattr(p, "name", ""),
-        "label": product_label,   # 👈 útil si quieres usarlo en preview
-        "sku": getattr(p, "sku", ""),
-        "image": p.get_main_image_url() if hasattr(p, "get_main_image_url") else "",
-        "price": str(getattr(p, "price", getattr(p, "sale_price", 0) or 0)),
-        "variants": variants,
-        "stock": getattr(p, "stock", None),
-    }
-    return JsonResponse(data)
-
-def _get_filtered_products(request):
     q = request.GET.get("q", "").strip()
     filter_type = request.GET.get("type", "all")  # all | simple | variants
     stock_filter = request.GET.get("stock", "")   # opcional: in_stock
@@ -225,7 +172,8 @@ def _get_filtered_products(request):
     if q:
         qs = qs.filter(
             Q(name__unaccent__icontains=q) |
-            Q(sku__unaccent__icontains=q)
+            Q(sku__unaccent__icontains=q) |
+            Q(description__unaccent__icontains=q)
         )
 
     if filter_type == "simple":
@@ -233,13 +181,44 @@ def _get_filtered_products(request):
     elif filter_type == "variants":
         qs = qs.filter(variants__isnull=False)
 
-    if stock_filter == "in_stock":
-        qs = qs.filter(Q(stock__gt=0) | Q(variants__stock__gt=0)).distinct()
+    products = []
+    for p in qs:
+        # ✅ filtrar en Python porque stock es property
+        if stock_filter == "in_stock" and not (
+            (p.stock and p.stock > 0) or any(v.stock > 0 for v in p.variants.all())
+        ):
+            continue
 
-    # Simples primero, luego con variantes
-    simples = [p for p in qs if not p.variants.exists()]
-    con_var = [p for p in qs if p.variants.exists()]
-    return simples + con_var
+        variants = []
+        for v in p.variants.all():
+            variant_label = getattr(v, "label", None) or str(v)
+            if getattr(v, "sku", None):
+                variant_label += f" • {v.sku}"
+
+            variants.append({
+                "id": v.pk,
+                "label": variant_label,
+                "sku": getattr(v, "sku", ""),
+                "stock": getattr(v, "stock", None),
+                "price": str(getattr(v, "price", getattr(v, "sale_price", 0) or 0)),
+            })
+
+        product_label = getattr(p, "name", "")
+        if getattr(p, "sku", None):
+            product_label += f" • {p.sku}"
+
+        products.append({
+            "id": p.pk,
+            "name": getattr(p, "name", ""),
+            "label": product_label,
+            "sku": getattr(p, "sku", ""),
+            "image": p.get_main_image_url() if hasattr(p, "get_main_image_url") else "",
+            "price": str(getattr(p, "price", getattr(p, "sale_price", 0) or 0)),
+            "stock": getattr(p, "stock", None),
+            "variants": variants,
+        })
+
+    return JsonResponse({"products": products})
 
 # Apartados (reservas)
 
@@ -252,12 +231,15 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+
+        # formset de items
         if self.request.POST:
             data["items_formset"] = ReservationItemFormSet(self.request.POST)
         else:
             data["items_formset"] = ReservationItemFormSet()
-        # 🔹 Añadir productos filtrados al contexto
-        data["product_browser_products"] = _get_filtered_products(self.request)
+
+        # 👇 ya no pasamos productos, solo la URL del endpoint
+        data["products_api_url"] = reverse("backoffice:billing:products_list_json")
         return data
 
     def form_valid(self, form):
@@ -268,7 +250,6 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         if not items_formset.is_valid():
             return self.form_invalid(form)
 
-        # ✅ Verificar que no esté vacío
         has_items = False
         total = Decimal("0.00")
 
@@ -288,6 +269,7 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         abono = reservation.amount_deposited or Decimal("0.00")
 
+        # vencimiento según el abono
         if total > 0 and abono >= (Decimal("0.20") * total):
             reservation.due_date = timezone.now() + timedelta(days=30)
         else:
@@ -307,4 +289,3 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
             f"Reserva registrada. Vence el {reservation.due_date.date()}"
         )
         return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
-
