@@ -87,7 +87,7 @@ InvoiceItemFormSet = inlineformset_factory(
 
 
 # ------------------------
-# 🔹 Apartados
+# 🔹 Apartados (Reservas)
 # ------------------------
 class ReservationForm(forms.ModelForm):
     class Meta:
@@ -103,30 +103,40 @@ class ReservationForm(forms.ModelForm):
             "client_last_name": forms.TextInput(attrs={"class": "form-control"}),
             "client_phone": forms.TextInput(attrs={"class": "form-control"}),
             "amount_deposited": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.01"}
+                attrs={"class": "form-control", "step": "0.01", "min": 0}
             ),
         }
 
 
 class ReservationItemForm(forms.ModelForm):
-    """Item de apartado, validamos que no se permita producto vacío."""
+    """Item de reserva. Producto y variante vienen del panel dinámico (JS)."""
 
     class Meta:
         model = ReservationItem
         fields = ["product", "variant", "quantity", "unit_price"]
         widgets = {
             "product": forms.HiddenInput(),
-            "variant": forms.Select(attrs={"class": "form-control"}),
-            "quantity": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "variant": forms.HiddenInput(),  # 👈 ahora hidden, lo llena el JS
+            "quantity": forms.NumberInput(
+                attrs={"class": "form-control", "min": 1}
+            ),
             "unit_price": forms.NumberInput(
-                attrs={"class": "form-control", "step": "0.01"}
+                attrs={"class": "form-control", "step": "0.01", "min": 0}
             ),
         }
 
     def clean(self):
         cleaned = super().clean()
+
         if not cleaned.get("product") and not self.cleaned_data.get("DELETE"):
             raise ValidationError("Debe seleccionar un producto válido.")
+
+        if cleaned.get("quantity") is not None and cleaned["quantity"] <= 0:
+            raise ValidationError("La cantidad debe ser mayor que 0.")
+
+        if cleaned.get("unit_price") is not None and cleaned["unit_price"] < 0:
+            raise ValidationError("El precio unitario no puede ser negativo.")
+
         return cleaned
 
 

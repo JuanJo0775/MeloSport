@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import timedelta
 
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
@@ -13,7 +14,7 @@ from django.db import transaction
 
 from apps.products.models import InventoryMovement, Product
 from apps.users.models import AuditLog
-from .models import Invoice, Reservation, InvoiceItem, ReservationItem
+from .models import Invoice, Reservation, InvoiceItem, ReservationItem, add_business_days
 from .forms import InvoiceForm, ReservationForm, InvoiceItemFormSet, ReservationItemFormSet
 
 
@@ -161,13 +162,19 @@ class InvoiceHTMLView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 def products_list_json(request):
     """
     Devuelve JSON con todos los productos disponibles y sus variantes,
-    aplicando filtros de búsqueda y stock.
+    aplicando filtros de búsqueda, tipo y stock, con paginación.
     """
     q = request.GET.get("q", "").strip()
     filter_type = request.GET.get("type", "all")  # all | simple | variants
     stock_filter = request.GET.get("stock", "")   # opcional: in_stock
+    page_number = int(request.GET.get("page", 1))
+    per_page = 10  # 🔹 cantidad de productos por página
 
-    qs = Product.objects.filter(status="active").order_by("name").prefetch_related("variants", "images")
+    qs = (
+        Product.objects.filter(status="active")
+        .order_by("name")
+        .prefetch_related("variants", "images")
+    )
 
     if q:
         qs = qs.filter(
@@ -181,9 +188,9 @@ def products_list_json(request):
     elif filter_type == "variants":
         qs = qs.filter(variants__isnull=False)
 
-    products = []
+    # ✅ Convertir en lista antes de paginar, porque filtramos stock en Python
+    products_raw = []
     for p in qs:
-        # ✅ filtrar en Python porque stock es property
         if stock_filter == "in_stock" and not (
             (p.stock and p.stock > 0) or any(v.stock > 0 for v in p.variants.all())
         ):
@@ -207,7 +214,7 @@ def products_list_json(request):
         if getattr(p, "sku", None):
             product_label += f" • {p.sku}"
 
-        products.append({
+        products_raw.append({
             "id": p.pk,
             "name": getattr(p, "name", ""),
             "label": product_label,
@@ -218,7 +225,16 @@ def products_list_json(request):
             "variants": variants,
         })
 
-    return JsonResponse({"products": products})
+    # 🔹 Paginación
+    paginator = Paginator(products_raw, per_page)
+    page_obj = paginator.get_page(page_number)
+
+    return JsonResponse({
+        "products": list(page_obj.object_list),
+        "page": page_obj.number,
+        "num_pages": paginator.num_pages,
+    })
+
 
 # Apartados (reservas)
 
@@ -238,7 +254,7 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         else:
             data["items_formset"] = ReservationItemFormSet()
 
-        # 👇 ya no pasamos productos, solo la URL del endpoint
+        # solo la URL del endpoint
         data["products_api_url"] = reverse("backoffice:billing:products_list_json")
         return data
 
@@ -269,18 +285,20 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         abono = reservation.amount_deposited or Decimal("0.00")
 
-        # vencimiento según el abono
+        # vencimiento según el abono (en días hábiles)
         if total > 0 and abono >= (Decimal("0.20") * total):
-            reservation.due_date = timezone.now() + timedelta(days=30)
+            reservation.due_date = add_business_days(timezone.now(), 30)
         else:
-            reservation.due_date = timezone.now() + timedelta(days=3)
+            reservation.due_date = add_business_days(timezone.now(), 3)
 
         with transaction.atomic():
             reservation.save()
             items_formset.instance = reservation
             items_formset.save()
             try:
-                reservation.mark_reserved_movements(user=self.request.user, request=self.request)
+                reservation.mark_reserved_movements(
+                    user=self.request.user, request=self.request
+                )
             except Exception:
                 pass
 
@@ -288,4 +306,4 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
             self.request,
             f"Reserva registrada. Vence el {reservation.due_date.date()}"
         )
-        return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
+        return redirect(reverse("billing:reservation_detail", args=[reservation.pk]))
