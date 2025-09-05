@@ -1,135 +1,126 @@
 {% extends "backoffice/base_backoffice.html" %}
-{% load static money %}
+{% load static %}
+{% load money %}
 {% load breadcrumbs %}
 
 {% block title %}Crear Reserva{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Apartados|backoffice:billing:reservation_list" "Nueva reserva" %}
+  {% breadcrumb "Reservas|backoffice:billing:reservation_list" "Crear Reserva" %}
 {% endblock %}
 
 {% block content %}
-<div class="row">
-  <!-- FORMULARIO CLIENTE + PREVIEW -->
-  <div class="col-lg-6">
-    <form method="post" id="reservation-form" novalidate>
-      {% csrf_token %}
-      <div class="card mb-3">
-        <div class="card-body">
-          <h5 class="card-title">Datos del cliente</h5>
+<div id="reservation-page" class="container-fluid py-4">
 
-          <div class="mb-3">
-            {{ form.client_first_name.label_tag }}
+  <!-- FORMULARIO PRINCIPAL -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h4 class="mb-4">Nueva Reserva</h4>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} small">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+
+      <form id="reservation-form" method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Nombre</label>
             {{ form.client_first_name }}
           </div>
-          <div class="mb-3">
-            {{ form.client_last_name.label_tag }}
+          <div class="col-md-4">
+            <label class="form-label">Apellido</label>
             {{ form.client_last_name }}
           </div>
-          <div class="mb-3">
-            {{ form.client_phone.label_tag }}
+          <div class="col-md-4">
+            <label class="form-label">Teléfono</label>
             {{ form.client_phone }}
           </div>
-
-          <hr>
-
-          <h6>Vista previa de productos seleccionados</h6>
-          <div class="table-responsive mb-3">
-            <table class="table table-sm align-middle" id="selected-products-table">
-              <thead>
-                <tr>
-                  <th>Imagen</th>
-                  <th>Producto / Variante</th>
-                  <th>Cantidad</th>
-                  <th>Precio unitario</th>
-                  <th>Subtotal</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="text-muted" id="no-products-row">
-                  <td colspan="6" class="text-center">No hay productos seleccionados.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="mb-2 d-flex justify-content-between">
-            <div>
-              <strong>Total a pagar:</strong>
-              <div id="total-display" class="fs-5">$ 0</div>
-            </div>
-            <div>
-              <strong>Abono mínimo (20%):</strong>
-              <div id="min-deposit-display" class="fs-6">$ 0</div>
-            </div>
-          </div>
-
-          <div class="mb-3">
-            {{ form.amount_deposited.label_tag }}
-            {{ form.amount_deposited }}
-            <div class="form-text">Ingrese el abono en pesos.</div>
-          </div>
-
-          <div class="mb-3" id="due-date-indicator">
-            <span id="due-message" class="badge bg-info text-dark">Reserva válida por 3 días hábiles</span>
-          </div>
-
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary" id="save-reservation-btn">Guardar Reserva</button>
-            <button type="button" class="btn btn-outline-secondary" id="toggle-products-panel-btn">Mostrar/Ocultar panel de productos</button>
-          </div>
         </div>
-      </div>
 
-      <div id="items-formset-area" class="d-none">
+        <div class="mb-3">
+          <label class="form-label">Abono realizado</label>
+          {{ form.amount_deposited }}
+          <div class="form-text">Abono mínimo sugerido: <span id="min-deposit-display">$ 0</span></div>
+        </div>
+
         {{ items_formset.management_form }}
-        <div id="items-forms-container">
+        <div id="items-forms-container" class="d-none">
           {% for f in items_formset.forms %}
-            {{ f.as_p }}
+            <div class="form-row">{{ f.as_p }}</div>
           {% endfor %}
         </div>
-        <textarea id="empty-item-template" class="d-none">{{ items_formset.empty_form.as_p|escapejs }}</textarea>
-      </div>
-    </form>
-  </div>
 
-  <!-- PANEL SCROLLEABLE PRODUCTOS -->
-  <div class="col-lg-6">
-    <div class="card" id="products-panel" style="height:80vh; overflow:auto;">
-      <div class="card-body">
-        <div class="d-flex mb-3 gap-2">
-          <input type="text" id="product-search" class="form-control" placeholder="Buscar por SKU, nombre o descripción">
-          <select id="product-type-filter" class="form-select" style="max-width:150px;">
-            <option value="all">Todos</option>
-            <option value="simple">Sin variantes</option>
-            <option value="variants">Con variantes</option>
-          </select>
-          <div class="form-check align-self-center ms-2">
-            <input class="form-check-input" type="checkbox" id="in-stock-only" checked>
-            <label class="form-check-label" for="in-stock-only">Solo en stock</label>
-          </div>
+        <!-- TABLA DE PRODUCTOS SELECCIONADOS -->
+        <div class="table-responsive mb-3">
+          <table class="table table-sm align-middle" id="selected-products-table">
+            <thead class="table-light small">
+              <tr>
+                <th style="width:60px;"></th>
+                <th>Producto / Variante</th>
+                <th class="text-center" style="width:110px">Cantidad</th>
+                <th class="text-end" style="width:120px">Precio</th>
+                <th class="text-end" style="width:120px">Subtotal</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="text-end fw-bold">Total:</td>
+                <td class="text-end fw-bold" id="total-display">$ 0</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
 
-        <div id="products-container">
-          <div class="text-center text-muted">Cargando productos...</div>
-        </div>
+        <p id="due-message" class="small text-muted mb-3">Seleccione productos para calcular vencimiento.</p>
 
-        <!-- paginación -->
-        <nav class="mt-3">
-          <ul class="pagination justify-content-center" id="pagination-container"></ul>
-        </nav>
-      </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary">Guardar Reserva</button>
+          <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
     </div>
   </div>
+
+  <!-- PANEL DE PRODUCTOS -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-light d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+      <!-- Buscador -->
+      <div class="input-group input-group-sm" style="max-width: 320px;">
+        <input id="product-search" type="text" class="form-control" placeholder="Buscar por nombre o SKU">
+        <button class="btn btn-outline-secondary" type="button" id="clear-search">✕</button>
+      </div>
+      <!-- Filtro por variantes -->
+      <div>
+        <select id="variant-filter" class="form-select form-select-sm" style="width:200px;">
+          <option value="all" selected>Todos</option>
+          <option value="with">Con variantes</option>
+          <option value="without">Sin variantes</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+      <div id="products-container" class="row g-3">
+        {# JS renderiza tarjetas aquí #}
+      </div>
+      <div id="pagination-container" class="mt-3"></div>
+    </div>
+  </div>
+
+  <textarea id="empty-item-template" style="display:none;">{{ items_formset.empty_form.as_p|escape }}</textarea>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   window.RESERVATION_CONFIG = {
-    productsApiUrl: "{{ products_api_url }}",
-    csrfToken: "{{ csrf_token }}",
+    productsApiUrl: "{{ products_api_url|default:'/billing/products/json/' }}",
     prefix: "items"
   };
 </script>

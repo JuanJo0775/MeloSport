@@ -1,258 +1,319 @@
-/* static/js/reservation_create.js
- * Funcionalidad completa:
- * - carga productos con filtros y paginación (Página 1, 2, ...)
- * - render tarjetas con variantes
- * - agrega productos al formset
- * - preview en tabla
- * - totales, abono mínimo, días 3/30
- * - eliminación simple (sin modal)
- */
-
 document.addEventListener("DOMContentLoaded", function () {
   (function () {
-    // helpers
     function $qs(sel, ctx) { return (ctx || document).querySelector(sel); }
     function fmtCOP(n) {
-      if (n === null || n === undefined || n === "") return "$ 0";
-      const num = Number(n) || 0;
-      return "$ " + Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      const num = parseFloat(n) || 0;
+      return "$ " + num.toLocaleString("es-CO");
     }
-    function parseNumberSafe(s) { return Number(String(s).replace(/\./g, "").replace(/,/g, ".")) || 0; }
+    function parseNumberSafe(s) {
+      return Number(String(s).replace(/\./g, "").replace(/,/g, ".")) || 0;
+    }
     function escapeHtml(str) {
-      if (!str && str !== 0) return "";
-      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+      if (!str) return "";
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    // config desde template
     const cfg = window.RESERVATION_CONFIG || {};
     const productsApi = cfg.productsApiUrl || "/billing/products/json/";
     const prefix = cfg.prefix || "items";
 
-    // elementos
-    const productsContainer = $qs("#products-container");
-    const paginationContainer = $qs("#pagination-container");
-    const searchInput = $qs("#product-search");
-    const typeFilter = $qs("#product-type-filter");
-    const inStockOnly = $qs("#in-stock-only");
-    const toggleProductsBtn = $qs("#toggle-products-panel-btn");
+    const pageRoot = $qs("#reservation-page");
+    if (!pageRoot) return;
 
-    const tableBody = $qs("#selected-products-table tbody");
-    const totalDisplay = $qs("#total-display");
-    const minDepositDisplay = $qs("#min-deposit-display");
-    const dueMessage = $qs("#due-message");
-    const amountDepositedInput = $qs("#id_amount_deposited");
-    const reservationForm = $qs("#reservation-form");
-    const itemsFormsContainer = $qs("#items-forms-container");
-    const emptyTemplateTextarea = $qs("#empty-item-template");
+    const productsContainer = $qs("#products-container", pageRoot);
+    const paginationContainer = $qs("#pagination-container", pageRoot);
+    const searchInput = $qs("#product-search", pageRoot);
+    const clearSearchBtn = $qs("#clear-search", pageRoot);
+    const typeFilter = $qs("#product-type-filter", pageRoot); // select con all/simple/variants
+    const inStockOnly = $qs("#in-stock-only", pageRoot);
 
-    const totalFormsEl = $qs(`#id_${prefix}-TOTAL_FORMS`);
+    const tableBody = $qs("#selected-products-table tbody", pageRoot);
+    const totalDisplay = $qs("#total-display", pageRoot);
+    const minDepositDisplay = $qs("#min-deposit-display", pageRoot);
+    const dueMessage = $qs("#due-message", pageRoot);
+    const amountDepositedInput = $qs("#id_amount_deposited", pageRoot);
+    const reservationForm = $qs("#reservation-form", pageRoot);
+    const itemsFormsContainer = $qs("#items-forms-container", pageRoot);
+    const emptyTemplateTextarea = $qs("#empty-item-template", pageRoot);
+    const totalFormsEl = $qs(`#id_${prefix}-TOTAL_FORMS`, pageRoot);
+
     let previewMap = new Map();
 
-    // cargar productos
+    function getNextFormIndex() { return Number(totalFormsEl.value || "0"); }
+    function increaseTotalForms() {
+      const val = getNextFormIndex() + 1;
+      totalFormsEl.value = String(val);
+      return val - 1;
+    }
+    function decreaseTotalForms() {
+      totalFormsEl.value = String(Math.max(0, getNextFormIndex() - 1));
+    }
+
+    // ===== Cargar productos =====
     async function loadProducts(page = 1) {
       productsContainer.innerHTML = `<div class="text-center p-3"><div class="spinner-border"></div></div>`;
-      if (paginationContainer) paginationContainer.innerHTML = "";
+      const q = searchInput?.value?.trim() || "";
+      const filterType = typeFilter?.value || "all"; // all | simple | variants
+      const stockFilter = inStockOnly?.checked ? "in_stock" : "";
 
-      const params = new URLSearchParams();
-      if (searchInput.value.trim()) params.set("q", searchInput.value.trim());
-      if (typeFilter.value) params.set("type", typeFilter.value);
-      if (inStockOnly.checked) params.set("stock", "in_stock");
-      params.set("page", page);
+      const url = new URL(productsApi, window.location.origin);
+      if (q) url.searchParams.set("q", q);
+      if (filterType && filterType !== "all") url.searchParams.set("type", filterType);
+      if (stockFilter) url.searchParams.set("stock", stockFilter);
+      url.searchParams.set("page", page);
 
       try {
-        const resp = await fetch(productsApi + "?" + params.toString());
+        const resp = await fetch(url, { credentials: "same-origin" });
+        if (!resp.ok) throw new Error("Error al cargar productos");
         const data = await resp.json();
-        renderProducts(data.products || []);
-        renderPagination(data.page, data.num_pages);
-      } catch {
-        productsContainer.innerHTML = `<div class="text-danger">Error cargando productos</div>`;
+        renderProducts(data.products || [], data.page || 1, data.num_pages || 1);
+      } catch (err) {
+        console.error(err);
+        productsContainer.innerHTML = `<div class="text-center text-danger">Error al cargar productos.</div>`;
       }
     }
 
-    function renderProducts(products) {
-      productsContainer.innerHTML = "";
+    function renderProducts(products, page, numPages) {
       if (!products.length) {
-        productsContainer.innerHTML = `<div class="text-muted text-center">No se encontraron productos.</div>`;
+        productsContainer.innerHTML = `<div class="text-center text-muted">No hay productos disponibles.</div>`;
+        paginationContainer.innerHTML = "";
         return;
       }
-      products.forEach(p => {
-        const card = document.createElement("div");
-        card.className = "card mb-2";
-        const hasVariants = p.variants && p.variants.length > 0;
-        const img = p.image ? `<img src="${p.image}" style="width:72px;height:72px;object-fit:cover;" class="me-2">` : "";
 
-        card.innerHTML = `
-          <div class="card-body">
-            <div class="d-flex">
-              ${img}
-              <div style="flex:1">
-                <div><strong>${escapeHtml(p.name)}</strong></div>
-                <div class="text-muted">SKU: ${escapeHtml(p.sku || "-")}</div>
-                <div class="text-muted">Stock: ${p.stock ?? "-"}</div>
-                <div>Precio: <strong>${fmtCOP(p.price)}</strong></div>
-                <div data-variants-area></div>
-              </div>
-              <div class="text-end">
-                <input type="number" min="1" value="1" class="form-control form-control-sm mb-2 quantity-input" style="width:80px">
-                <button class="btn btn-sm btn-primary add-product-btn">Agregar</button>
-              </div>
-            </div>
-          </div>
-        `;
-
-        const variantsArea = card.querySelector("[data-variants-area]");
-        if (hasVariants) {
-          const sel = document.createElement("select");
-          sel.className = "form-select form-select-sm mb-2 variant-select";
-          sel.innerHTML = `<option value="">-- Seleccione variante --</option>`;
-          p.variants.forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v.id;
-            opt.textContent = `${v.label}${v.stock ? " (stock: " + v.stock + ")" : ""}`;
-            opt.dataset.stock = v.stock || "";
-            opt.dataset.price = v.price || p.price || 0;
-            sel.appendChild(opt);
-          });
-          variantsArea.appendChild(sel);
-        }
-
-        const addBtn = card.querySelector(".add-product-btn");
-        const qtyInput = card.querySelector(".quantity-input");
-        const variantSelect = card.querySelector(".variant-select");
-
-        addBtn.addEventListener("click", () => {
-          const qty = Number(qtyInput.value) || 1;
-          let variantId = null;
-          let unitPrice = p.price || 0;
-          let stock = p.stock ?? Infinity;
-          let variantLabel = "";
-
-          if (variantSelect) {
-            const opt = variantSelect.selectedOptions[0];
-            if (!opt.value) return alert("Seleccione una variante");
-            variantId = opt.value;
-            unitPrice = Number(opt.dataset.price);
-            stock = Number(opt.dataset.stock);
-            variantLabel = opt.textContent;
-          }
-          if (qty > stock) return alert("Cantidad supera el stock");
-
-          addProductToFormset({
-            product_id: p.id,
-            product_name: p.name,
-            sku: p.sku || "",
-            image: p.image || "",
-            variant_id: variantId,
-            variant_label: variantLabel,
-            quantity: qty,
-            unit_price: unitPrice,
-            subtotal: qty * unitPrice
-          });
-        });
-
-        productsContainer.appendChild(card);
-      });
+      const html = products.map(p => renderProductCard(p)).join("");
+      productsContainer.innerHTML = html;
+      renderPagination(page, numPages);
+      attachListeners();
     }
 
     function renderPagination(page, numPages) {
-      if (!paginationContainer || !numPages) return;
-      let html = "";
-      for (let i = 1; i <= numPages; i++) {
-        html += `<li class="page-item ${i === page ? "active" : ""}">
-          <button class="page-link" data-page="${i}">${i}</button>
-        </li>`;
+      if (numPages <= 1) {
+        paginationContainer.innerHTML = "";
+        return;
       }
+      let html = `<nav><ul class="pagination pagination-sm">`;
+      for (let i = 1; i <= numPages; i++) {
+        html += `<li class="page-item ${i === page ? 'active' : ''}">
+                   <a class="page-link" href="#" data-page="${i}">${i}</a>
+                 </li>`;
+      }
+      html += `</ul></nav>`;
       paginationContainer.innerHTML = html;
-      paginationContainer.querySelectorAll("button").forEach(btn => {
-        btn.addEventListener("click", () => loadProducts(Number(btn.dataset.page)));
+      paginationContainer.querySelectorAll("a.page-link").forEach(a => {
+        a.addEventListener("click", e => {
+          e.preventDefault();
+          loadProducts(Number(a.dataset.page));
+        });
       });
     }
 
-    function addProductToFormset(opts) {
-      let idx = parseInt(totalFormsEl.value, 10);
-      const tpl = emptyTemplateTextarea.value.replace(/__prefix__/g, idx);
-      const wrapper = document.createElement("div");
-      wrapper.className = "d-none";
-      wrapper.dataset.formIndex = idx;
-      wrapper.innerHTML = tpl;
-      itemsFormsContainer.appendChild(wrapper);
+    function renderProductCard(p) {
+      const hasVariants = Array.isArray(p.variants) && p.variants.length > 0;
+      const img = p.image ? escapeHtml(p.image) : "/static/img/no-image.png";
+      const priceDisplay = fmtCOP(p.price || 0);
+      const stock = p.stock !== null ? p.stock : "-";
 
-      wrapper.querySelector(`[name="${prefix}-${idx}-product"]`).value = opts.product_id;
-      wrapper.querySelector(`[name="${prefix}-${idx}-variant"]`).value = opts.variant_id || "";
-      wrapper.querySelector(`[name="${prefix}-${idx}-quantity"]`).value = opts.quantity;
-      wrapper.querySelector(`[name="${prefix}-${idx}-unit_price"]`).value = opts.unit_price;
-      totalFormsEl.value = idx + 1;
+      let variantsHtml = "";
+      if (hasVariants) {
+        variantsHtml = `
+          <table class="table table-sm table-borderless align-middle mb-0">
+            <tbody>
+              ${p.variants.map(v => {
+                const variantPrice = v.price && parseFloat(v.price) > 0 ? v.price : p.price;
+                return `
+                  <tr>
+                    <td>${escapeHtml(v.label)}</td>
+                    <td class="text-end">${fmtCOP(variantPrice)}</td>
+                    <td class="text-muted">Stock: ${escapeHtml(v.stock)}</td>
+                    <td style="width:70px;"><input type="number" min="1" value="1" class="form-control form-control-sm variant-qty-input"></td>
+                    <td>
+                      <button class="btn btn-sm btn-primary btn-add-variant" 
+                              data-product='${escapeHtml(JSON.stringify({
+                                id: p.id, name: p.name, sku: p.sku
+                              }))}'
+                              data-variant='${escapeHtml(JSON.stringify({
+                                id: v.id, label: v.label, stock: v.stock, price: variantPrice
+                              }))}'>
+                          Agregar
+                      </button>
+                    </td>
+                  </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        `;
+      }
 
-      $qs("#no-products-row")?.remove();
-      const row = document.createElement("tr");
-      row.dataset.formIndex = idx;
-      row.innerHTML = `
-        <td><img src="${opts.image}" style="width:48px;height:48px;object-fit:cover;"></td>
-        <td><strong>${escapeHtml(opts.product_name)}</strong><div class="small text-muted">${escapeHtml(opts.variant_label || opts.sku)}</div></td>
-        <td>${opts.quantity}</td>
-        <td>${fmtCOP(opts.unit_price)}</td>
-        <td><span class="preview-subtotal">${fmtCOP(opts.subtotal)}</span></td>
-        <td><button class="btn btn-sm btn-outline-danger remove-item-btn">✕</button></td>
+      return `
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card h-100 shadow-sm">
+            <img src="${img}" class="card-img-top" alt="${escapeHtml(p.name)}" style="height:130px; object-fit:cover;">
+            <div class="card-body">
+              <h6 class="card-title mb-1">${escapeHtml(p.name)}</h6>
+              <div class="small text-muted mb-1">SKU: ${escapeHtml(p.sku)}</div>
+              <div class="small text-muted mb-2">Stock: ${stock}</div>
+              ${!hasVariants ? `
+                <div class="mb-2">Precio: <strong>${priceDisplay}</strong></div>
+                <div class="d-flex gap-2">
+                  <input type="number" min="1" value="1" class="form-control form-control-sm simple-qty" style="width:80px;">
+                  <button class="btn btn-sm btn-primary btn-add-simple" 
+                          data-product='${escapeHtml(JSON.stringify({
+                            id: p.id, name: p.name, sku: p.sku, price: p.price, stock: p.stock
+                          }))}'>
+                    Agregar
+                  </button>
+                </div>
+              ` : variantsHtml}
+            </div>
+          </div>
+        </div>
       `;
-      tableBody.appendChild(row);
+    }
 
-      const deleteInput = wrapper.querySelector(`[name="${prefix}-${idx}-DELETE"]`);
-      row.querySelector(".remove-item-btn").addEventListener("click", () => {
-        if (deleteInput) deleteInput.checked = true;
-        row.remove();
-        previewMap.delete(String(idx));
-        if (!previewMap.size) {
-          tableBody.innerHTML = `<tr class="text-muted" id="no-products-row"><td colspan="6" class="text-center">No hay productos seleccionados.</td></tr>`;
-        }
+    function attachListeners() {
+      productsContainer.querySelectorAll(".btn-add-simple").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.preventDefault();
+          const product = JSON.parse(btn.dataset.product || "{}");
+          const qty = Math.max(1, Number(btn.closest(".d-flex").querySelector(".simple-qty").value));
+          if (qty > product.stock) {
+            alert(`Stock disponible: ${product.stock}`);
+            return;
+          }
+          addItem(product, null, qty);
+        });
+      });
+
+      productsContainer.querySelectorAll(".btn-add-variant").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.preventDefault();
+          const product = JSON.parse(btn.dataset.product || "{}");
+          const variant = JSON.parse(btn.dataset.variant || "{}");
+          const row = btn.closest("tr");
+          const qtyInput = row.querySelector(".variant-qty-input");
+          const qty = Math.max(1, Number(qtyInput.value || 1));
+          if (qty > variant.stock) {
+            alert(`Stock disponible: ${variant.stock}`);
+            return;
+          }
+          addItem(product, variant, qty);
+        });
+      });
+    }
+
+    function addItem(product, variant, qty) {
+      const key = variant ? `${product.id}::${variant.id}` : `p::${product.id}`;
+      if (previewMap.has(key)) {
+        const row = previewMap.get(key);
+        row.qty += qty;
+        updatePreviewRow(row);
+        updateFormQuantity(row.formIndex, row.qty);
+      } else {
+        const formIndex = increaseTotalForms();
+        const row = {
+          key,
+          product_id: product.id,
+          product_name: product.name,
+          sku: product.sku,
+          variant_id: variant ? variant.id : "",
+          variant_label: variant ? variant.label : "",
+          unit_price: variant ? variant.price : product.price,
+          qty: qty,
+          formIndex: formIndex
+        };
+        insertFormsetForm(row);
+        insertPreviewRow(row);
+        previewMap.set(key, row);
+      }
+      recalcTotals();
+    }
+
+    function insertFormsetForm(row) {
+      const tpl = emptyTemplateTextarea.value || "";
+      const html = tpl.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+      const newForm = html.replace(/__prefix__/g, row.formIndex);
+      itemsFormsContainer.insertAdjacentHTML("beforeend", newForm);
+
+      const base = `${prefix}-${row.formIndex}`;
+      itemsFormsContainer.querySelector(`[name="${base}-product"]`).value = row.product_id;
+      itemsFormsContainer.querySelector(`[name="${base}-variant"]`).value = row.variant_id || "";
+      itemsFormsContainer.querySelector(`[name="${base}-quantity"]`).value = row.qty;
+      itemsFormsContainer.querySelector(`[name="${base}-unit_price"]`).value = row.unit_price;
+    }
+
+    function insertPreviewRow(row) {
+      const tr = document.createElement("tr");
+      tr.dataset.key = row.key;
+      tr.innerHTML = `
+        <td></td>
+        <td>
+          <div class="small">${escapeHtml(row.product_name)}</div>
+          ${row.variant_label ? `<div class="text-muted small">${escapeHtml(row.variant_label)}</div>` : ""}
+          <div class="small text-muted">SKU: ${escapeHtml(row.sku)}</div>
+        </td>
+        <td class="text-center"><input type="number" min="1" value="${row.qty}" class="form-control form-control-sm preview-qty" style="width:80px;"></td>
+        <td class="text-end">${fmtCOP(row.unit_price)}</td>
+        <td class="text-end subtotal">${fmtCOP(row.unit_price * row.qty)}</td>
+        <td><button class="btn btn-sm btn-outline-danger btn-remove-item">&times;</button></td>
+      `;
+      tableBody.appendChild(tr);
+
+      tr.querySelector(".preview-qty").addEventListener("input", e => {
+        const v = Math.max(1, Number(e.target.value || 1));
+        row.qty = v;
+        updateFormQuantity(row.formIndex, v);
+        tr.querySelector(".subtotal").textContent = fmtCOP(row.unit_price * v);
         recalcTotals();
       });
 
-      previewMap.set(String(idx), row);
-      recalcTotals();
+      tr.querySelector(".btn-remove-item").addEventListener("click", () => {
+        previewMap.delete(row.key);
+        tr.remove();
+        decreaseTotalForms();
+        recalcTotals();
+      });
+    }
+
+    function updatePreviewRow(row) {
+      const tr = tableBody.querySelector(`tr[data-key="${row.key}"]`);
+      if (!tr) return;
+      tr.querySelector(".preview-qty").value = row.qty;
+      tr.querySelector(".subtotal").textContent = fmtCOP(row.unit_price * row.qty);
+    }
+
+    function updateFormQuantity(index, qty) {
+      const el = itemsFormsContainer.querySelector(`[name="${prefix}-${index}-quantity"]`);
+      if (el) el.value = qty;
     }
 
     function recalcTotals() {
       let total = 0;
-      previewMap.forEach(row => {
-        const subEl = row.querySelector(".preview-subtotal");
-        if (subEl) total += parseNumberSafe(subEl.textContent);
-      });
+      previewMap.forEach(r => total += r.unit_price * r.qty);
       totalDisplay.textContent = fmtCOP(total);
       const minDep = Math.round(total * 0.2);
       minDepositDisplay.textContent = fmtCOP(minDep);
-      const abono = parseNumberSafe(amountDepositedInput.value);
-      if (abono >= minDep && total > 0) {
-        dueMessage.textContent = "Reserva válida por 30 días hábiles";
-        dueMessage.className = "badge bg-success";
-      } else {
-        dueMessage.textContent = "Reserva válida por 3 días hábiles";
-        dueMessage.className = "badge bg-info text-dark";
-      }
+      const dep = parseNumberSafe(amountDepositedInput.value || 0);
+      dueMessage.textContent = total === 0 ? "Seleccione productos para calcular vencimiento." :
+        dep >= minDep ? "Reserva válida por 30 días hábiles." : "Reserva válida por 3 días hábiles (abono mínimo 20%).";
     }
 
-    reservationForm.addEventListener("submit", e => {
-      if (!previewMap.size) {
+    // ===== Eventos =====
+    searchInput?.addEventListener("input", () => loadProducts(1));
+    clearSearchBtn?.addEventListener("click", () => { searchInput.value = ""; loadProducts(1); });
+    typeFilter?.addEventListener("change", () => loadProducts(1));
+    inStockOnly?.addEventListener("change", () => loadProducts(1));
+    amountDepositedInput?.addEventListener("input", recalcTotals);
+
+    reservationForm?.addEventListener("submit", e => {
+      if (previewMap.size === 0) {
         e.preventDefault();
         alert("Debe agregar al menos un producto.");
       }
     });
 
-    searchInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") { e.preventDefault(); loadProducts(); }
-    });
-    searchInput.addEventListener("input", () => loadProducts());
-    typeFilter.addEventListener("change", () => loadProducts());
-    inStockOnly.addEventListener("change", () => loadProducts());
-
-    toggleProductsBtn.addEventListener("click", () => {
-      const panel = $qs("#products-panel");
-      panel.style.display = panel.style.display === "none" ? "" : "none";
-    });
-
-    amountDepositedInput.addEventListener("input", recalcTotals);
-
-    // primera carga
-    loadProducts();
+    // Inicial
+    loadProducts(1);
+    recalcTotals();
   })();
 });
