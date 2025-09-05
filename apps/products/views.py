@@ -82,7 +82,10 @@ class ProductListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         status = request.GET.get("status")
 
         if q:
-            qs = qs.filter(Q(name__icontains=q) | Q(sku__icontains=q))
+            qs = qs.filter(
+                Q(name__unaccent_icontains=q) |
+                Q(sku__unaccent_icontains=q)
+            )
 
         # Precios
         if price_min:

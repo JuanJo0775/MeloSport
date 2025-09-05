@@ -58,10 +58,10 @@ class UserListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         search = self.request.GET.get("q")
         if search:
             qs = qs.filter(
-                Q(username__icontains=search) |
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
-                Q(email__icontains=search)
+                Q(username__unaccent_icontains=search) |
+                Q(first_name__unaccent_icontains=search) |
+                Q(last_name__unaccent_icontains=search) |
+                Q(email__unaccent_icontains=search)
             )
         group_id = self.request.GET.get("group_id")
         if group_id:
@@ -281,13 +281,13 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         # búsqueda flexible
         if q:
             base_q = (
-                Q(user__username__icontains=q) |
-                Q(user__email__icontains=q) |
-                Q(user__first_name__icontains=q) |
-                Q(user__last_name__icontains=q) |
-                Q(action__icontains=q) |
-                Q(model__icontains=q) |
-                Q(description__icontains=q)
+                    Q(user__username__unaccent_icontains=q) |
+                    Q(user__email__unaccent_icontains=q) |
+                    Q(user__first_name__unaccent_icontains=q) |
+                    Q(user__last_name__unaccent_icontains=q) |
+                    Q(action__unaccent_icontains=q) |
+                    Q(model__unaccent_icontains=q) |
+                    Q(description__unaccent_icontains=q)
             )
             qs = qs.filter(base_q)
 

@@ -1,32 +1,86 @@
 document.addEventListener("DOMContentLoaded", function () {
   (function () {
+    // ---------- helpers ----------
     function $qs(sel, ctx) { return (ctx || document).querySelector(sel); }
+
     function fmtCOP(n) {
-      const num = parseFloat(n) || 0;
+      const num = Number(n) || 0;
       return "$ " + num.toLocaleString("es-CO");
     }
-    function parseNumberSafe(s) {
-      return Number(String(s).replace(/\./g, "").replace(/,/g, ".")) || 0;
-    }
-    function escapeHtml(str) {
-      if (!str) return "";
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+
+    // parsing robusto para distintos formatos: "70.000", "70,000", "70000.00", "$ 70.000"
+    function parsePrice(val) {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === "number") return Math.round(val);
+
+      let s = String(val).trim();
+
+      // quitar símbolos comunes y NBSP y espacios
+      s = s.replace(/\u00A0/g, "").replace(/\s/g, "").replace(/\$/g, "").replace(/COP/ig, "");
+
+      // dejar solo dígitos, comas y puntos (y posible signo -)
+      s = s.replace(/[^0-9\.,-]/g, "");
+
+      if (!s) return 0;
+
+      // Si contiene ambos separadores
+      if (s.indexOf(".") !== -1 && s.indexOf(",") !== -1) {
+        // si el último separador es coma => coma decimal (ej: "1.234,56")
+        if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+          s = s.replace(/\./g, ""); // quitar miles (.)
+          s = s.replace(/,/g, "."); // convertir decimal a dot
+        } else {
+          // último separador es punto => punto decimal (ej: "1234,56" improbable) -> quitar comas
+          s = s.replace(/,/g, "");
+        }
+      } else if (s.indexOf(",") !== -1) {
+        // solo coma: si hay 3 dígitos después de la coma -> probablemente separador de miles (70,000)
+        const parts = s.split(",");
+        if (parts.length > 1 && parts[1].length === 3) {
+          s = s.replace(/,/g, "");
+        } else {
+          // coma decimal
+          s = s.replace(/,/g, ".");
+        }
+      } else if (s.indexOf(".") !== -1) {
+        // solo punto: si hay 3 dígitos después -> probablemente miles (70.000)
+        const parts = s.split(".");
+        if (parts.length > 1 && parts[1].length === 3) {
+          s = s.replace(/\./g, "");
+        } else {
+          // punto decimal -> dejarlo
+        }
+      }
+
+      const n = parseFloat(s);
+      if (isNaN(n)) return 0;
+      return Math.round(n);
     }
 
+    // JSON seguro / tolerante para data-product / data-variant
+    function safeParseJSON(str) {
+      if (!str) return {};
+      try {
+        return JSON.parse(str);
+      } catch (e) {
+        try {
+          // Fallback: interpretar literal JS (puede ser inseguro si viene de terceros,
+          // pero aquí viene del servidor controlado). Envuelve en paréntesis.
+          // eslint-disable-next-line no-new-func
+          return new Function("return (" + str + ")")();
+        } catch (e2) {
+          console.warn("safeParseJSON fallo:", e2, "input:", str);
+          return {};
+        }
+      }
+    }
+
+    // ---------- configuración / elementos ----------
     const cfg = window.RESERVATION_CONFIG || {};
-    const productsApi = cfg.productsApiUrl || "/billing/products/json/";
     const prefix = cfg.prefix || "items";
 
     const pageRoot = $qs("#reservation-page");
     if (!pageRoot) return;
-
-    const productsContainer = $qs("#products-container", pageRoot);
-    const paginationContainer = $qs("#pagination-container", pageRoot);
-    const searchInput = $qs("#product-search", pageRoot);
-    const clearSearchBtn = $qs("#clear-search", pageRoot);
-    const typeFilter = $qs("#product-type-filter", pageRoot); // select con all/simple/variants
-    const inStockOnly = $qs("#in-stock-only", pageRoot);
 
     const tableBody = $qs("#selected-products-table tbody", pageRoot);
     const totalDisplay = $qs("#total-display", pageRoot);
@@ -40,208 +94,76 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let previewMap = new Map();
 
-    function getNextFormIndex() { return Number(totalFormsEl.value || "0"); }
+    function getNextFormIndex() { return Number(totalFormsEl?.value || 0); }
     function increaseTotalForms() {
       const val = getNextFormIndex() + 1;
-      totalFormsEl.value = String(val);
+      if (totalFormsEl) totalFormsEl.value = String(val);
       return val - 1;
     }
     function decreaseTotalForms() {
-      totalFormsEl.value = String(Math.max(0, getNextFormIndex() - 1));
+      if (totalFormsEl) totalFormsEl.value = String(Math.max(0, getNextFormIndex() - 1));
     }
 
-    // ===== Cargar productos =====
-    async function loadProducts(page = 1) {
-      productsContainer.innerHTML = `<div class="text-center p-3"><div class="spinner-border"></div></div>`;
-      const q = searchInput?.value?.trim() || "";
-      const filterType = typeFilter?.value || "all"; // all | simple | variants
-      const stockFilter = inStockOnly?.checked ? "in_stock" : "";
+    // ---------- añadir item ----------
+    function addItem(productObj, variantObj, qty) {
+      const key = variantObj ? `${productObj.id}::${variantObj.id}` : `p::${productObj.id}`;
 
-      const url = new URL(productsApi, window.location.origin);
-      if (q) url.searchParams.set("q", q);
-      if (filterType && filterType !== "all") url.searchParams.set("type", filterType);
-      if (stockFilter) url.searchParams.set("stock", stockFilter);
-      url.searchParams.set("page", page);
+      // normalizar qty a entero positivo
+      qty = Math.max(1, Math.floor(Number(qty) || 1));
 
-      try {
-        const resp = await fetch(url, { credentials: "same-origin" });
-        if (!resp.ok) throw new Error("Error al cargar productos");
-        const data = await resp.json();
-        renderProducts(data.products || [], data.page || 1, data.num_pages || 1);
-      } catch (err) {
-        console.error(err);
-        productsContainer.innerHTML = `<div class="text-center text-danger">Error al cargar productos.</div>`;
-      }
-    }
-
-    function renderProducts(products, page, numPages) {
-      if (!products.length) {
-        productsContainer.innerHTML = `<div class="text-center text-muted">No hay productos disponibles.</div>`;
-        paginationContainer.innerHTML = "";
-        return;
-      }
-
-      const html = products.map(p => renderProductCard(p)).join("");
-      productsContainer.innerHTML = html;
-      renderPagination(page, numPages);
-      attachListeners();
-    }
-
-    function renderPagination(page, numPages) {
-      if (numPages <= 1) {
-        paginationContainer.innerHTML = "";
-        return;
-      }
-      let html = `<nav><ul class="pagination pagination-sm">`;
-      for (let i = 1; i <= numPages; i++) {
-        html += `<li class="page-item ${i === page ? 'active' : ''}">
-                   <a class="page-link" href="#" data-page="${i}">${i}</a>
-                 </li>`;
-      }
-      html += `</ul></nav>`;
-      paginationContainer.innerHTML = html;
-      paginationContainer.querySelectorAll("a.page-link").forEach(a => {
-        a.addEventListener("click", e => {
-          e.preventDefault();
-          loadProducts(Number(a.dataset.page));
-        });
-      });
-    }
-
-    function renderProductCard(p) {
-      const hasVariants = Array.isArray(p.variants) && p.variants.length > 0;
-      const img = p.image ? escapeHtml(p.image) : "/static/img/no-image.png";
-      const priceDisplay = fmtCOP(p.price || 0);
-      const stock = p.stock !== null ? p.stock : "-";
-
-      let variantsHtml = "";
-      if (hasVariants) {
-        variantsHtml = `
-          <table class="table table-sm table-borderless align-middle mb-0">
-            <tbody>
-              ${p.variants.map(v => {
-                const variantPrice = v.price && parseFloat(v.price) > 0 ? v.price : p.price;
-                return `
-                  <tr>
-                    <td>${escapeHtml(v.label)}</td>
-                    <td class="text-end">${fmtCOP(variantPrice)}</td>
-                    <td class="text-muted">Stock: ${escapeHtml(v.stock)}</td>
-                    <td style="width:70px;"><input type="number" min="1" value="1" class="form-control form-control-sm variant-qty-input"></td>
-                    <td>
-                      <button class="btn btn-sm btn-primary btn-add-variant" 
-                              data-product='${escapeHtml(JSON.stringify({
-                                id: p.id, name: p.name, sku: p.sku
-                              }))}'
-                              data-variant='${escapeHtml(JSON.stringify({
-                                id: v.id, label: v.label, stock: v.stock, price: variantPrice
-                              }))}'>
-                          Agregar
-                      </button>
-                    </td>
-                  </tr>`;
-              }).join("")}
-            </tbody>
-          </table>
-        `;
-      }
-
-      return `
-        <div class="col-12 col-md-6 col-lg-4">
-          <div class="card h-100 shadow-sm">
-            <img src="${img}" class="card-img-top" alt="${escapeHtml(p.name)}" style="height:130px; object-fit:cover;">
-            <div class="card-body">
-              <h6 class="card-title mb-1">${escapeHtml(p.name)}</h6>
-              <div class="small text-muted mb-1">SKU: ${escapeHtml(p.sku)}</div>
-              <div class="small text-muted mb-2">Stock: ${stock}</div>
-              ${!hasVariants ? `
-                <div class="mb-2">Precio: <strong>${priceDisplay}</strong></div>
-                <div class="d-flex gap-2">
-                  <input type="number" min="1" value="1" class="form-control form-control-sm simple-qty" style="width:80px;">
-                  <button class="btn btn-sm btn-primary btn-add-simple" 
-                          data-product='${escapeHtml(JSON.stringify({
-                            id: p.id, name: p.name, sku: p.sku, price: p.price, stock: p.stock
-                          }))}'>
-                    Agregar
-                  </button>
-                </div>
-              ` : variantsHtml}
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function attachListeners() {
-      productsContainer.querySelectorAll(".btn-add-simple").forEach(btn => {
-        btn.addEventListener("click", e => {
-          e.preventDefault();
-          const product = JSON.parse(btn.dataset.product || "{}");
-          const qty = Math.max(1, Number(btn.closest(".d-flex").querySelector(".simple-qty").value));
-          if (qty > product.stock) {
-            alert(`Stock disponible: ${product.stock}`);
-            return;
-          }
-          addItem(product, null, qty);
-        });
-      });
-
-      productsContainer.querySelectorAll(".btn-add-variant").forEach(btn => {
-        btn.addEventListener("click", e => {
-          e.preventDefault();
-          const product = JSON.parse(btn.dataset.product || "{}");
-          const variant = JSON.parse(btn.dataset.variant || "{}");
-          const row = btn.closest("tr");
-          const qtyInput = row.querySelector(".variant-qty-input");
-          const qty = Math.max(1, Number(qtyInput.value || 1));
-          if (qty > variant.stock) {
-            alert(`Stock disponible: ${variant.stock}`);
-            return;
-          }
-          addItem(product, variant, qty);
-        });
-      });
-    }
-
-    function addItem(product, variant, qty) {
-      const key = variant ? `${product.id}::${variant.id}` : `p::${product.id}`;
       if (previewMap.has(key)) {
         const row = previewMap.get(key);
-        row.qty += qty;
+        row.qty = row.qty + qty;
         updatePreviewRow(row);
         updateFormQuantity(row.formIndex, row.qty);
       } else {
         const formIndex = increaseTotalForms();
+
+        // parsear precio de manera robusta
+        const rawPrice = variantObj ? variantObj.price : productObj.price;
+        const unitPrice = parsePrice(rawPrice);
+
         const row = {
           key,
-          product_id: product.id,
-          product_name: product.name,
-          sku: product.sku,
-          variant_id: variant ? variant.id : "",
-          variant_label: variant ? variant.label : "",
-          unit_price: variant ? variant.price : product.price,
+          product_id: productObj.id,
+          product_name: productObj.name || productObj.label || "",
+          sku: variantObj ? (variantObj.sku || "") : (productObj.sku || ""),
+          variant_id: variantObj ? variantObj.id : "",
+          variant_label: variantObj ? (variantObj.label || "") : "",
+          unit_price: unitPrice, // entero en pesos
           qty: qty,
           formIndex: formIndex
         };
+
         insertFormsetForm(row);
         insertPreviewRow(row);
         previewMap.set(key, row);
       }
+
       recalcTotals();
     }
 
+    // ---------- formset ----------
     function insertFormsetForm(row) {
-      const tpl = emptyTemplateTextarea.value || "";
-      const html = tpl.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+      const tpl = emptyTemplateTextarea?.value || "";
+      const html = tpl.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+                      .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
       const newForm = html.replace(/__prefix__/g, row.formIndex);
       itemsFormsContainer.insertAdjacentHTML("beforeend", newForm);
 
       const base = `${prefix}-${row.formIndex}`;
-      itemsFormsContainer.querySelector(`[name="${base}-product"]`).value = row.product_id;
-      itemsFormsContainer.querySelector(`[name="${base}-variant"]`).value = row.variant_id || "";
-      itemsFormsContainer.querySelector(`[name="${base}-quantity"]`).value = row.qty;
-      itemsFormsContainer.querySelector(`[name="${base}-unit_price"]`).value = row.unit_price;
+      const elProd = itemsFormsContainer.querySelector(`[name="${base}-product"]`);
+      const elVar = itemsFormsContainer.querySelector(`[name="${base}-variant"]`);
+      const elQty = itemsFormsContainer.querySelector(`[name="${base}-quantity"]`);
+      const elPrice = itemsFormsContainer.querySelector(`[name="${base}-unit_price"]`);
+
+      if (elProd) elProd.value = row.product_id;
+      if (elVar) elVar.value = row.variant_id || "";
+      if (elQty) elQty.value = row.qty;
+      if (elPrice) elPrice.value = String(row.unit_price);
     }
 
+    // ---------- tabla (vista previa) ----------
     function insertPreviewRow(row) {
       const tr = document.createElement("tr");
       tr.dataset.key = row.key;
@@ -253,20 +175,23 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="small text-muted">SKU: ${escapeHtml(row.sku)}</div>
         </td>
         <td class="text-center"><input type="number" min="1" value="${row.qty}" class="form-control form-control-sm preview-qty" style="width:80px;"></td>
-        <td class="text-end">${fmtCOP(row.unit_price)}</td>
+        <td class="text-end unit-price">${fmtCOP(row.unit_price)}</td>
         <td class="text-end subtotal">${fmtCOP(row.unit_price * row.qty)}</td>
-        <td><button class="btn btn-sm btn-outline-danger btn-remove-item">&times;</button></td>
+        <td><button class="btn btn-sm btn-outline-danger btn-remove-item" type="button">&times;</button></td>
       `;
       tableBody.appendChild(tr);
 
-      tr.querySelector(".preview-qty").addEventListener("input", e => {
-        const v = Math.max(1, Number(e.target.value || 1));
+      // qty change
+      const qtyInput = tr.querySelector(".preview-qty");
+      qtyInput.addEventListener("input", e => {
+        const v = Math.max(1, Math.floor(Number(e.target.value || 1)));
         row.qty = v;
         updateFormQuantity(row.formIndex, v);
         tr.querySelector(".subtotal").textContent = fmtCOP(row.unit_price * v);
         recalcTotals();
       });
 
+      // remove
       tr.querySelector(".btn-remove-item").addEventListener("click", () => {
         previewMap.delete(row.key);
         tr.remove();
@@ -287,24 +212,61 @@ document.addEventListener("DOMContentLoaded", function () {
       if (el) el.value = qty;
     }
 
+    // ---------- totales ----------
     function recalcTotals() {
       let total = 0;
-      previewMap.forEach(r => total += r.unit_price * r.qty);
+      previewMap.forEach(r => { total += Number(r.unit_price) * Number(r.qty); });
       totalDisplay.textContent = fmtCOP(total);
       const minDep = Math.round(total * 0.2);
       minDepositDisplay.textContent = fmtCOP(minDep);
-      const dep = parseNumberSafe(amountDepositedInput.value || 0);
-      dueMessage.textContent = total === 0 ? "Seleccione productos para calcular vencimiento." :
-        dep >= minDep ? "Reserva válida por 30 días hábiles." : "Reserva válida por 3 días hábiles (abono mínimo 20%).";
+      const dep = parsePrice(amountDepositedInput?.value || 0);
+      dueMessage.textContent = total === 0
+        ? "Seleccione productos para calcular vencimiento."
+        : dep >= minDep
+          ? "Reserva válida por 30 días hábiles."
+          : "Reserva válida por 3 días hábiles (abono mínimo 20%).";
     }
 
-    // ===== Eventos =====
-    searchInput?.addEventListener("input", () => loadProducts(1));
-    clearSearchBtn?.addEventListener("click", () => { searchInput.value = ""; loadProducts(1); });
-    typeFilter?.addEventListener("change", () => loadProducts(1));
-    inStockOnly?.addEventListener("change", () => loadProducts(1));
-    amountDepositedInput?.addEventListener("input", recalcTotals);
+    // ---------- eventos: delegados a los botones existentes ----------
+    function attachAddButtons() {
+      // simples
+      pageRoot.querySelectorAll(".btn-add-simple").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.preventDefault();
+          const raw = btn.getAttribute("data-product");
+          const product = safeParseJSON(raw);
+          // qty desde el input hermano
+          const qtyInput = btn.closest(".d-flex")?.querySelector(".simple-qty");
+          const qty = Math.max(1, Math.floor(Number(qtyInput?.value || 1)));
+          if (product && typeof product.stock !== "undefined" && qty > Number(product.stock || 0)) {
+            alert(`Stock disponible: ${product.stock}`);
+            return;
+          }
+          addItem(product, null, qty);
+        });
+      });
 
+      // variantes
+      pageRoot.querySelectorAll(".btn-add-variant").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.preventDefault();
+          const rawP = btn.getAttribute("data-product");
+          const rawV = btn.getAttribute("data-variant");
+          const product = safeParseJSON(rawP);
+          const variant = safeParseJSON(rawV);
+          const rowEl = btn.closest("tr");
+          const qtyInput = rowEl?.querySelector(".variant-qty-input");
+          const qty = Math.max(1, Math.floor(Number(qtyInput?.value || 1)));
+          if (variant && typeof variant.stock !== "undefined" && qty > Number(variant.stock || 0)) {
+            alert(`Stock disponible: ${variant.stock}`);
+            return;
+          }
+          addItem(product, variant, qty);
+        });
+      });
+    }
+
+    // ---------- validaciones del form ----------
     reservationForm?.addEventListener("submit", e => {
       if (previewMap.size === 0) {
         e.preventDefault();
@@ -312,8 +274,18 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // Inicial
-    loadProducts(1);
+    amountDepositedInput?.addEventListener("input", recalcTotals);
+
+    // ---------- inicial ----------
+    attachAddButtons();
     recalcTotals();
+
+    // ---------- helper escape ----------
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+    }
   })();
 });

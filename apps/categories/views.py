@@ -68,8 +68,8 @@ class CategoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         search = self.request.GET.get('search')
         if search:
             qs = qs.filter(
-                Q(name__icontains=search) |
-                Q(description__icontains=search)
+                Q(name__unaccent_icontains=search) |
+                Q(description__unaccent_icontains=search)
             )
 
         parent = self.request.GET.get('parent')
@@ -230,9 +230,9 @@ class AbsoluteCategoryListView(LoginRequiredMixin, PermissionRequiredMixin, List
         if search:
             qs = qs.annotate(id_str=Cast("id", CharField()))
             qs = qs.filter(
-                Q(nombre__icontains=search) |
-                Q(descripcion__icontains=search) |
-                Q(id_str__icontains=search)
+                Q(nombre__unaccent_icontains=search) |
+                Q(descripcion__unaccent_icontains=search) |
+                Q(id_str__icontains=search)  # 👈 este se deja normal porque es cast numérico a string
             )
 
         status = self.request.GET.get('status')

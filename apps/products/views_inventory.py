@@ -89,16 +89,16 @@ class InventoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         if u := self.request.GET.get("user"):
             q &= (
-                Q(user__username__icontains=u)
-                | Q(user__first_name__icontains=u)
-                | Q(user__last_name__icontains=u)
+                    Q(user__username__unaccent_icontains=u)
+                    | Q(user__first_name__unaccent_icontains=u)
+                    | Q(user__last_name__unaccent_icontains=u)
             )
 
         if p := self.request.GET.get("product"):
             q &= (
-                Q(product__name__icontains=p)
-                | Q(product__sku__icontains=p)
-                | Q(variant__sku__icontains=p)
+                    Q(product__name__unaccent_icontains=p)
+                    | Q(product__sku__unaccent_icontains=p)
+                    | Q(variant__sku__unaccent_icontains=p)
             )
 
         if df := self.request.GET.get("date_from"):
@@ -289,9 +289,9 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
         # Búsqueda por texto
         if q:
             qs = qs.filter(
-                Q(name__icontains=q) |
-                Q(sku__icontains=q) |
-                Q(description__icontains=q)
+                Q(name__unaccent_icontains=q) |
+                Q(sku__unaccent_icontains=q) |
+                Q(description__unaccent_icontains=q)
             )
 
         # ============================
