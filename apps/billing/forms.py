@@ -140,10 +140,19 @@ class ReservationItemForm(forms.ModelForm):
         return cleaned
 
 
-ReservationItemFormSet = inlineformset_factory(
+ReservationItemFormSetCreate = inlineformset_factory(
     Reservation,
     ReservationItem,
     form=ReservationItemForm,
     extra=0,
     can_delete=True,
+)
+
+# Para actualizar reservas (no agregar, no eliminar)
+ReservationItemFormSetUpdate = inlineformset_factory(
+    Reservation,
+    ReservationItem,
+    form=ReservationItemForm,
+    extra=0,
+    can_delete=False,
 )

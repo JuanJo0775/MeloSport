@@ -8,74 +8,61 @@ document.addEventListener("DOMContentLoaded", function () {
       return "$ " + num.toLocaleString("es-CO");
     }
 
-    // parsing robusto para distintos formatos: "70.000", "70,000", "70000.00", "$ 70.000"
     function parsePrice(val) {
       if (val === null || val === undefined) return 0;
       if (typeof val === "number") return Math.round(val);
-
       let s = String(val).trim();
-
-      // quitar símbolos comunes y NBSP y espacios
-      s = s.replace(/\u00A0/g, "").replace(/\s/g, "").replace(/\$/g, "").replace(/COP/ig, "");
-
-      // dejar solo dígitos, comas y puntos (y posible signo -)
+      s = s.replace(/\u00A0/g, "").replace(/\s/g, "")
+           .replace(/\$/g, "").replace(/COP/ig, "");
       s = s.replace(/[^0-9\.,-]/g, "");
-
       if (!s) return 0;
 
-      // Si contiene ambos separadores
       if (s.indexOf(".") !== -1 && s.indexOf(",") !== -1) {
-        // si el último separador es coma => coma decimal (ej: "1.234,56")
         if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
-          s = s.replace(/\./g, ""); // quitar miles (.)
-          s = s.replace(/,/g, "."); // convertir decimal a dot
+          s = s.replace(/\./g, "").replace(/,/g, ".");
         } else {
-          // último separador es punto => punto decimal (ej: "1234,56" improbable) -> quitar comas
           s = s.replace(/,/g, "");
         }
       } else if (s.indexOf(",") !== -1) {
-        // solo coma: si hay 3 dígitos después de la coma -> probablemente separador de miles (70,000)
         const parts = s.split(",");
         if (parts.length > 1 && parts[1].length === 3) {
           s = s.replace(/,/g, "");
         } else {
-          // coma decimal
           s = s.replace(/,/g, ".");
         }
       } else if (s.indexOf(".") !== -1) {
-        // solo punto: si hay 3 dígitos después -> probablemente miles (70.000)
         const parts = s.split(".");
         if (parts.length > 1 && parts[1].length === 3) {
           s = s.replace(/\./g, "");
-        } else {
-          // punto decimal -> dejarlo
         }
       }
 
       const n = parseFloat(s);
-      if (isNaN(n)) return 0;
-      return Math.round(n);
+      return isNaN(n) ? 0 : Math.round(n);
     }
 
-    // JSON seguro / tolerante para data-product / data-variant
     function safeParseJSON(str) {
       if (!str) return {};
       try {
         return JSON.parse(str);
       } catch (e) {
         try {
-          // Fallback: interpretar literal JS (puede ser inseguro si viene de terceros,
-          // pero aquí viene del servidor controlado). Envuelve en paréntesis.
           // eslint-disable-next-line no-new-func
           return new Function("return (" + str + ")")();
-        } catch (e2) {
-          console.warn("safeParseJSON fallo:", e2, "input:", str);
+        } catch {
           return {};
         }
       }
     }
 
-    // ---------- configuración / elementos ----------
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+    }
+
+    // ---------- configuración ----------
     const cfg = window.RESERVATION_CONFIG || {};
     const prefix = cfg.prefix || "items";
 
@@ -107,8 +94,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- añadir item ----------
     function addItem(productObj, variantObj, qty) {
       const key = variantObj ? `${productObj.id}::${variantObj.id}` : `p::${productObj.id}`;
-
-      // normalizar qty a entero positivo
       qty = Math.max(1, Math.floor(Number(qty) || 1));
 
       if (previewMap.has(key)) {
@@ -118,8 +103,6 @@ document.addEventListener("DOMContentLoaded", function () {
         updateFormQuantity(row.formIndex, row.qty);
       } else {
         const formIndex = increaseTotalForms();
-
-        // parsear precio de manera robusta
         const rawPrice = variantObj ? variantObj.price : productObj.price;
         const unitPrice = parsePrice(rawPrice);
 
@@ -130,7 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
           sku: variantObj ? (variantObj.sku || "") : (productObj.sku || ""),
           variant_id: variantObj ? variantObj.id : "",
           variant_label: variantObj ? (variantObj.label || "") : "",
-          unit_price: unitPrice, // entero en pesos
+          unit_price: unitPrice,
           qty: qty,
           formIndex: formIndex
         };
@@ -152,18 +135,13 @@ document.addEventListener("DOMContentLoaded", function () {
       itemsFormsContainer.insertAdjacentHTML("beforeend", newForm);
 
       const base = `${prefix}-${row.formIndex}`;
-      const elProd = itemsFormsContainer.querySelector(`[name="${base}-product"]`);
-      const elVar = itemsFormsContainer.querySelector(`[name="${base}-variant"]`);
-      const elQty = itemsFormsContainer.querySelector(`[name="${base}-quantity"]`);
-      const elPrice = itemsFormsContainer.querySelector(`[name="${base}-unit_price"]`);
-
-      if (elProd) elProd.value = row.product_id;
-      if (elVar) elVar.value = row.variant_id || "";
-      if (elQty) elQty.value = row.qty;
-      if (elPrice) elPrice.value = String(row.unit_price);
+      itemsFormsContainer.querySelector(`[name="${base}-product"]`).value = row.product_id;
+      itemsFormsContainer.querySelector(`[name="${base}-variant"]`).value = row.variant_id || "";
+      itemsFormsContainer.querySelector(`[name="${base}-quantity"]`).value = row.qty;
+      itemsFormsContainer.querySelector(`[name="${base}-unit_price"]`).value = String(row.unit_price);
     }
 
-    // ---------- tabla (vista previa) ----------
+    // ---------- tabla ----------
     function insertPreviewRow(row) {
       const tr = document.createElement("tr");
       tr.dataset.key = row.key;
@@ -174,14 +152,17 @@ document.addEventListener("DOMContentLoaded", function () {
           ${row.variant_label ? `<div class="text-muted small">${escapeHtml(row.variant_label)}</div>` : ""}
           <div class="small text-muted">SKU: ${escapeHtml(row.sku)}</div>
         </td>
-        <td class="text-center"><input type="number" min="1" value="${row.qty}" class="form-control form-control-sm preview-qty" style="width:80px;"></td>
+        <td class="text-center">
+          <input type="number" min="1" value="${row.qty}" class="form-control form-control-sm preview-qty" style="width:80px;">
+        </td>
         <td class="text-end unit-price">${fmtCOP(row.unit_price)}</td>
         <td class="text-end subtotal">${fmtCOP(row.unit_price * row.qty)}</td>
-        <td><button class="btn btn-sm btn-outline-danger btn-remove-item" type="button">&times;</button></td>
+        <td>
+          <button class="btn btn-sm btn-outline-danger btn-remove-item" type="button">&times;</button>
+        </td>
       `;
       tableBody.appendChild(tr);
 
-      // qty change
       const qtyInput = tr.querySelector(".preview-qty");
       qtyInput.addEventListener("input", e => {
         const v = Math.max(1, Math.floor(Number(e.target.value || 1)));
@@ -191,7 +172,6 @@ document.addEventListener("DOMContentLoaded", function () {
         recalcTotals();
       });
 
-      // remove
       tr.querySelector(".btn-remove-item").addEventListener("click", () => {
         previewMap.delete(row.key);
         tr.remove();
@@ -215,7 +195,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- totales ----------
     function recalcTotals() {
       let total = 0;
-      previewMap.forEach(r => { total += Number(r.unit_price) * Number(r.qty); });
+      previewMap.forEach(r => { total += r.unit_price * r.qty; });
       totalDisplay.textContent = fmtCOP(total);
       const minDep = Math.round(total * 0.2);
       minDepositDisplay.textContent = fmtCOP(minDep);
@@ -227,15 +207,12 @@ document.addEventListener("DOMContentLoaded", function () {
           : "Reserva válida por 3 días hábiles (abono mínimo 20%).";
     }
 
-    // ---------- eventos: delegados a los botones existentes ----------
+    // ---------- eventos ----------
     function attachAddButtons() {
-      // simples
       pageRoot.querySelectorAll(".btn-add-simple").forEach(btn => {
         btn.addEventListener("click", e => {
           e.preventDefault();
-          const raw = btn.getAttribute("data-product");
-          const product = safeParseJSON(raw);
-          // qty desde el input hermano
+          const product = safeParseJSON(btn.getAttribute("data-product"));
           const qtyInput = btn.closest(".d-flex")?.querySelector(".simple-qty");
           const qty = Math.max(1, Math.floor(Number(qtyInput?.value || 1)));
           if (product && typeof product.stock !== "undefined" && qty > Number(product.stock || 0)) {
@@ -246,14 +223,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       });
 
-      // variantes
       pageRoot.querySelectorAll(".btn-add-variant").forEach(btn => {
         btn.addEventListener("click", e => {
           e.preventDefault();
-          const rawP = btn.getAttribute("data-product");
-          const rawV = btn.getAttribute("data-variant");
-          const product = safeParseJSON(rawP);
-          const variant = safeParseJSON(rawV);
+          const product = safeParseJSON(btn.getAttribute("data-product"));
+          const variant = safeParseJSON(btn.getAttribute("data-variant"));
           const rowEl = btn.closest("tr");
           const qtyInput = rowEl?.querySelector(".variant-qty-input");
           const qty = Math.max(1, Math.floor(Number(qtyInput?.value || 1)));
@@ -266,7 +240,6 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
-    // ---------- validaciones del form ----------
     reservationForm?.addEventListener("submit", e => {
       if (previewMap.size === 0) {
         e.preventDefault();
@@ -276,16 +249,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     amountDepositedInput?.addEventListener("input", recalcTotals);
 
-    // ---------- inicial ----------
+    // ---------- init ----------
     attachAddButtons();
     recalcTotals();
-
-    // ---------- helper escape ----------
-    function escapeHtml(str) {
-      if (str === null || str === undefined) return "";
-      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-                        .replace(/'/g, "&#039;");
-    }
   })();
 });

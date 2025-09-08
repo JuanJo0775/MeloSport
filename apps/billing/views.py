@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.paginator import Paginator
@@ -13,7 +14,8 @@ from django.db import transaction
 from apps.products.models import InventoryMovement, Product
 from apps.users.models import AuditLog
 from .models import Invoice, Reservation, InvoiceItem, ReservationItem, add_business_days
-from .forms import InvoiceForm, ReservationForm, InvoiceItemFormSet, ReservationItemFormSet
+from .forms import InvoiceForm, ReservationForm, InvoiceItemFormSet, \
+    ReservationItemFormSetCreate, ReservationItemFormSetUpdate
 
 
 # Registrar venta (Salida de inventario)
@@ -143,21 +145,17 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
     template_name = "backoffice/billing/reservation_create.html"
     paginate_by = 12  # productos por página
 
-
     # Queryset / filtros
-
     def get_queryset(self):
         qs = (
             Product.objects.filter(status="active")
             .prefetch_related("variants", "images")
         )
-
         request = self.request
         q = request.GET.get("q", "").strip()
-        filter_type = request.GET.get("type", "all")  # all | simple | variants
+        filter_type = request.GET.get("type", "all")
         stock_filter = request.GET.get("stock", "in_stock")
 
-        # 🔎 búsqueda con soporte unaccent (si está registrado)
         if q:
             qs = qs.filter(
                 Q(name__unaccent_icontains=q) |
@@ -165,7 +163,6 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
                 Q(description__unaccent_icontains=q)
             ).distinct()
 
-        # ⚡ forzar el orden simple → variantes
         simples = qs.filter(variants__isnull=True).order_by("name")
         variantes = qs.filter(variants__isnull=False).distinct().order_by("name")
 
@@ -176,27 +173,25 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         else:
             final_qs = list(simples) + list(variantes)
 
-        # ✅ filtro stock
         if stock_filter == "in_stock":
             final_qs = [
                 p for p in final_qs
                 if (getattr(p, "stock", 0) and p.stock > 0) or
                    any((getattr(v, "stock", 0) or 0) > 0 for v in p.variants.all())
             ]
-
         return final_qs
 
-
     # Contexto
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Formset de items (POST o vacío)
+        # Formset de items (forzado con prefix="items")
         if self.request.POST:
-            context["items_formset"] = ReservationItemFormSet(self.request.POST)
+            context["items_formset"] = ReservationItemFormSetCreate(
+                self.request.POST, prefix="items"
+            )
         else:
-            context["items_formset"] = ReservationItemFormSet()
+            context["items_formset"] = ReservationItemFormSetCreate(prefix="items")
 
         # Productos con paginación
         qs = self.get_queryset()
@@ -204,12 +199,12 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
-        context["products"] = page_obj  # iterable en template
+        context["products"] = page_obj
         context["page_obj"] = page_obj
         context["is_paginated"] = page_obj.has_other_pages()
         context["paginator"] = paginator
 
-        # mantener filtros actuales (útil para inputs y paginación)
+        # mantener filtros actuales
         context["current_q"] = self.request.GET.get("q", "")
         context["current_filter_type"] = self.request.GET.get("type", "all")
         context["current_stock_filter"] = self.request.GET.get("stock", "in_stock")
@@ -220,12 +215,12 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         return context
 
-
     # Guardado (form + formset + auditoría + bloqueo stock)
-
     def form_valid(self, form):
         reservation = form.save(commit=False)
-        items_formset = ReservationItemFormSet(self.request.POST, instance=reservation)
+        items_formset = ReservationItemFormSetCreate(
+            self.request.POST, instance=reservation, prefix="items"
+        )
 
         if not items_formset.is_valid():
             return self.form_invalid(form)
@@ -249,7 +244,6 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         abono = reservation.amount_deposited or Decimal("0.00")
 
-        # vencimiento según el abono (en días hábiles)
         if total > 0 and abono >= (Decimal("0.20") * total):
             reservation.due_date = add_business_days(timezone.now(), 30)
         else:
@@ -260,14 +254,11 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
             items_formset.instance = reservation
             items_formset.save()
 
-            # marcar movimientos / bloquear stock (usa tu método existente)
             try:
                 reservation.mark_reserved_movements(user=self.request.user, request=self.request)
             except Exception:
-                # no fallar el guardado si el bloque de stock falla temporalmente
                 pass
 
-            # Auditoría
             AuditLog.log_action(
                 request=self.request,
                 action="Create",
@@ -280,31 +271,8 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
 
 
-class ReservationListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
-    permission_required = "billing.view_reservation"
-    model = Reservation
-    template_name = "backoffice/billing/reservation_list.html"
-    context_object_name = "reservations"
-    paginate_by = 20
-
-    def get_queryset(self):
-        qs = super().get_queryset().prefetch_related("items", "items__product", "items__variant")
-        # Revisar vencimientos y liberar stock si aplica
-        for r in qs:
-            if r.status == "active" and r.due_date < timezone.now():
-                r.release(user=self.request.user, reason="expired", request=self.request)
-        return qs.order_by("-created_at")
-
-
-class ReservationDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
-    permission_required = "billing.view_reservation"
-    model = Reservation
-    template_name = "backoffice/billing/reservation_detail.html"
-    context_object_name = "reservation"
-
-
 class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    """Permite actualizar datos de la reserva y sus items."""
+    """Permite actualizar datos de la reserva y el abono, pero no modificar los productos."""
     permission_required = "billing.change_reservation"
     model = Reservation
     form_class = ReservationForm
@@ -313,10 +281,16 @@ class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateV
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
         if self.request.POST:
-            context["items_formset"] = ReservationItemFormSet(self.request.POST, instance=self.object)
+            context["items_formset"] = ReservationItemFormSetUpdate(
+                self.request.POST, instance=self.object, prefix="items"
+            )
         else:
-            context["items_formset"] = ReservationItemFormSet(instance=self.object)
+            context["items_formset"] = ReservationItemFormSetUpdate(
+                instance=self.object, prefix="items"
+            )
+
         return context
 
     def form_valid(self, form):
@@ -327,25 +301,27 @@ class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateV
             return self.form_invalid(form)
 
         with transaction.atomic():
-            self.object = form.save()
-            items_formset.instance = self.object
-            items_formset.save()
+            self.object = form.save(commit=False)
 
-            # recalcular vencimiento
+            # total y abono
             total = sum(item.subtotal for item in self.object.items.all())
             abono = self.object.amount_deposited or Decimal("0.00")
+
+            # recalcular vencimiento desde HOY
             if total > 0 and abono >= (Decimal("0.20") * total):
                 self.object.due_date = add_business_days(timezone.now(), 30)
             else:
                 self.object.due_date = add_business_days(timezone.now(), 3)
+
             self.object.save()
 
+            # Auditoría
             AuditLog.log_action(
                 request=self.request,
                 action="Update",
                 model=self.model,
                 obj=self.object,
-                description=f"Reserva #{self.object.pk} actualizada",
+                description=f"Reserva #{self.object.pk} actualizada (cliente/abono)",
             )
 
         messages.success(self.request, f"Reserva #{self.object.pk} actualizada correctamente.")
@@ -355,16 +331,111 @@ class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateV
         return reverse("billing:reservation_detail", args=[self.object.pk])
 
 
+
+class ReservationListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    permission_required = "billing.view_reservation"
+    model = Reservation
+    template_name = "backoffice/billing/reservation_list.html"
+    context_object_name = "reservations"
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = super().get_queryset().prefetch_related("items", "items__product", "items__variant")
+
+        # --- filtros ---
+        request = self.request
+        q = request.GET.get("q", "").strip()
+        status = request.GET.get("status", "").strip()
+        near_due = request.GET.get("near_due", "").strip()
+
+
+        if q:
+            qs = qs.filter(
+                Q(client_first_name__unaccent_icontains=q) |
+                Q(client_last_name__unaccent_icontains=q)
+            )
+
+        if status:
+            qs = qs.filter(status=status)
+
+
+        if near_due:
+            try:
+                days = int(near_due)
+            except ValueError:
+                days = 3  # default
+            now = timezone.now()
+            limit_date = now + timedelta(days=days)
+            qs = qs.filter(status="active", due_date__lte=limit_date, due_date__gte=now)
+
+
+        for r in qs:
+            if r.status == "active" and r.due_date < timezone.now():
+                r.release(user=self.request.user, reason="expired", request=self.request)
+
+        return qs.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        full_qs = Reservation.objects.all()
+
+        context["stats"] = {
+            "activas": full_qs.filter(status="active").count(),
+            "con_abono": full_qs.filter(amount_deposited__gt=0).count(),
+            "sin_abono": full_qs.filter(amount_deposited=0).count(),
+            "vencidas": full_qs.filter(status="expired").count(),
+        }
+
+        # mantener valores de filtros actuales en el template
+        context["current_q"] = self.request.GET.get("q", "")
+        context["current_status"] = self.request.GET.get("status", "")
+        context["current_near_due"] = self.request.GET.get("near_due", "")
+
+        return context
+
+class ReservationDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    permission_required = "billing.view_reservation"
+    model = Reservation
+    template_name = "backoffice/billing/reservation_detail.html"
+    context_object_name = "reservation"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        reservation = self.object
+
+        today = date.today()
+        due_date = reservation.due_date.date() if reservation.due_date else None
+
+        days_remaining = (due_date - today).days if due_date else None
+        total = sum(item.subtotal for item in reservation.items.all())
+
+        context["days_remaining"] = days_remaining
+        context["total"] = total
+        return context
+
+
+
+
 class ReservationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
-    """Cancela una reserva y libera stock."""
+    """Cancela una reserva, libera stock y solicita validación de contraseña."""
     permission_required = "billing.delete_reservation"
     model = Reservation
     template_name = "backoffice/billing/reservation_confirm_delete.html"
     context_object_name = "reservation"
-    success_url = reverse_lazy("billing:reservation_list")
+    success_url = reverse_lazy("backoffice:billing:reservation_list")
 
-    def delete(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
+        """Sobrescribimos post para pedir contraseña antes de borrar."""
         self.object = self.get_object()
+
+        # Verificar contraseña
+        password = request.POST.get("password")
+        if not password or not request.user.check_password(password):
+            messages.error(request, "Contraseña incorrecta. No se pudo eliminar la reserva.")
+            return self.get(request, *args, **kwargs)
+
+        # Proceder con la eliminación
         with transaction.atomic():
             # liberar stock
             self.object.release(user=request.user, reason="cancelled", request=request)
@@ -378,4 +449,5 @@ class ReservationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteV
             )
 
             messages.success(request, f"Reserva #{self.object.pk} cancelada y stock liberado.")
+
         return super().delete(request, *args, **kwargs)

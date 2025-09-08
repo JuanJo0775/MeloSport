@@ -1,10 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
 
-</body>
-</html>
+{% block title %}Cancelar reserva #{{ reservation.id }}{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb  "Reservas|backoffice:billing:reservation_list" "Cancelar" %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-danger">⚠️ Cancelar Reserva #{{ reservation.id }}</h2>
+
+  <p>
+    Está a punto de <strong>cancelar esta reserva</strong>.
+    <br>
+    <span class="text-danger">Esto liberará el stock de los productos asociados.</span>
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="mb-3">
+      <label for="password" class="form-label">Ingrese su contraseña para confirmar:</label>
+      <input type="password" name="password" id="password" class="form-control" required>
+    </div>
+
+    <div class="d-flex justify-content-between">
+      <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-secondary">
+        Cancelar
+      </a>
+      <button type="submit" class="btn btn-danger">
+        Confirmar eliminación
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

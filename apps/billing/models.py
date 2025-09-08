@@ -114,6 +114,10 @@ class ReservationItem(models.Model):
     def __str__(self):
         return f"{self.product.name} x{self.quantity}"
 
+    @property
+    def subtotal(self):
+        return self.quantity * self.unit_price
+
 
 class Invoice(models.Model):
     """Factura de venta."""

@@ -1,10 +1,110 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "backoffice/base_backoffice.html" %}
+{% load static %}
+{% load breadcrumbs %}
 
-</body>
-</html>
+{% block title %}Actualizar reserva #{{ reservation.id }}{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb  "Reservas|backoffice:billing:reservation_list" "Actualizar" %}
+{% endblock %}
+
+{% block content %}
+<div id="reservation-page" class="container-fluid">
+
+  <h1 class="mb-3">Actualizar Reserva #{{ reservation.id }}</h1>
+
+  <form id="reservation-form" method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="mb-3">
+          <label for="id_client_first_name" class="form-label">Nombre</label>
+          {{ form.client_first_name }}
+        </div>
+        <div class="mb-3">
+          <label for="id_client_last_name" class="form-label">Apellido</label>
+          {{ form.client_last_name }}
+        </div>
+        <div class="mb-3">
+          <label for="id_client_phone" class="form-label">Teléfono</label>
+          {{ form.client_phone }}
+        </div>
+        <div class="mb-3">
+          <label for="id_amount_deposited" class="form-label">Abono</label>
+          {{ form.amount_deposited }}
+          <div class="form-text">
+            Mínimo requerido: <span id="min-deposit-display">$ 0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="mt-4">Productos de la reserva</h3>
+    <div class="table-responsive">
+      <table id="selected-products-table" class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Producto</th>
+            <th class="text-center">Cantidad</th>
+            <th class="text-end">Precio unitario</th>
+            <th class="text-end">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody id="items-forms-container">
+          {{ items_formset.management_form }}
+          {% for form in items_formset %}
+            <!-- Renderizamos los campos del formset como hidden -->
+            <div class="d-none">
+              {{ form.product }}
+              {{ form.variant }}
+              {{ form.quantity }}
+              {{ form.unit_price }}
+            </div>
+          {% endfor %}
+
+          {% for item in reservation.items.all %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>
+                <div class="small fw-bold">{{ item.product.name }}</div>
+                {% if item.variant %}
+                  <div class="text-muted small">
+                    {% if item.variant.size %}Talla: {{ item.variant.size }}{% endif %}
+                    {% if item.variant.color %}
+                      {% if item.variant.size %}, {% endif %}
+                      Color: {{ item.variant.color }}
+                    {% endif %}
+                  </div>
+                  <div class="text-muted small">SKU: {{ item.variant.sku }}</div>
+                {% else %}
+                  <div class="text-muted small">SKU: {{ item.product.sku }}</div>
+                {% endif %}
+              </td>
+              <td class="text-center">{{ item.quantity }}</td>
+              <td class="text-end">$ {{ item.unit_price|floatformat:0 }}</td>
+              <td class="text-end">$ {{ item.subtotal|floatformat:0 }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No hay productos en esta reserva.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <strong>Total:</strong> <span id="total-display">$ 0</span><br>
+        <small id="due-message" class="text-muted"></small>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script src="{% static 'js/reservation_update.js' %}"></script>
+{% endblock %}

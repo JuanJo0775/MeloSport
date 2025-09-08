@@ -15,8 +15,10 @@ from datetime import timedelta
 from pathlib import Path
 
 
+LANGUAGE_CODE = "es-co"   # Español de Colombia
 TIME_ZONE = "America/Bogota"
 USE_TZ = True
+USE_L10N = True
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

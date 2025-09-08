@@ -47,6 +47,7 @@
           <div class="form-text">Abono mínimo sugerido: <span id="min-deposit-display">$ 0</span></div>
         </div>
 
+        <!-- formset -->
         {{ items_formset.management_form }}
         <div id="items-forms-container" class="d-none">
           {% for f in items_formset.forms %}
@@ -91,15 +92,15 @@
   <!-- PANEL DE PRODUCTOS -->
   <div class="card shadow-sm">
     <div class="card-header bg-light">
-      <!-- Filtros y búsqueda en una sola línea -->
+      <!-- Filtros y búsqueda -->
       <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
         <div class="input-group input-group-sm" style="max-width: 320px;">
-          <input name="q" value="{{ request.GET.q }}" type="text" class="form-control" placeholder="Buscar por nombre o SKU">
+          <input name="q" value="{{ current_q }}" type="text" class="form-control" placeholder="Buscar por nombre o SKU">
         </div>
         <select name="type" class="form-select form-select-sm" style="width:200px;" onchange="this.form.submit()">
-          <option value="all" {% if request.GET.type == "all" or not request.GET.type %}selected{% endif %}>Todos</option>
-          <option value="simple" {% if request.GET.type == "simple" %}selected{% endif %}>Sin variantes</option>
-          <option value="variants" {% if request.GET.type == "variants" %}selected{% endif %}>Con variantes</option>
+          <option value="all" {% if current_filter_type == "all" %}selected{% endif %}>Todos</option>
+          <option value="simple" {% if current_filter_type == "simple" %}selected{% endif %}>Sin variantes</option>
+          <option value="variants" {% if current_filter_type == "variants" %}selected{% endif %}>Con variantes</option>
         </select>
         <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
         <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn btn-sm btn-outline-secondary">Limpiar filtros</a>
