@@ -1,38 +1,193 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
+{% load money %}
 
-{% block title %}Cancelar reserva #{{ reservation.id }}{% endblock %}
+{% block title %}Cancelar Reserva #{{ reservation.id }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb  "Reservas|backoffice:billing:reservation_list" "Cancelar" %}
+  {% breadcrumb "Reservas|backoffice:billing:reservation_list" "Cancelar Reserva" %}
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2 class="text-danger">⚠️ Cancelar Reserva #{{ reservation.id }}</h2>
+<div class="container-fluid py-4">
 
-  <p>
-    Está a punto de <strong>cancelar esta reserva</strong>.
-    <br>
-    <span class="text-danger">Esto liberará el stock de los productos asociados.</span>
-  </p>
+  <!-- Advertencia principal -->
+  <div class="card border-danger mb-4">
+    <div class="card-header bg-danger text-white">
+      <h5 class="mb-0">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Confirmar Cancelación de Reserva
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-shield-exclamation fs-4 me-3"></i>
+        <div>
+          <strong>¡Atención!</strong> Esta acción no se puede deshacer.
+          <br>Al cancelar esta reserva se liberará automáticamente el stock de todos los productos asociados.
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <form method="post">
-    {% csrf_token %}
+  <!-- Información de la reserva a cancelar -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-info-circle me-1"></i>Datos de la Reserva</h6>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4">ID:</dt>
+            <dd class="col-sm-8 text-mono fw-bold">#{{ reservation.id }}</dd>
 
-    <div class="mb-3">
-      <label for="password" class="form-label">Ingrese su contraseña para confirmar:</label>
-      <input type="password" name="password" id="password" class="form-control" required>
+            <dt class="col-sm-4">Cliente:</dt>
+            <dd class="col-sm-8">{{ reservation.client_first_name }} {{ reservation.client_last_name }}</dd>
+
+            <dt class="col-sm-4">Teléfono:</dt>
+            <dd class="col-sm-8">{{ reservation.client_phone }}</dd>
+
+            <dt class="col-sm-4">Total:</dt>
+            <dd class="col-sm-8 fw-semibold">{{ reservation.total|cop }}</dd>
+
+            <dt class="col-sm-4">Abono:</dt>
+            <dd class="col-sm-8">
+              {% if reservation.amount_deposited > 0 %}
+                <span class="text-success fw-semibold">{{ reservation.amount_deposited|cop }}</span>
+              {% else %}
+                <span class="text-muted">Sin abono</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-4">Creada:</dt>
+            <dd class="col-sm-8">{{ reservation.created_at|date:"d/m/Y H:i" }}</dd>
+
+            <dt class="col-sm-4">Vence:</dt>
+            <dd class="col-sm-8">{{ reservation.due_date|date:"d/m/Y H:i" }}</dd>
+          </dl>
+        </div>
+      </div>
     </div>
 
-    <div class="d-flex justify-content-between">
-      <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-secondary">
-        Cancelar
-      </a>
-      <button type="submit" class="btn btn-danger">
-        Confirmar eliminación
-      </button>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-box-seam me-1"></i>Productos que se Liberarán</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-center">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in reservation.items.all %}
+                <tr>
+                  <td>
+                    <div class="small fw-semibold">{{ item.product.name }}</div>
+                    {% if item.variant %}
+                      <div class="small text-muted">
+                        {% if item.variant.size %}{{ item.variant.size }}{% endif %}
+                        {% if item.variant.color %}{% if item.variant.size %} - {% endif %}{{ item.variant.color }}{% endif %}
+                      </div>
+                      <small class="text-mono text-muted">{{ item.variant.sku }}</small>
+                    {% else %}
+                      <small class="text-mono text-muted">{{ item.product.sku }}</small>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-warning">{{ item.quantity }}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
-  </form>
+  </div>
+
+  <!-- Formulario de confirmación -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-key me-1"></i>Confirmación de Seguridad</h6>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-shield-check me-1"></i>
+          <strong>Verificación requerida:</strong> Para confirmar esta acción, ingrese su contraseña de usuario.
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label for="password" class="form-label">
+              <i class="bi bi-lock me-1"></i>Contraseña del usuario
+            </label>
+            <input type="password"
+                   name="password"
+                   id="password"
+                   class="form-control"
+                   required
+                   placeholder="Ingrese su contraseña para continuar">
+            {% if form.errors.password %}
+              <div class="invalid-feedback d-block">
+                {{ form.errors.password.0 }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Consecuencias de la acción -->
+        <div class="alert alert-info mb-4" role="alert">
+          <h6 class="alert-heading"><i class="bi bi-list-check me-1"></i>Consecuencias de esta acción:</h6>
+          <ul class="mb-0">
+            <li>La reserva cambiará a estado "Cancelada"</li>
+            <li>El stock de todos los productos se liberará inmediatamente</li>
+            <li>Los productos estarán disponibles para nuevas reservas o ventas</li>
+            <li>Esta acción quedará registrada en el sistema de auditoría</li>
+            <li><strong>No se puede deshacer esta operación</strong></li>
+          </ul>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="d-flex justify-content-between">
+          <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Cancelar y volver
+          </a>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash-fill me-1"></i>
+            Confirmar Cancelación de Reserva
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Información adicional -->
+  <div class="card mt-4 border-info">
+    <div class="card-body">
+      <div class="d-flex align-items-start">
+        <i class="bi bi-info-circle-fill text-info fs-4 me-3 mt-1"></i>
+        <div>
+          <h6 class="text-info">¿Necesita ayuda?</h6>
+          <p class="mb-1 small">
+            Si tiene dudas sobre esta operación, puede contactar al administrador del sistema antes de proceder.
+          </p>
+          <p class="mb-0 small text-muted">
+            Recuerde que también puede convertir esta reserva en una venta si el cliente desea completar la compra.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

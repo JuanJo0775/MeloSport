@@ -2,137 +2,296 @@
 {% load breadcrumbs %}
 {% load money %}
 
-{% block title %}Apartado #{{ reservation.id }}{% endblock %}
+{% block title %}Reserva #{{ reservation.id }}{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb  "Reservas|backoffice:billing:reservation_list" reservation.id %}
+  {% breadcrumb "Reservas|backoffice:billing:reservation_list" "Reserva #"|add:reservation.id %}
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
 
-  <!-- Cabecera -->
-  <div class="card mb-3">
-    <div class="card-body d-flex justify-content-between align-items-center">
-      <div>
-        <h5 class="mb-0">Apartado #{{ reservation.id }}</h5>
-        <small class="text-muted">
-          Cliente: {{ reservation.client_first_name }} {{ reservation.client_last_name }}
-        </small>
-      </div>
-      <div class="d-flex gap-2">
-        <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-arrow-left me-1"></i>Volver
-        </a>
-        {% if perms.billing.add_invoice %}
-          <a href="{% url 'backoffice:billing:sale_create' %}?reservation={{ reservation.id }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-currency-dollar me-1"></i>Convertir en venta
-          </a>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <!-- Datos de la reserva -->
-  <div class="card mb-3">
+  <!-- Encabezado con acciones -->
+  <div class="card mb-4">
     <div class="card-body">
-      <dl class="row">
-        <dt class="col-sm-3">Cliente</dt>
-        <dd class="col-sm-9">{{ reservation.client_first_name }} {{ reservation.client_last_name }}</dd>
-
-        <dt class="col-sm-3">Teléfono</dt>
-        <dd class="col-sm-9">{{ reservation.client_phone }}</dd>
-
-        <dt class="col-sm-3">Abono</dt>
-        <dd class="col-sm-9">{{ reservation.amount_deposited|cop }}</dd>
-
-        <dt class="col-sm-3">Vence</dt>
-        <dd class="col-sm-9">
-          {{ reservation.due_date|date:"Y-m-d" }}
-          {% if days_remaining is not None %}
-            <span class="badge bg-{% if days_remaining > 5 %}success{% elif days_remaining > 0 %}warning{% else %}danger{% endif %}">
-              {{ days_remaining }} días restantes
-            </span>
-          {% endif %}
-        </dd>
-
-        <dt class="col-sm-3">Estado</dt>
-        <dd class="col-sm-9">{{ reservation.get_status_display }}</dd>
-      </dl>
-
-      <!-- Mini calendario visual -->
-      <div class="mt-3">
-        <h6>Plazo visual</h6>
-        <div class="d-flex align-items-center gap-2">
-          <div class="small text-muted">Creado: {{ reservation.created_at|date:"Y-m-d" }}</div>
-          <div class="progress flex-grow-1" style="height: 10px;">
-            {% if days_remaining and reservation.due_date %}
-              {% with total_days=reservation.due_date.date|timesince:reservation.created_at.date %}
-              {% endwith %}
-              <div class="progress-bar
-                  {% if days_remaining > 5 %}bg-success
-                  {% elif days_remaining > 0 %}bg-warning
-                  {% else %}bg-danger{% endif %}"
-                  role="progressbar"
-                  style="width: {{ 100|floatformat:0 }}%">
-              </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h4 class="mb-1">
+            <i class="bi bi-bookmark me-2"></i>Reserva #{{ reservation.id }}
+            {% if reservation.status == "active" %}
+              <span class="badge bg-success ms-2">Activa</span>
+            {% elif reservation.status == "expired" %}
+              <span class="badge bg-danger ms-2">Vencida</span>
+            {% elif reservation.status == "cancelled" %}
+              <span class="badge bg-secondary ms-2">Cancelada</span>
             {% endif %}
-          </div>
-          <div class="small fw-bold">Vence: {{ reservation.due_date|date:"Y-m-d" }}</div>
+          </h4>
+          <p class="text-muted mb-0">
+            Cliente: <strong>{{ reservation.client_first_name }} {{ reservation.client_last_name }}</strong>
+          </p>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver al listado
+          </a>
+          {% if reservation.status == "active" %}
+            <a href="{% url 'backoffice:billing:reservation_update' reservation.pk %}" class="btn btn-outline-primary">
+              <i class="bi bi-pencil me-1"></i>Editar
+            </a>
+            {% if perms.billing.add_invoice %}
+              <a href="{% url 'backoffice:billing:sale_create' %}?reservation={{ reservation.id }}" class="btn btn-success">
+                <i class="bi bi-currency-dollar me-1"></i>Convertir en Venta
+              </a>
+            {% endif %}
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Items -->
-  <div class="card">
-    <div class="card-body">
-      <h6>Productos reservados</h6>
-      <div class="table-responsive">
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Variante</th>
-              <th>SKU Producto</th>
-              <th>SKU Variante</th>
-              <th class="text-center">Cantidad</th>
-              <th class="text-end">Precio unitario</th>
-              <th class="text-end">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in reservation.items.all %}
-            <tr>
-              <td>{{ item.product.name }}</td>
-              <td>
-                {% if item.variant %}
-                  {% if item.variant.size %}Talla: {{ item.variant.size }}{% endif %}
-                  {% if item.variant.color %}{% if item.variant.size %}, {% endif %}Color: {{ item.variant.color }}{% endif %}
+  <div class="row g-4">
+    <!-- Información de la reserva -->
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-person-circle me-1"></i>Información del Cliente</h6>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label small text-muted">Nombre completo</label>
+                <div class="fw-semibold">{{ reservation.client_first_name }} {{ reservation.client_last_name }}</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label small text-muted">Teléfono</label>
+                <div class="fw-semibold">
+                  <i class="bi bi-telephone me-1"></i>{{ reservation.client_phone }}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label small text-muted">Estado de la reserva</label>
+                <div>
+                  {% if reservation.status == "active" %}
+                    <span class="badge bg-success">{{ reservation.get_status_display }}</span>
+                  {% elif reservation.status == "expired" %}
+                    <span class="badge bg-danger">{{ reservation.get_status_display }}</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ reservation.get_status_display }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Productos reservados -->
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-box-seam me-1"></i>Productos Reservados</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Variante</th>
+                  <th>SKU Producto</th>
+                  <th>SKU Variante</th>
+                  <th class="text-center">Cantidad</th>
+                  <th class="text-end">Precio Unitario</th>
+                  <th class="text-end">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in reservation.items.all %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold">{{ item.product.name }}</div>
+                  </td>
+                  <td>
+                    {% if item.variant %}
+                      <div class="small">
+                        {% if item.variant.size %}
+                          <span class="badge bg-secondary me-1">{{ item.variant.size }}</span>
+                        {% endif %}
+                        {% if item.variant.color %}
+                          <span class="badge bg-info">{{ item.variant.color }}</span>
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-mono small">{{ item.product.sku }}</td>
+                  <td class="text-mono small">
+                    {% if item.variant %}
+                      {{ item.variant.sku }}
+                    {% else %}
+                      <span class="text-muted">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-primary">{{ item.quantity }}</span>
+                  </td>
+                  <td class="text-end fw-semibold">{{ item.unit_price|cop }}</td>
+                  <td class="text-end fw-semibold">{{ item.subtotal|cop }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-4">
+                    <i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>
+                    No hay productos en esta reserva
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="6" class="text-end">Total de la reserva:</th>
+                  <th class="text-end">{{ total|cop }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel lateral con información financiera y temporal -->
+    <div class="col-md-4">
+      <!-- Resumen financiero -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-calculator me-1"></i>Resumen Financiero</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-3">
+            <span>Total de productos:</span>
+            <strong>{{ total|cop }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-3">
+            <span>Abono realizado:</span>
+            <strong class="{% if reservation.amount_deposited > 0 %}text-success{% else %}text-danger{% endif %}">
+              {{ reservation.amount_deposited|cop }}
+            </strong>
+          </div>
+          <div class="d-flex justify-content-between mb-3">
+            <span>Abono mínimo (20%):</span>
+            <span class="text-muted">{{ total|floatformat:0|add:"0"|mul:"0.2"|floatformat:0|cop }}</span>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between">
+            <span>Saldo pendiente:</span>
+            <strong class="text-primary">
+              {% widthratio total 1 1|floatformat:0|add:"0"|sub:reservation.amount_deposited|cop %}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información temporal -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-clock-history me-1"></i>Información Temporal</h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Fecha de creación</label>
+            <div class="fw-semibold">
+              <i class="bi bi-calendar-plus me-1"></i>
+              {{ reservation.created_at|date:"d/m/Y" }}
+              <small class="text-muted">{{ reservation.created_at|date:"H:i" }}</small>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-muted">Fecha de vencimiento</label>
+            <div class="fw-semibold">
+              <i class="bi bi-calendar-x me-1"></i>
+              {{ reservation.due_date|date:"d/m/Y" }}
+              <small class="text-muted">{{ reservation.due_date|date:"H:i" }}</small>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-muted">Días restantes</label>
+            <div>
+              {% if reservation.status == "active" %}
+                {% if reservation.days_remaining > 5 %}
+                  <span class="badge bg-success fs-6">{{ reservation.days_remaining }} días</span>
+                {% elif reservation.days_remaining > 0 %}
+                  <span class="badge bg-warning fs-6">{{ reservation.days_remaining }} días</span>
                 {% else %}
-                  -
+                  <span class="badge bg-danger fs-6">Vencida</span>
                 {% endif %}
-              </td>
-              <td>{{ item.product.sku }}</td>
-              <td>{% if item.variant %}{{ item.variant.sku }}{% else %}-{% endif %}</td>
-              <td class="text-center">{{ item.quantity }}</td>
-              <td class="text-end">{{ item.unit_price|cop }}</td>
-              <td class="text-end">{{ item.subtotal|cop }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="7" class="text-center text-muted">No hay productos</td></tr>
-            {% endfor %}
-          </tbody>
-          <tfoot>
-            <tr>
-              <th colspan="6" class="text-end">Total</th>
-              <th class="text-end">{{ total|cop }}</th>
-            </tr>
-          </tfoot>
-        </table>
+              {% else %}
+                <span class="badge bg-secondary fs-6">Finalizada</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Mini calendario visual -->
+          <div class="mt-3">
+            <label class="form-label small text-muted">Progreso temporal</label>
+            <div class="progress mb-2" style="height: 12px;">
+              {% if reservation.days_remaining and reservation.status == "active" %}
+                {% widthratio reservation.days_remaining 30 100 as progress_percent %}
+                <div class="progress-bar
+                    {% if reservation.days_remaining > 5 %}bg-success
+                    {% elif reservation.days_remaining > 0 %}bg-warning
+                    {% else %}bg-danger{% endif %}"
+                    role="progressbar" style="width: {{ progress_percent }}%">
+                </div>
+              {% else %}
+                <div class="progress-bar bg-secondary" role="progressbar" style="width: 100%"></div>
+              {% endif %}
+            </div>
+            <div class="d-flex justify-content-between small text-muted">
+              <span>Creada</span>
+              <span>Vence</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Periodo de validez -->
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-info-circle me-1"></i>Período de Validez</h6>
+        </div>
+        <div class="card-body">
+          {% if reservation.amount_deposited >= total|floatformat:0|add:"0"|mul:"0.2"|floatformat:0 %}
+            <div class="alert alert-success small mb-0" role="alert">
+              <i class="bi bi-check-circle me-1"></i>
+              <strong>Reserva válida por 30 días hábiles</strong><br>
+              El cliente ha realizado el abono mínimo requerido.
+            </div>
+          {% else %}
+            <div class="alert alert-warning small mb-0" role="alert">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              <strong>Reserva válida por 3 días hábiles</strong><br>
+              Se requiere abono mínimo del 20% para extender a 30 días.
+            </div>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
-
 </div>
+
+<style>
+  .progress-bar {
+    transition: width 0.3s ease;
+  }
+  .text-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+</style>
 {% endblock %}

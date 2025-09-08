@@ -13,41 +13,75 @@
 <div id="reservation-page" class="container-fluid py-4">
 
   <!-- FORMULARIO PRINCIPAL -->
-  <div class="card shadow-sm mb-4">
+  <div class="card mb-4">
+<div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+        <i class="bi bi-plus-circle me-2"></i>
+        Nueva Reserva
+    </h5>
+    <a href="{% url 'backoffice:billing:reservation_list' %}"
+       class="btn btn-outline-secondary"
+       data-bs-toggle="tooltip"
+       title="Volver a la lista">
+        <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+</div>
+
     <div class="card-body">
-      <h4 class="mb-4">Nueva Reserva</h4>
 
       {% if messages %}
         {% for message in messages %}
-          <div class="alert alert-{{ message.tags }} small">{{ message }}</div>
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
         {% endfor %}
       {% endif %}
 
       <form id="reservation-form" method="post" novalidate>
         {% csrf_token %}
 
-        <div class="row g-3 mb-3">
+        <!-- Datos del cliente -->
+        <div class="row g-3 mb-4">
           <div class="col-md-4">
-            <label class="form-label">Nombre</label>
+            <label class="form-label">Nombre del cliente</label>
             {{ form.client_first_name }}
+            {% if form.client_first_name.errors %}
+              <div class="invalid-feedback d-block">{{ form.client_first_name.errors.0 }}</div>
+            {% endif %}
           </div>
           <div class="col-md-4">
-            <label class="form-label">Apellido</label>
+            <label class="form-label">Apellido del cliente</label>
             {{ form.client_last_name }}
+            {% if form.client_last_name.errors %}
+              <div class="invalid-feedback d-block">{{ form.client_last_name.errors.0 }}</div>
+            {% endif %}
           </div>
           <div class="col-md-4">
-            <label class="form-label">Teléfono</label>
+            <label class="form-label">Teléfono de contacto</label>
             {{ form.client_phone }}
+            {% if form.client_phone.errors %}
+              <div class="invalid-feedback d-block">{{ form.client_phone.errors.0 }}</div>
+            {% endif %}
           </div>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Abono realizado</label>
-          {{ form.amount_deposited }}
-          <div class="form-text">Abono mínimo sugerido: <span id="min-deposit-display">$ 0</span></div>
+        <!-- Abono -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <label class="form-label">Abono realizado</label>
+            {{ form.amount_deposited }}
+            <div class="form-text">
+              <i class="bi bi-info-circle me-1"></i>
+              Abono mínimo sugerido (20%): <span id="min-deposit-display" class="fw-semibold">$ 0</span>
+            </div>
+            {% if form.amount_deposited.errors %}
+              <div class="invalid-feedback d-block">{{ form.amount_deposited.errors.0 }}</div>
+            {% endif %}
+          </div>
         </div>
 
-        <!-- formset -->
+        <!-- formset (oculto) -->
         {{ items_formset.management_form }}
         <div id="items-forms-container" class="d-none">
           {% for f in items_formset.forms %}
@@ -56,112 +90,154 @@
         </div>
 
         <!-- TABLA DE PRODUCTOS SELECCIONADOS -->
-        <div class="table-responsive mb-3">
-          <table class="table table-sm align-middle" id="selected-products-table">
-            <thead class="table-light small">
-              <tr>
-                <th style="width:60px;"></th>
-                <th>Producto / Variante</th>
-                <th class="text-center" style="width:110px">Cantidad</th>
-                <th class="text-end" style="width:120px">Precio</th>
-                <th class="text-end" style="width:120px">Subtotal</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot>
-              <tr>
-                <td colspan="4" class="text-end fw-bold">Total:</td>
-                <td class="text-end fw-bold" id="total-display">$ 0</td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="mb-4">
+          <h6><i class="bi bi-cart3 me-1"></i>Productos Seleccionados</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle" id="selected-products-table">
+              <thead>
+                <tr>
+                  <th style="width:60px;">#</th>
+                  <th>Producto / Variante</th>
+                  <th class="text-center" style="width:110px">Cantidad</th>
+                  <th class="text-end" style="width:120px">Precio</th>
+                  <th class="text-end" style="width:120px">Subtotal</th>
+                  <th style="width:60px;"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="4" class="text-end">Total de la reserva:</th>
+                  <th class="text-end" id="total-display">$ 0</th>
+                  <th></th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
 
-        <p id="due-message" class="small text-muted mb-3">Seleccione productos para calcular vencimiento.</p>
+        <!-- Mensaje de validez -->
+        <div class="alert alert-info mb-4" role="alert">
+          <i class="bi bi-clock me-1"></i>
+          <span id="due-message">Seleccione productos para calcular período de validez.</span>
+        </div>
 
+        <!-- Botones de acción -->
         <div class="d-flex gap-2">
-          <button class="btn btn-primary">Guardar Reserva</button>
-          <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Crear Reserva
+          </button>
+          <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Cancelar
+          </a>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- PANEL DE PRODUCTOS -->
-  <div class="card shadow-sm">
-    <div class="card-header bg-light">
+  <!-- PANEL DE PRODUCTOS DISPONIBLES -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-grid3x3-gap me-1"></i>Catálogo de Productos</h6>
+    </div>
+    <div class="card-body">
       <!-- Filtros y búsqueda -->
-      <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
-        <div class="input-group input-group-sm" style="max-width: 320px;">
-          <input name="q" value="{{ current_q }}" type="text" class="form-control" placeholder="Buscar por nombre o SKU">
+      <form method="get" class="row g-3 mb-3">
+        <div class="col-md-5">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input name="q" value="{{ current_q }}" type="text" class="form-control" placeholder="Buscar por nombre o SKU...">
+          </div>
         </div>
-        <select name="type" class="form-select form-select-sm" style="width:200px;" onchange="this.form.submit()">
-          <option value="all" {% if current_filter_type == "all" %}selected{% endif %}>Todos</option>
-          <option value="simple" {% if current_filter_type == "simple" %}selected{% endif %}>Sin variantes</option>
-          <option value="variants" {% if current_filter_type == "variants" %}selected{% endif %}>Con variantes</option>
-        </select>
-        <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
-        <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn btn-sm btn-outline-secondary">Limpiar filtros</a>
+        <div class="col-md-3">
+          <select name="type" class="form-select" onchange="this.form.submit()">
+            <option value="all" {% if current_filter_type == "all" %}selected{% endif %}>Todos los productos</option>
+            <option value="simple" {% if current_filter_type == "simple" %}selected{% endif %}>Sin variantes</option>
+            <option value="variants" {% if current_filter_type == "variants" %}selected{% endif %}>Con variantes</option>
+          </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-funnel me-1"></i>Filtrar
+          </button>
+          <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle me-1"></i>Limpiar
+          </a>
+        </div>
       </form>
     </div>
 
-    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+    <div class="card-body border-top" style="max-height: 600px; overflow-y: auto;">
       <div id="products-container" class="row g-3">
         {% for p in products %}
           <div class="col-12 col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
               <img src="{{ p.get_main_image_url|default:p.images.first.image.url|default:'/static/img/no-image.png' }}"
-                   class="card-img-top" alt="{{ p.name }}" style="height:130px; object-fit:cover;">
+                   class="card-img-top gallery-thumb" alt="{{ p.name }}">
               <div class="card-body">
-                <h6 class="card-title mb-1">{{ p.name }}</h6>
-                <div class="small text-muted mb-1">SKU: {{ p.sku }}</div>
-                <div class="small text-muted mb-2">Stock: {{ p.stock|default:"-" }}</div>
+                <h6 class="card-title mb-2">{{ p.name }}</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <small class="text-muted text-mono">SKU: {{ p.sku }}</small>
+                  <small class="text-muted">Stock:
+                    <span class="{% if p.stock > 0 %}text-success{% else %}text-danger{% endif %}">
+                      {{ p.stock|default:"-" }}
+                    </span>
+                  </small>
+                </div>
 
                 {% if p.variants.exists %}
-                  <table class="table table-sm table-striped align-middle mb-0">
-                    <tbody>
-                      {% for v in p.variants.all %}
-                        <tr>
-                          <td>
-                            <div class="fw-semibold small">
-                              {% if v.size %}Talla: {{ v.size }}{% endif %}
-                              {% if v.color %}{% if v.size %}, {% endif %}Color: {{ v.color }}{% endif %}
-                            </div>
-                            <div class="text-muted small">SKU: {{ v.sku }}</div>
-                          </td>
-                          <td class="text-end">{{ v.price|default:p.price|cop }}</td>
-                          <td class="text-muted">Stock: {{ v.stock }}</td>
-                          <td style="width:70px;">
-                            <input type="number" min="1" value="1" class="form-control form-control-sm variant-qty-input">
-                          </td>
-                          <td>
-                            <button class="btn btn-sm btn-primary btn-add-variant"
-                                    data-product='{"id":{{ p.pk }},"name":"{{ p.name|escapejs }}","sku":"{{ p.sku|escapejs }}"}'
-                                    data-variant='{"id":{{ v.pk }},
-                                                   "label":"{% if v.size %}Talla: {{ v.size }}{% endif %}{% if v.color %}{% if v.size %}, {% endif %}Color: {{ v.color }}{% endif %}",
-                                                   "sku":"{{ v.sku|escapejs }}",
-                                                   "stock":{{ v.stock|default:0 }},
-                                                   "price":"{{ v.price|default:p.price }}"}'>
-                              Agregar
-                            </button>
-                          </td>
-                        </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
+                  <!-- Productos con variantes -->
+                  <div class="table-responsive">
+                    <table class="table table-sm table-borderless mb-0">
+                      <tbody>
+                        {% for v in p.variants.all %}
+                          <tr>
+                            <td class="ps-0">
+                              <div class="small fw-semibold">
+                                {% if v.size %}{{ v.size }}{% endif %}
+                                {% if v.color %}{% if v.size %} - {% endif %}{{ v.color }}{% endif %}
+                              </div>
+                              <small class="text-muted text-mono">{{ v.sku }}</small>
+                            </td>
+                            <td class="text-end">
+                              <div class="small fw-semibold">{{ v.price|default:p.price|cop }}</div>
+                              <small class="{% if v.stock > 0 %}text-success{% else %}text-danger{% endif %}">
+                                Stock: {{ v.stock }}
+                              </small>
+                            </td>
+                            <td style="width:60px;">
+                              <input type="number" min="1" value="1" class="form-control form-control-sm variant-qty-input">
+                            </td>
+                            <td style="width:80px;">
+                              <button class="btn btn-sm btn-primary btn-add-variant w-100"
+                                      data-product='{"id":{{ p.pk }},"name":"{{ p.name|escapejs }}","sku":"{{ p.sku|escapejs }}"}'
+                                      data-variant='{"id":{{ v.pk }},
+                                                     "label":"{% if v.size %}{{ v.size }}{% endif %}{% if v.color %}{% if v.size %} - {% endif %}{{ v.color }}{% endif %}",
+                                                     "sku":"{{ v.sku|escapejs }}",
+                                                     "stock":{{ v.stock|default:0 }},
+                                                     "price":"{{ v.price|default:p.price }}"}'>
+                                <i class="bi bi-plus-circle"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
                 {% else %}
-                  <div class="mb-2">Precio: <strong>{{ p.price|cop }}</strong></div>
+                  <!-- Productos simples -->
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="fw-semibold text-primary">{{ p.price|cop }}</div>
+                  </div>
                   <div class="d-flex gap-2">
                     <input type="number" min="1" value="1" class="form-control form-control-sm simple-qty" style="width:80px;">
-                    <button class="btn btn-sm btn-primary btn-add-simple"
+                    <button class="btn btn-sm btn-primary flex-grow-1 btn-add-simple"
                             data-product='{"id":{{ p.pk }},
                                            "name":"{{ p.name|escapejs }}",
                                            "sku":"{{ p.sku|escapejs }}",
                                            "price":"{{ p.price }}",
                                            "stock":{{ p.stock|default:0 }}}'>
-                      Agregar
+                      <i class="bi bi-plus-circle me-1"></i>Agregar
                     </button>
                   </div>
                 {% endif %}
@@ -169,26 +245,52 @@
             </div>
           </div>
         {% empty %}
-          <div class="col-12 text-center text-muted">No hay productos disponibles.</div>
+          <div class="col-12 text-center text-muted py-4">
+            <i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>
+            No hay productos disponibles con los filtros aplicados
+          </div>
         {% endfor %}
       </div>
 
       <!-- Paginación -->
       {% if is_paginated %}
-        <nav class="mt-3">
-          <ul class="pagination pagination-sm">
-            {% for num in paginator.page_range %}
-              <li class="page-item {% if num == page_obj.number %}active{% endif %}">
-                <a class="page-link" href="?page={{ num }}&{{ querystring }}">{{ num }}</a>
+        <nav class="mt-4">
+          <ul class="pagination pagination-sm justify-content-center">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">
+                  <i class="bi bi-chevron-left"></i>
+                </a>
               </li>
+            {% endif %}
+
+            {% for num in paginator.page_range %}
+              {% if num == page_obj.number %}
+                <li class="page-item active">
+                  <span class="page-link">{{ num }}</span>
+                </li>
+              {% else %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ num }}&{{ querystring }}">{{ num }}</a>
+                </li>
+              {% endif %}
             {% endfor %}
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ querystring }}">
+                  <i class="bi bi-chevron-right"></i>
+                </a>
+              </li>
+            {% endif %}
           </ul>
         </nav>
       {% endif %}
     </div>
   </div>
 
-  <textarea id="empty-item-template" style="display:none;">{{ items_formset.empty_form.as_p|escape }}</textarea>
+  <!-- Template para formset (oculto) -->
+  <textarea id="empty-item-template" class="d-none">{{ items_formset.empty_form.as_p|escape }}</textarea>
 </div>
 {% endblock %}
 

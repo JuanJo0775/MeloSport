@@ -6,27 +6,24 @@
 {% block title %}Reservas{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb  "Reservas|backoffice:billing:reservation_list" %}
+  {% breadcrumb "Reservas|backoffice:billing:reservation_list" %}
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="card-header">
-  <div class="card-body d-flex justify-content-between align-items-center p-0">
+  <!-- Encabezado -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h5 class="mb-0">Reservas</h5>
-      <small class="text-muted">Listado de reservas</small>
+      <h1 class="h3 mb-1">Reservas de productos</h1>
+      <p class="text-muted mb-0">Gestion de reservas de productos</p>
     </div>
-    <div>
-      {% if perms.billing.add_reservation %}
-      <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn btn-primary">
-        <i class="bi bi-plus-circle me-1"></i>Nueva reserva
-      </a>
-      {% endif %}
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn btn-primary flex-fill">
+          <i class="bi bi-archive-fill me-2"></i>Crear reserva
+        </a>
     </div>
   </div>
-</div>
-
 
   <!-- 📊 Estadísticas rápidas -->
   <div class="row g-3 mb-4">
@@ -35,7 +32,7 @@
         <div class="card-body d-flex justify-content-between align-items-center">
           <div>
             <h5 class="card-title text-success mb-1">{{ stats.activas }}</h5>
-            <p class="card-text text-muted small mb-0">Activas</p>
+            <p class="card-text text-muted small mb-0">Reservas Activas</p>
           </div>
           <div class="stats-icon text-success"><i class="bi bi-check-circle"></i></div>
         </div>
@@ -46,7 +43,7 @@
         <div class="card-body d-flex justify-content-between align-items-center">
           <div>
             <h5 class="card-title text-info mb-1">{{ stats.con_abono }}</h5>
-            <p class="card-text text-muted small mb-0">Con abono</p>
+            <p class="card-text text-muted small mb-0">Con Abono</p>
           </div>
           <div class="stats-icon text-info"><i class="bi bi-cash-coin"></i></div>
         </div>
@@ -57,7 +54,7 @@
         <div class="card-body d-flex justify-content-between align-items-center">
           <div>
             <h5 class="card-title text-warning mb-1">{{ stats.sin_abono }}</h5>
-            <p class="card-text text-muted small mb-0">Sin abono</p>
+            <p class="card-text text-muted small mb-0">Sin Abono</p>
           </div>
           <div class="stats-icon text-warning"><i class="bi bi-exclamation-triangle"></i></div>
         </div>
@@ -77,44 +74,62 @@
   </div>
 
   <!-- 🔍 Filtros -->
-  <form method="get" class="row g-2 mb-4">
-    <div class="col-md-4">
-      <input type="text" name="q" value="{{ current_q }}" class="form-control" placeholder="Buscar cliente...">
+  <div class="card mb-4">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-funnel me-1"></i>Filtros de búsqueda</h6>
     </div>
-    <div class="col-md-3">
-      <select name="status" class="form-control">
-        <option value="">-- Estado --</option>
-        <option value="active" {% if current_status == "active" %}selected{% endif %}>Activas</option>
-        <option value="expired" {% if current_status == "expired" %}selected{% endif %}>Vencidas</option>
-        <option value="cancelled" {% if current_status == "cancelled" %}selected{% endif %}>Canceladas</option>
-      </select>
+    <div class="card-body">
+      <form method="get" class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label small">Buscar cliente</label>
+          <input type="text" name="q" value="{{ current_q }}" class="form-control" placeholder="Nombre o teléfono...">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small">Estado</label>
+          <select name="status" class="form-control">
+            <option value="">Todos</option>
+            <option value="active" {% if current_status == "active" %}selected{% endif %}>Activas</option>
+            <option value="expired" {% if current_status == "expired" %}selected{% endif %}>Vencidas</option>
+            <option value="cancelled" {% if current_status == "cancelled" %}selected{% endif %}>Canceladas</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">Próximas a vencer</label>
+          <select name="near_due" class="form-control">
+            <option value="">NA</option>
+            <option value="3" {% if current_near_due == "3" %}selected{% endif %}>En 3 días</option>
+            <option value="7" {% if current_near_due == "7" %}selected{% endif %}>En 7 días</option>
+          </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-search"></i> Buscar
+          </button>
+          <a href="{% url 'backoffice:billing:reservation_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> Limpiar
+          </a>
+        </div>
+      </form>
     </div>
-    <div class="col-md-3">
-      <select name="near_due" class="form-control">
-        <option value="">-- Próximas a vencer --</option>
-        <option value="3" {% if current_near_due == "3" %}selected{% endif %}>En 3 días</option>
-        <option value="7" {% if current_near_due == "7" %}selected{% endif %}>En 7 días</option>
-      </select>
-    </div>
-    <div class="col-md-2">
-      <button type="submit" class="btn btn-primary w-100">
-        <i class="bi bi-funnel"></i> Filtrar
-      </button>
-    </div>
-  </form>
+  </div>
 
   <!-- 📋 Tabla de reservas -->
   <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-list-ul me-1"></i>Lista de Reservas</h6>
+    </div>
     <div class="table-responsive">
       <table class="table table-striped align-middle mb-0">
         <thead>
           <tr>
             <th>ID</th>
             <th>Cliente</th>
-            <th>Producto(s)</th>
+            <th>Productos</th>
+            <th>Total</th>
+            <th>Abono</th>
             <th>Creación</th>
             <th>Vencimiento</th>
-            <th>Días restantes</th>
+            <th>Días Restantes</th>
             <th>Estado</th>
             <th class="text-center">Acciones</th>
           </tr>
@@ -122,44 +137,52 @@
         <tbody>
           {% for reservation in reservations %}
           <tr>
-            <td>#{{ reservation.id }}</td>
-            <td>{{ reservation.client_first_name }} {{ reservation.client_last_name }}</td>
+            <td class="text-mono fw-bold">#{{ reservation.id }}</td>
             <td>
-              {% for item in reservation.items.all %}
-                <div class="small">
-                  {{ item.product.name }}
-                  {% if item.variant %} ({{ item.variant.sku }}){% endif %}
-                </div>
-              {% endfor %}
+              <div class="fw-semibold">{{ reservation.client_first_name }} {{ reservation.client_last_name }}</div>
+              <small class="text-muted">{{ reservation.client_phone }}</small>
             </td>
             <td>
-              {% timezone "America/Bogota" %}
-                {% if reservation.created_at > now|add:"-7 days" %}
-                  {{ reservation.created_at|date:"l, g:i A" }}
-                {% else %}
-                  {{ reservation.created_at|date:"d M Y, g:i A" }}
+              <div class="small">
+                {% for item in reservation.items.all|slice:":2" %}
+                  <div>{{ item.product.name }}{% if item.variant %} ({{ item.variant.sku }}){% endif %}</div>
+                {% endfor %}
+                {% if reservation.items.count > 2 %}
+                  <small class="text-muted">+ {{ reservation.items.count|add:"-2" }} más</small>
                 {% endif %}
-              {% endtimezone %}
+              </div>
+            </td>
+            <td class="fw-semibold">{{ reservation.total|cop }}</td>
+            <td>
+              {% if reservation.amount_deposited > 0 %}
+                <span class="badge badge-soft-success">{{ reservation.amount_deposited|cop }}</span>
+              {% else %}
+                <span class="badge badge-soft-secondary">Sin abono</span>
+              {% endif %}
             </td>
             <td>
-              {% timezone "America/Bogota" %}
-                {% if reservation.due_date > now|add:"-7 days" %}
-                  {{ reservation.due_date|date:"l, g:i A" }}
-                {% else %}
-                  {{ reservation.due_date|date:"d M Y, g:i A" }}
-                {% endif %}
-              {% endtimezone %}
+              <div class="small">
+                {{ reservation.created_at|date:"d/m/Y" }}<br>
+                <span class="text-muted">{{ reservation.created_at|date:"H:i" }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="small">
+                {{ reservation.due_date|date:"d/m/Y" }}<br>
+                <span class="text-muted">{{ reservation.due_date|date:"H:i" }}</span>
+              </div>
             </td>
             <td>
               {% if reservation.status == "active" %}
-                <span class="badge
-                  {% if reservation.days_remaining > 3 %} bg-success
-                  {% elif reservation.days_remaining > 0 %} bg-warning
-                  {% else %} bg-danger{% endif %}">
-                  {{ reservation.days_remaining }} días
-                </span>
+                {% if reservation.days_remaining > 5 %}
+                  <span class="badge bg-success">{{ reservation.days_remaining }} días</span>
+                {% elif reservation.days_remaining > 0 %}
+                  <span class="badge bg-warning">{{ reservation.days_remaining }} días</span>
+                {% else %}
+                  <span class="badge bg-danger">Vencida</span>
+                {% endif %}
               {% else %}
-                <span class="badge bg-secondary">Finalizada</span>
+                <span class="badge bg-secondary">-</span>
               {% endif %}
             </td>
             <td>
@@ -167,8 +190,10 @@
                 <span class="badge bg-success">Activa</span>
               {% elif reservation.status == "expired" %}
                 <span class="badge bg-danger">Vencida</span>
+              {% elif reservation.status == "cancelled" %}
+                <span class="badge bg-secondary">Cancelada</span>
               {% else %}
-                <span class="badge bg-secondary">{{ reservation.status }}</span>
+                <span class="badge bg-secondary">{{ reservation.get_status_display }}</span>
               {% endif %}
             </td>
             <td class="text-center">
@@ -178,11 +203,13 @@
                    data-bs-toggle="tooltip" title="Ver reserva">
                   <i class="bi bi-eye"></i>
                 </a>
+                {% if reservation.status == "active" %}
                 <a href="{% url 'backoffice:billing:reservation_update' reservation.pk %}"
                    class="btn btn-sm btn-outline-secondary me-1"
                    data-bs-toggle="tooltip" title="Editar reserva">
                   <i class="bi bi-pencil"></i>
                 </a>
+                {% endif %}
                 <a href="{% url 'backoffice:billing:reservation_delete' reservation.pk %}"
                    class="btn btn-sm btn-outline-danger"
                    data-bs-toggle="tooltip" title="Eliminar reserva">
@@ -193,7 +220,10 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8" class="text-center text-muted">No hay reservas registradas.</td>
+            <td colspan="10" class="text-center text-muted py-4">
+              <i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>
+              No hay reservas registradas
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -203,14 +233,36 @@
 
   <!-- Paginación -->
   {% if is_paginated %}
-  <nav class="mt-3">
+  <nav class="mt-4">
     <ul class="pagination justify-content-center">
       {% if page_obj.has_previous %}
-        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        <li class="page-item">
+          <a class="page-link" href="?page=1&{{ querystring }}">
+            <i class="bi bi-chevron-double-left"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
       {% endif %}
-      <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+
+      <li class="page-item active">
+        <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+      </li>
+
       {% if page_obj.has_next %}
-        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ querystring }}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&{{ querystring }}">
+            <i class="bi bi-chevron-double-right"></i>
+          </a>
+        </li>
       {% endif %}
     </ul>
   </nav>
