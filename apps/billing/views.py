@@ -282,29 +282,18 @@ class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateV
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        if self.request.POST:
-            context["items_formset"] = ReservationItemFormSetUpdate(
-                self.request.POST, instance=self.object, prefix="items"
-            )
-        else:
-            context["items_formset"] = ReservationItemFormSetUpdate(
-                instance=self.object, prefix="items"
-            )
-
+        # El formset solo se pasa para mostrar productos en el template (readonly)
+        context["items_formset"] = ReservationItemFormSetUpdate(
+            instance=self.object, prefix="items"
+        )
         return context
 
     def form_valid(self, form):
-        context = self.get_context_data()
-        items_formset = context["items_formset"]
-
-        if not items_formset.is_valid():
-            return self.form_invalid(form)
-
         with transaction.atomic():
             self.object = form.save(commit=False)
 
-            # total y abono
-            total = sum(item.subtotal for item in self.object.items.all())
+            # usamos la propiedad total del modelo
+            total = self.object.total
             abono = self.object.amount_deposited or Decimal("0.00")
 
             # recalcular vencimiento desde HOY
@@ -328,8 +317,8 @@ class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateV
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse("billing:reservation_detail", args=[self.object.pk])
-
+        # Ojo con el namespace: debe coincidir con tu urls.py
+        return reverse("backoffice:billing:reservation_detail", args=[self.object.pk])
 
 
 class ReservationListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
@@ -394,6 +383,15 @@ class ReservationListView(LoginRequiredMixin, PermissionRequiredMixin, ListView)
 
         return context
 
+# apps/billing/views.py
+from datetime import date
+from decimal import Decimal
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.views.generic import DetailView
+
+from .models import Reservation
+
+
 class ReservationDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = "billing.view_reservation"
     model = Reservation
@@ -406,15 +404,49 @@ class ReservationDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailV
 
         today = date.today()
         due_date = reservation.due_date.date() if reservation.due_date else None
+        created_date = reservation.created_at.date() if reservation.created_at else None
 
-        days_remaining = (due_date - today).days if due_date else None
+        # Total de productos
         total = sum(item.subtotal for item in reservation.items.all())
 
-        context["days_remaining"] = days_remaining
-        context["total"] = total
+        # Valores financieros
+        amount_deposited = reservation.amount_deposited or Decimal("0.00")
+        min_deposit = (total * Decimal("0.2")).quantize(Decimal("1")) if total else Decimal("0")
+        balance_due = total - amount_deposited
+
+        # Días restantes
+        days_remaining = (due_date - today).days if due_date else None
+
+        # Definir plazo según abono
+        period_days = 30 if amount_deposited >= min_deposit else 3
+
+        # Días transcurridos desde la creación
+        elapsed_days = (today - created_date).days if created_date else 0
+
+        # Porcentaje de progreso
+        try:
+            progress_percent = min(100, max(0, (elapsed_days / period_days) * 100))
+        except Exception:
+            progress_percent = 0
+
+        # Label del breadcrumb (solución al problema de concatenación)
+        breadcrumb_label = f"Reserva #{reservation.id}"
+
+        # Actualizar contexto
+        context.update({
+            "total": total,
+            "amount_deposited": amount_deposited,
+            "min_deposit": min_deposit,
+            "balance_due": balance_due,
+            "days_remaining": days_remaining,
+            "period_days": period_days,
+            "elapsed_days": elapsed_days,
+            "progress_percent": progress_percent,
+            "breadcrumb_label": breadcrumb_label,
+            # opcional: pasar "today" si lo usas en el template
+            "today": today,
+        })
         return context
-
-
 
 
 class ReservationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):

@@ -123,10 +123,13 @@
         <div id="items-forms-container" class="d-none">
           {{ items_formset.management_form }}
           {% for form in items_formset %}
-            {{ form.product }}
-            {{ form.variant }}
-            {{ form.quantity }}
-            {{ form.unit_price }}
+            {# forzar campos ocultos con el mismo name/value que Django crea #}
+            {{ form.id }}
+            {{ form.product.as_hidden }}
+            {{ form.variant.as_hidden }}
+            {{ form.quantity.as_hidden }}
+            {{ form.unit_price.as_hidden }}
+            {{ form.DELETE }}
           {% endfor %}
         </div>
 

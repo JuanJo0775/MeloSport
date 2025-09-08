@@ -93,6 +93,16 @@ class Reservation(models.Model):
                 description=f"Apartado liberado (ID {self.pk}) Motivo: {reason}"
             )
 
+    @property
+    def total(self):
+        return sum(item.subtotal for item in self.items.all())
+
+    def days_remaining(self):
+        if not self.due_date:
+            return 0
+        delta = (self.due_date.date() - timezone.now().date()).days
+        return max(delta, 0)
+
     def __str__(self):
         return f"Apartado #{self.pk} - {self.client_first_name or ''} {self.client_last_name or ''}".strip()
 

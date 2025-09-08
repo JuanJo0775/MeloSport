@@ -139,6 +139,18 @@ class ReservationItemForm(forms.ModelForm):
 
         return cleaned
 
+class ReservationItemUpdateForm(forms.ModelForm):
+    """Item de reserva para Update. Solo se usa para exponer datos ocultos (readonly)."""
+    class Meta:
+        model = ReservationItem
+        fields = ["product", "variant", "quantity", "unit_price"]
+        widgets = {
+            "product": forms.HiddenInput(),
+            "variant": forms.HiddenInput(),
+            "quantity": forms.HiddenInput(),
+            "unit_price": forms.HiddenInput(),
+        }
+
 
 ReservationItemFormSetCreate = inlineformset_factory(
     Reservation,
@@ -152,7 +164,7 @@ ReservationItemFormSetCreate = inlineformset_factory(
 ReservationItemFormSetUpdate = inlineformset_factory(
     Reservation,
     ReservationItem,
-    form=ReservationItemForm,
+    form=ReservationItemUpdateForm,
     extra=0,
     can_delete=False,
 )

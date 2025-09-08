@@ -136,46 +136,53 @@
   </div>
 
   <!-- PANEL DE PRODUCTOS DISPONIBLES -->
-  <div class="card">
-    <div class="card-header">
-      <h6 class="mb-0"><i class="bi bi-grid3x3-gap me-1"></i>Catálogo de Productos</h6>
-    </div>
-    <div class="card-body">
-      <!-- Filtros y búsqueda -->
-      <form method="get" class="row g-3 mb-3">
-        <div class="col-md-5">
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input name="q" value="{{ current_q }}" type="text" class="form-control" placeholder="Buscar por nombre o SKU...">
-          </div>
+<div class="card">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-grid3x3-gap me-1"></i>Catálogo de Productos</h6>
+  </div>
+  <div class="card-body">
+    <!-- Filtros y búsqueda -->
+    <form method="get" class="row g-3 mb-3">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input name="q" value="{{ current_q }}" type="text" class="form-control" placeholder="Buscar por nombre o SKU...">
         </div>
-        <div class="col-md-3">
-          <select name="type" class="form-select" onchange="this.form.submit()">
-            <option value="all" {% if current_filter_type == "all" %}selected{% endif %}>Todos los productos</option>
-            <option value="simple" {% if current_filter_type == "simple" %}selected{% endif %}>Sin variantes</option>
-            <option value="variants" {% if current_filter_type == "variants" %}selected{% endif %}>Con variantes</option>
-          </select>
-        </div>
-        <div class="col-md-4 d-flex gap-2">
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-funnel me-1"></i>Filtrar
-          </button>
-          <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-x-circle me-1"></i>Limpiar
-          </a>
-        </div>
-      </form>
-    </div>
+      </div>
+      <div class="col-md-3">
+        <select name="type" class="form-select" onchange="this.form.submit()">
+          <option value="all" {% if current_filter_type == "all" %}selected{% endif %}>Todos los productos</option>
+          <option value="simple" {% if current_filter_type == "simple" %}selected{% endif %}>Sin variantes</option>
+          <option value="variants" {% if current_filter_type == "variants" %}selected{% endif %}>Con variantes</option>
+        </select>
+      </div>
+      <div class="col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-funnel me-1"></i>Filtrar
+        </button>
+        <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-x-circle me-1"></i>Limpiar
+        </a>
+      </div>
+    </form>
+  </div>
 
-    <div class="card-body border-top" style="max-height: 600px; overflow-y: auto;">
-      <div id="products-container" class="row g-3">
-        {% for p in products %}
-          <div class="col-12 col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm">
-              <img src="{{ p.get_main_image_url|default:p.images.first.image.url|default:'/static/img/no-image.png' }}"
-                   class="card-img-top gallery-thumb" alt="{{ p.name }}">
-              <div class="card-body">
-                <h6 class="card-title mb-2">{{ p.name }}</h6>
+  <div class="card-body border-top" style="max-height: 600px; overflow-y: auto;">
+    <div id="products-container" class="row g-3">
+      {% for p in products %}
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card h-100 shadow-sm">
+            <div class="d-flex align-items-start p-2">
+              <!-- Imagen cuadrada más pequeña -->
+              <div class="flex-shrink-0 me-3">
+                <img src="{{ p.get_main_image_url|default:p.images.first.image.url|default:'/static/img/no-image.png' }}"
+                     alt="{{ p.name }}"
+                     style="width:80px; height:80px; object-fit:cover; border-radius:6px;">
+              </div>
+
+              <!-- Contenido -->
+              <div class="flex-grow-1">
+                <h6 class="card-title mb-2 text-truncate">{{ p.name }}</h6>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <small class="text-muted text-mono">SKU: {{ p.sku }}</small>
                   <small class="text-muted">Stock:
@@ -244,50 +251,52 @@
               </div>
             </div>
           </div>
-        {% empty %}
-          <div class="col-12 text-center text-muted py-4">
-            <i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>
-            No hay productos disponibles con los filtros aplicados
-          </div>
-        {% endfor %}
-      </div>
-
-      <!-- Paginación -->
-      {% if is_paginated %}
-        <nav class="mt-4">
-          <ul class="pagination pagination-sm justify-content-center">
-            {% if page_obj.has_previous %}
-              <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">
-                  <i class="bi bi-chevron-left"></i>
-                </a>
-              </li>
-            {% endif %}
-
-            {% for num in paginator.page_range %}
-              {% if num == page_obj.number %}
-                <li class="page-item active">
-                  <span class="page-link">{{ num }}</span>
-                </li>
-              {% else %}
-                <li class="page-item">
-                  <a class="page-link" href="?page={{ num }}&{{ querystring }}">{{ num }}</a>
-                </li>
-              {% endif %}
-            {% endfor %}
-
-            {% if page_obj.has_next %}
-              <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ querystring }}">
-                  <i class="bi bi-chevron-right"></i>
-                </a>
-              </li>
-            {% endif %}
-          </ul>
-        </nav>
-      {% endif %}
+        </div>
+      {% empty %}
+        <div class="col-12 text-center text-muted py-4">
+          <i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>
+          No hay productos disponibles con los filtros aplicados
+        </div>
+      {% endfor %}
     </div>
+
+    <!-- Paginación -->
+    {% if is_paginated %}
+      <nav class="mt-4">
+        <ul class="pagination pagination-sm justify-content-center">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+          {% endif %}
+
+          {% for num in paginator.page_range %}
+            {% if num == page_obj.number %}
+              <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+              </li>
+            {% else %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ num }}&{{ querystring }}">{{ num }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ querystring }}">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
   </div>
+</div>
+
 
   <!-- Template para formset (oculto) -->
   <textarea id="empty-item-template" class="d-none">{{ items_formset.empty_form.as_p|escape }}</textarea>
