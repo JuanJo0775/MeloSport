@@ -1,5 +1,6 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
+{% load breadcrumbs dict_extras %}
 
 {% block title %}Gestionar Inventario — Productos{% endblock %}
 
@@ -10,85 +11,97 @@
 {% block content %}
 <div class="container-fluid">
   <!-- Encabezado -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <!-- Título -->
-  <div>
-    <h1 class="h3 mb-1">Inventario por Productos</h1>
-    <p class="text-muted mb-0">Selecciona productos para gestionar su inventario</p>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Título -->
+    <div>
+      <h1 class="h3 mb-1">Inventario por Productos</h1>
+      <p class="text-muted mb-0">Selecciona productos para gestionar su inventario</p>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="d-flex gap-2">
+      <a href="{% url 'backoffice:products:inventory:index' %}"
+         class="btn btn-outline-secondary"
+         data-bs-toggle="tooltip"
+         title="Volver a la lista">
+        <i class="bi bi-arrow-left me-1"></i>Volver
+      </a>
+      <a href="{% url 'backoffice:products:inventory:inventory_adjust' %}" class="btn btn-warning">
+        <i class="bi bi-sliders me-2"></i>Ajustar Stock
+      </a>
+      <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Nuevo Stock
+      </a>
+    </div>
   </div>
 
-  <!-- Botones de acción -->
-  <div class="d-flex gap-2">
-    <a href="{% url 'backoffice:products:inventory:index' %}"
-       class="btn btn-outline-secondary"
-       data-bs-toggle="tooltip"
-       title="Volver a la lista">
-      <i class="bi bi-arrow-left me-1"></i>Volver
-    </a>
-    <a href="{% url 'backoffice:products:inventory:inventory_adjust' %}" class="btn btn-warning">
-      <i class="bi bi-sliders me-2"></i>Ajustar Stock
-    </a>
-    <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-primary">
-      <i class="bi bi-plus-circle me-2"></i>Nuevo Stock
-    </a>
-  </div>
-</div>
-
-
- <!-- Estadísticas rápidas -->
-    <div class="row g-3 mb-4">
-      <!-- Total Productos -->
-      <div class="col-md-3">
-        <div class="card stats-card border-left-primary">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-primary mb-1">{{ products.count }}</h5>
-              <p class="card-text text-muted small mb-0">Total Productos</p>
-            </div>
-            <div class="stats-icon text-primary"><i class="bi bi-box-seam"></i></div>
-          </div>
+  <!-- Estadísticas rápidas -->
+<div class="row g-3 mb-4 text-center">
+  <!-- Total Productos -->
+  <div class="col-md">
+    <div class="card stats-card border-left-primary">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title text-primary mb-1">{{ products.count }}</h5>
+          <p class="card-text text-muted small mb-0">Total</p>
         </div>
-      </div>
-
-      <!-- Con Stock -->
-      <div class="col-md-3">
-        <div class="card stats-card border-left-success">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-success mb-1">{{ products_with_stock|default:0 }}</h5>
-              <p class="card-text text-muted small mb-0">Con Stock</p>
-            </div>
-            <div class="stats-icon text-success"><i class="bi bi-check-circle"></i></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Stock Bajo -->
-      <div class="col-md-3">
-        <div class="card stats-card border-left-warning">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-warning mb-1">{{ low_stock_count|default:0 }}</h5>
-              <p class="card-text text-muted small mb-0">Stock Bajo</p>
-            </div>
-            <div class="stats-icon text-warning"><i class="bi bi-exclamation-triangle"></i></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sin Stock (inline danger) -->
-      <div class="col-md-3">
-        <div class="card stats-card" style="border-left: 5px solid #dc3545;"> <!-- rojo danger -->
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title mb-1" style="color: #dc3545;">{{ no_stock_count|default:0 }}</h5>
-              <p class="card-text text-muted small mb-0">Sin Stock</p>
-            </div>
-            <div class="stats-icon" style="color: #dc3545;"><i class="bi bi-x-circle"></i></div>
-          </div>
-        </div>
+        <div class="stats-icon text-primary"><i class="bi bi-box-seam"></i></div>
       </div>
     </div>
+  </div>
+
+  <!-- Con Stock -->
+  <div class="col-md">
+    <div class="card stats-card border-left-success">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title text-success mb-1">{{ products_with_stock|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Con Stock</p>
+        </div>
+        <div class="stats-icon text-success"><i class="bi bi-check-circle"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock Bajo -->
+  <div class="col-md">
+    <div class="card stats-card border-left-warning">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title text-warning mb-1">{{ low_stock_count|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Stock Bajo</p>
+        </div>
+        <div class="stats-icon text-warning"><i class="bi bi-exclamation-triangle"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sin Stock -->
+  <div class="col-md">
+    <div class="card stats-card" style="border-left: 5px solid #dc3545;">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title mb-1" style="color: #dc3545;">{{ no_stock_count|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Sin Stock</p>
+        </div>
+        <div class="stats-icon" style="color: #dc3545;"><i class="bi bi-x-circle"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reservados -->
+  <div class="col-md">
+    <div class="card stats-card border-left-info">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="card-title text-info mb-1">{{ reserved_count|default:0 }}</h5>
+          <p class="card-text text-muted small mb-0">Reservados</p>
+        </div>
+        <div class="stats-icon text-info"><i class="bi bi-journal-bookmark"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
 
   <!-- Búsqueda -->
   <div class="card mb-4">
@@ -124,44 +137,42 @@
   </div>
 
   <!-- Acciones masivas -->
-<div class="card mb-4">
-  <div class="card-header">
-    <h6 class="card-title mb-0"><i class="bi bi-layers me-2"></i>Acciones Masivas</h6>
+  <div class="card mb-4">
+    <div class="card-header">
+      <h6 class="card-title mb-0"><i class="bi bi-layers me-2"></i>Acciones Masivas</h6>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{% url 'backoffice:products:inventory:bulk_add_products' %}" id="bulk-products-form">
+        {% csrf_token %}
+        <input type="hidden" name="product_ids" id="product-ids-field" value="">
+        <!-- Forzar siempre entrada -->
+        <input type="hidden" name="movement_type" value="in">
+
+        <div class="alert alert-info py-2 mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Esta acción masiva <strong>solo añade stock</strong> a los productos seleccionados (solo aplica a productos <u>sin variantes</u>).
+        </div>
+
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label for="bulk-quantity" class="form-label">Cantidad a añadir</label>
+            <input type="number" name="quantity" id="bulk-quantity"
+                   class="form-control" placeholder="Cantidad" min="1" required>
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-success w-100">
+              <i class="bi bi-check-circle me-2"></i>Aplicar a seleccionados
+            </button>
+          </div>
+          <div class="col-md-6 text-end">
+            <small class="text-muted">
+              <span id="selected-products-count">0</span> producto(s) seleccionado(s)
+            </small>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
-  <div class="card-body">
-    <form method="post" action="{% url 'backoffice:products:inventory:bulk_add_products' %}" id="bulk-products-form">
-      {% csrf_token %}
-      <input type="hidden" name="product_ids" id="product-ids-field" value="">
-      <!-- Forzar siempre entrada -->
-      <input type="hidden" name="movement_type" value="in">
-
-      <!-- Texto fijo informativo -->
-      <div class="alert alert-info py-2 mb-3">
-        <i class="bi bi-info-circle me-1"></i>
-        Esta acción masiva <strong>solo añade stock</strong> a los productos seleccionados (solo aplica a productos <u>sin variantes</u>).
-      </div>
-
-      <div class="row g-3 align-items-end">
-        <div class="col-md-3">
-          <label for="bulk-quantity" class="form-label">Cantidad a añadir</label>
-          <input type="number" name="quantity" id="bulk-quantity"
-                 class="form-control" placeholder="Cantidad" min="1" required>
-        </div>
-        <div class="col-md-3">
-          <button type="submit" class="btn btn-success w-100">
-            <i class="bi bi-check-circle me-2"></i>Aplicar a seleccionados
-          </button>
-        </div>
-        <div class="col-md-6 text-end">
-          <small class="text-muted">
-            <span id="selected-products-count">0</span> producto(s) seleccionado(s)
-          </small>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-
 
   <!-- Tabla de productos -->
   <div class="card">
@@ -180,11 +191,7 @@
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th width="50">
-                <div class="form-check">
-                  <input type="checkbox" id="select-all-products-header" class="form-check-input">
-                </div>
-              </th>
+              <th width="50"><input type="checkbox" id="select-all-products-header" class="form-check-input"></th>
               <th>Producto</th>
               <th>SKU</th>
               <th class="text-center">Stock</th>
@@ -194,83 +201,75 @@
             </tr>
           </thead>
           <tbody>
-            {% for p in products %}
-            <tr>
-              <td>
-                {% if p.variants.exists %}
-                  <!-- Producto con variantes: no se permite en acción masiva -->
-                  <div class="form-check">
+              {% for p in products %}
+              <tr>
+                <td>
+                  {% if p.variants.exists %}
                     <input type="checkbox" class="form-check-input" disabled
                            title="Producto con variantes: gestionar desde Variantes">
-                  </div>
-                {% else %}
-                  <div class="form-check">
+                  {% else %}
                     <input type="checkbox" class="product-checkbox form-check-input"
                            value="{{ p.id }}" id="product-{{ p.id }}">
-                  </div>
-                {% endif %}
-              </td>
-              <td>
-                <div class="d-flex align-items-center">
-                  <div class="flex-grow-1">
-                    <div class="fw-semibold">{{ p.name }}</div>
-                    {% if p.description %}
-                      <small class="text-muted">{{ p.description|truncatechars:80 }}</small>
-                    {% endif %}
-                  </div>
-                </div>
-              </td>
-              <td>
-                {% if p.sku %}
-                  <span class="badge bg-light text-dark text-mono">{{ p.sku }}</span>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td class="text-center">
-                <span class="fw-semibold
-                  {% if p.stock <= 0 %}text-danger{% elif p.stock <= 5 %}text-warning{% else %}text-success{% endif %}">
-                  {{ p.stock }}
-                </span>
-              </td>
-              <td class="text-center">
-                {% if p.variants.exists %}
-                  <a href="{% url 'backoffice:products:inventory:product_variants' p.id %}"
-                     class="btn btn-sm btn-outline-info"
-                     data-bs-toggle="tooltip" title="Gestionar {{ p.variants.count }} variante(s)">
-                    <i class="bi bi-layers me-1"></i>{{ p.variants.count }}
-                  </a>
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td class="text-center">
-                {% if p.stock <= 0 %}
-                  <span class="badge bg-danger">Sin stock</span>
-                {% elif p.stock <= 5 %}
-                  <span class="badge bg-warning text-dark">Stock bajo</span>
-                {% else %}
-                  <span class="badge bg-success">Disponible</span>
-                {% endif %}
-              </td>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="fw-semibold">{{ p.name }}</div>
+                  {% if p.description %}
+                    <small class="text-muted">{{ p.description|truncatechars:80 }}</small>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.sku %}
+                    <span class="badge bg-light text-dark text-mono">{{ p.sku }}</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <span class="fw-semibold
+                    {% if p.stock <= 0 %}text-danger{% elif p.stock <= 5 %}text-warning{% else %}text-success{% endif %}">
+                    {{ p.stock }}
+                  </span>
+                {% with reserved_qty=reserved_by_product|get_item:p.id %}
+                  {% if reserved_qty %}
+                    <div><small class="text-muted">Reservado: {{ reserved_qty }}</small></div>
+                  {% endif %}
+                {% endwith %}
+                </td>
+                <td class="text-center">
+                  {% if p.variants.exists %}
+                    <a href="{% url 'backoffice:products:inventory:product_variants' p.id %}"
+                       class="btn btn-sm btn-outline-info"
+                       data-bs-toggle="tooltip" title="Gestionar {{ p.variants.count }} variante(s)">
+                      <i class="bi bi-layers me-1"></i>{{ p.variants.count }}
+                    </a>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if p.stock <= 0 %}
+                    <span class="badge bg-danger">Sin stock</span>
+                  {% elif p.stock <= 5 %}
+                    <span class="badge bg-warning text-dark">Stock bajo</span>
+                  {% else %}
+                    <span class="badge bg-success">Disponible</span>
+                  {% endif %}
+                </td>
                 <td>
                   <div class="d-flex justify-content-center gap-2">
                     {% if p.variants.exists %}
-                      <!-- Producto con variantes -->
                       <a href="{% url 'backoffice:products:inventory:product_variants' p.id %}"
                          class="btn btn-sm btn-outline-primary"
                          data-bs-toggle="tooltip" title="Gestionar variantes">
                         <i class="bi bi-layers me-1"></i>Variantes
                       </a>
                     {% else %}
-                      <!-- Producto sin variantes: stock directo -->
                       <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ p.id }}"
                          class="btn btn-sm btn-outline-success"
                          data-bs-toggle="tooltip" title="Añadir stock">
                         <i class="bi bi-plus-circle me-1"></i>Stock
                       </a>
-
-                      <!-- Botón de ajuste -->
                       <a href="{% url 'backoffice:products:inventory:inventory_adjust' %}?product={{ p.id }}"
                          class="btn btn-sm btn-outline-warning"
                          data-bs-toggle="tooltip" title="Ajustar stock">
@@ -279,16 +278,16 @@
                     {% endif %}
                   </div>
                 </td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="7" class="text-center text-muted py-4">
-                <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
-                No hay productos disponibles con los filtros aplicados.
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                  No hay productos disponibles con los filtros aplicados.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
         </table>
       </div>
     </div>
@@ -310,24 +309,17 @@
   const productIdsField = document.getElementById("product-ids-field");
   const quantityInput = document.getElementById("bulk-quantity");
 
-  // Sincronizar checkboxes de "seleccionar todo"
   [selectAllCheckbox, selectAllHeaderCheckbox].forEach(checkbox => {
     checkbox.addEventListener("change", function(e) {
       const isChecked = e.target.checked;
-
-      // Actualizar el otro checkbox de "seleccionar todo"
       [selectAllCheckbox, selectAllHeaderCheckbox].forEach(cb => {
         if (cb !== e.target) cb.checked = isChecked;
       });
-
-      // Actualizar todos los checkboxes de productos válidos
       productCheckboxes.forEach(cb => cb.checked = isChecked);
-
       updateSelection();
     });
   });
 
-  // Manejar selección individual
   productCheckboxes.forEach(checkbox => {
     checkbox.addEventListener("change", updateSelection);
   });
@@ -335,52 +327,37 @@
   function updateSelection() {
     const checkedBoxes = document.querySelectorAll(".product-checkbox:checked");
     const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
-
-    // Actualizar campo oculto
     productIdsField.value = selectedIds.join(",");
-
-    // Actualizar contador
     selectedCountSpan.textContent = selectedIds.length;
-
-    // Actualizar estado de "seleccionar todo"
     const allChecked = checkedBoxes.length === productCheckboxes.length && productCheckboxes.length > 0;
     const someChecked = checkedBoxes.length > 0;
-
     [selectAllCheckbox, selectAllHeaderCheckbox].forEach(cb => {
       cb.checked = allChecked;
       cb.indeterminate = someChecked && !allChecked;
     });
   }
 
-  // Validación del formulario
   bulkForm.addEventListener("submit", function(e) {
     const selectedIds = productIdsField.value;
     const quantity = quantityInput.value;
-
     if (!selectedIds) {
       e.preventDefault();
       alert("Por favor, selecciona al menos un producto válido para la acción masiva.");
       return;
     }
-
     if (!quantity || Number(quantity) <= 0) {
       e.preventDefault();
       alert("Por favor, ingresa una cantidad válida mayor a 0.");
       quantityInput.focus();
       return;
     }
-
-    // Confirmación
     const selectedCount = selectedIds.split(",").length;
-    const actionType = document.getElementById("bulk-action").selectedOptions[0].textContent;
-    const confirmMessage = `¿Aplicar "${actionType}" de ${quantity} unidades a ${selectedCount} producto(s) seleccionado(s)?`;
-
+    const confirmMessage = `¿Aplicar entrada de ${quantity} unidades a ${selectedCount} producto(s) seleccionado(s)?`;
     if (!confirm(confirmMessage)) {
       e.preventDefault();
     }
   });
 
-  // Inicializar tooltips
   if (typeof bootstrap !== 'undefined') {
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -388,7 +365,6 @@
     });
   }
 
-  // Inicializar contador
   updateSelection();
 })();
 </script>

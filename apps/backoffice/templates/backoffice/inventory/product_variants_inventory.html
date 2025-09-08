@@ -1,5 +1,6 @@
 {% extends "backoffice/base_backoffice.html" %}
 {% load breadcrumbs %}
+{% load breadcrumbs dict_extras %}
 
 {% block title %}Variantes — {{ product.name }}{% endblock %}
 
@@ -106,7 +107,6 @@
                   <input type="checkbox" id="select-all-variants-header" class="form-check-input">
                 </div>
               </th>
-              <th>Nombre</th>
               <th>SKU</th>
               <th>Propiedades</th>
               <th class="text-center">Stock Actual</th>
@@ -122,12 +122,8 @@
                          value="{{ v.id }}" id="variant-{{ v.id }}">
                 </div>
               </td>
-              <td>
-                <div class="fw-semibold">{{ v.name }}</div>
-                {% if v.description %}
-                  <small class="text-muted">{{ v.description|truncatechars:80 }}</small>
-                {% endif %}
-              </td>
+
+              <!-- SKU -->
               <td>
                 {% if v.sku %}
                   <span class="badge bg-light text-dark text-mono">{{ v.sku }}</span>
@@ -135,6 +131,8 @@
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
+
+              <!-- Propiedades -->
               <td>
                 <div class="d-flex flex-wrap gap-1">
                   {% if v.size %}
@@ -148,29 +146,38 @@
                   {% endif %}
                 </div>
               </td>
-              <td class="text-center">
-                <span class="fw-semibold
-                  {% if v.stock <= 0 %}text-danger{% elif v.stock <= 5 %}text-warning{% else %}text-success{% endif %}">
-                  {{ v.stock }}
-                </span>
-              </td>
-                <td>
-                  <div class="d-flex justify-content-center gap-2">
-                    <!-- Botón añadir stock -->
-                    <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ product.id }}&variant={{ v.id }}"
-                       class="btn btn-sm btn-outline-success"
-                       data-bs-toggle="tooltip" title="Añadir stock a esta variante">
-                      <i class="bi bi-plus-circle me-1"></i>Stock
-                    </a>
 
-                    <!-- Botón ajustar stock -->
-                    <a href="{% url 'backoffice:products:inventory:inventory_adjust' %}?product={{ product.id }}&variant={{ v.id }}"
-                       class="btn btn-sm btn-outline-warning"
-                       data-bs-toggle="tooltip" title="Ajustar stock de esta variante">
-                      <i class="bi bi-sliders me-1"></i>Ajustar
-                    </a>
-                  </div>
-                </td>
+            <!-- Stock y reservado -->
+            <td class="text-center">
+              <span class="fw-semibold
+                {% if v.stock <= 0 %}text-danger{% elif v.stock <= 5 %}text-warning{% else %}text-success{% endif %}">
+                {{ v.stock }}
+              </span>
+              {% with reserved_qty=reserved_by_variant|get_item:v.id %}
+                {% if reserved_qty %}
+                  <div><small class="text-muted">Reservado: {{ reserved_qty }}</small></div>
+                {% endif %}
+              {% endwith %}
+            </td>
+
+              <!-- Acciones -->
+              <td>
+                <div class="d-flex justify-content-center gap-2">
+                  <!-- Botón añadir stock -->
+                  <a href="{% url 'backoffice:products:inventory:inventory_create' %}?product={{ product.id }}&variant={{ v.id }}"
+                     class="btn btn-sm btn-outline-success"
+                     data-bs-toggle="tooltip" title="Añadir stock a esta variante">
+                    <i class="bi bi-plus-circle me-1"></i>Stock
+                  </a>
+
+                  <!-- Botón ajustar stock -->
+                  <a href="{% url 'backoffice:products:inventory:inventory_adjust' %}?product={{ product.id }}&variant={{ v.id }}"
+                     class="btn btn-sm btn-outline-warning"
+                     data-bs-toggle="tooltip" title="Ajustar stock de esta variante">
+                    <i class="bi bi-sliders me-1"></i>Ajustar
+                  </a>
+                </div>
+              </td>
             </tr>
             {% empty %}
             <tr>

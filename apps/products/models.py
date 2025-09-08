@@ -301,6 +301,7 @@ class InventoryMovement(models.Model):
         ('in', 'Entrada'),
         ('out', 'Salida'),
         ('adjust', 'Ajuste'),
+        ('reserve', 'Reserva'),  # 👈 Nuevo tipo
     ]
 
     # Relaciones
@@ -316,11 +317,18 @@ class InventoryMovement(models.Model):
     quantity = models.IntegerField()
     notes = models.TextField(blank=True)
 
-    # Motivo específico para ajustes (auditoría)
+    # Nuevo campo robusto para vincular con reservas
+    reservation_id = models.IntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="ID de Reservation si proviene de una reserva"
+    )
+
     adjust_reason = models.TextField(
         blank=True,
         verbose_name="Motivo del ajuste",
-        help_text="Explica por qué se realiza el ajuste (obligatorio para auditoría)."
+        help_text="Obligatorio solo para ajustes."
     )
 
     # Metadatos
@@ -349,64 +357,46 @@ class InventoryMovement(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.get_movement_type_display()} de {self.quantity} unidades - {self.product}"
-
-    # Validaciones
+        return f"{self.get_movement_type_display()} de {self.quantity} - {self.product}"
 
     def clean(self):
-        """
-        Validaciones coherentes antes de guardar:
-        - Variante debe pertenecer al producto si está presente
-        - Para 'in'/'out' cantidad positiva (>0)
-        - Para 'adjust' cantidad distinta de 0 (puede ser negativa o positiva)
-        - En 'adjust' el motivo (adjust_reason) es obligatorio
-        - Discounts y precios no negativos
-        """
         super().clean()
 
         if not self.product_id:
             raise ValidationError("Debe seleccionar un producto.")
 
         if self.variant_id and self.variant.product_id != self.product_id:
-            raise ValidationError("La variante seleccionada no pertenece al producto seleccionado.")
+            raise ValidationError("La variante no pertenece al producto.")
 
         if self.movement_type in ('in', 'out'):
-            if self.quantity is None or self.quantity <= 0:
-                raise ValidationError("Para entradas y salidas la cantidad debe ser un entero positivo (> 0).")
+            if not self.quantity or self.quantity <= 0:
+                raise ValidationError("Entradas y salidas requieren cantidad positiva (> 0).")
 
         if self.movement_type == 'adjust':
-            # cantidad ≠ 0
-            if self.quantity is None or int(self.quantity) == 0:
-                raise ValidationError("Para ajustes la cantidad no puede ser 0. Use número positivo o negativo según corresponda.")
-            # motivo obligatorio
-            if self.adjust_reason is None or str(self.adjust_reason).strip() == "":
+            if not self.quantity or int(self.quantity) == 0:
+                raise ValidationError("En ajustes la cantidad no puede ser 0.")
+            if not self.adjust_reason or str(self.adjust_reason).strip() == "":
                 raise ValidationError({"adjust_reason": "Debes indicar un motivo para el ajuste."})
 
-        # Normalizar discount si vino None
         if self.discount_percentage is None:
             self.discount_percentage = Decimal('0.00')
 
-        # Si hay precio unitario, no puede ser negativo
         if self.unit_price is not None and Decimal(self.unit_price) < 0:
             raise ValidationError("El precio unitario no puede ser negativo.")
 
-
-    # Helpers internos
+        # 👉 Reserva valida igual que out/in, pero no tocará stock
+        if self.movement_type == 'reserve' and (not self.quantity or self.quantity <= 0):
+            raise ValidationError("La cantidad reservada debe ser positiva.")
 
     def _signed_qty(self) -> int:
-        """
-        Devuelve la cantidad con signo según movement_type:
-          - 'in'     -> +quantity
-          - 'out'    -> -quantity
-          - 'adjust' -> quantity tal cual (permite negativos)
-        """
         q = int(self.quantity or 0)
         if self.movement_type == 'in':
             return q
         if self.movement_type == 'out':
             return -q
-        # 'adjust' permite que el campo sea negativo o positivo
-        return q
+        if self.movement_type == 'reserve':
+            return 0  # 👈 Reserva no afecta stock físico
+        return q  # adjust
 
 
     # Propiedades monetarias (seguros)

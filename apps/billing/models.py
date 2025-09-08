@@ -43,7 +43,10 @@ class Reservation(models.Model):
         verbose_name_plural = "Apartados"
 
     def mark_reserved_movements(self, user=None, request=None):
-        """Crea movimientos 'out' para bloquear stock."""
+        """
+        Crea movimientos 'reserve' para bloquear stock de forma lógica
+        (no descuenta del inventario físico).
+        """
         if self.movement_created:
             return
         with transaction.atomic():
@@ -51,7 +54,8 @@ class Reservation(models.Model):
                 InventoryMovement.objects.create(
                     product=item.product,
                     variant=item.variant,
-                    movement_type="out",
+                    movement_type="reserve",   # 👈 ahora RESERVA
+                    reservation_id=self.pk,    # 👈 vínculo robusto con la reserva
                     quantity=item.quantity,
                     user=user,
                     unit_price=item.unit_price,
@@ -66,25 +70,18 @@ class Reservation(models.Model):
                 action="create",
                 model=Reservation,
                 obj=self,
-                description=f"Apartado creado y stock reservado (ID {self.pk})"
+                description=f"Apartado creado y stock marcado como reservado (ID {self.pk})"
             )
 
     def release(self, user=None, reason="expired", request=None):
-        """Libera stock reservado (movimientos 'in')."""
+        """
+        Libera la reserva.
+        No genera movimiento 'in' porque 'reserve' no modificó stock físico.
+        Solo cambia el estado y registra la liberación en el log.
+        """
         if self.status in ("cancelled", "expired", "completed"):
             return
         with transaction.atomic():
-            for item in self.items.select_related("product", "variant").all():
-                InventoryMovement.objects.create(
-                    product=item.product,
-                    variant=item.variant,
-                    movement_type="in",
-                    quantity=item.quantity,
-                    user=user,
-                    unit_price=item.unit_price,
-                    discount_percentage=Decimal("0.00"),
-                    notes=f"Liberación de apartado #{self.pk} ({reason})"
-                )
             self.status = "expired" if reason == "expired" else "cancelled"
             self.save(update_fields=["status"])
             AuditLog.log_action(

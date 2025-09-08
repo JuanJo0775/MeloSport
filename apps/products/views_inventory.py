@@ -19,6 +19,9 @@ from .forms_inventory import InventoryMovementForm, BulkAddStockForm, BulkVarian
 # ----------------------------
 from django.db.models import Count, Q, Sum
 
+from ..billing.models import Reservation
+
+
 class InventoryIndexView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     """Página inicial de Inventario (antesala sin tablas)."""
     permission_required = "products.view_inventorymovement"
@@ -89,16 +92,16 @@ class InventoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         if u := self.request.GET.get("user"):
             q &= (
-                    Q(user__username__unaccent_icontains=u)
-                    | Q(user__first_name__unaccent_icontains=u)
-                    | Q(user__last_name__unaccent_icontains=u)
+                Q(user__username__unaccent_icontains=u)
+                | Q(user__first_name__unaccent_icontains=u)
+                | Q(user__last_name__unaccent_icontains=u)
             )
 
         if p := self.request.GET.get("product"):
             q &= (
-                    Q(product__name__unaccent_icontains=p)
-                    | Q(product__sku__unaccent_icontains=p)
-                    | Q(variant__sku__unaccent_icontains=p)
+                Q(product__name__unaccent_icontains=p)
+                | Q(product__sku__unaccent_icontains=p)
+                | Q(variant__sku__unaccent_icontains=p)
             )
 
         if df := self.request.GET.get("date_from"):
@@ -124,6 +127,7 @@ class InventoryListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         ctx["entries_count"] = base_qs.filter(movement_type="in").count()
         ctx["exits_count"] = base_qs.filter(movement_type="out").count()
         ctx["adjustments_count"] = base_qs.filter(movement_type="adjust").count()
+        ctx["reserves_count"] = base_qs.filter(movement_type="reserve").count()  # 👈 nuevo
 
         return ctx
 
@@ -283,10 +287,10 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
         q = self.request.GET.get("q", "")
         stock_filter = self.request.GET.get("stock_filter", "")
 
-        # Base queryset
+        # Base queryset de productos
         qs = Product.objects.all()
 
-        # Búsqueda por texto
+        # Filtro por texto
         if q:
             qs = qs.filter(
                 Q(name__unaccent_icontains=q) |
@@ -294,13 +298,10 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
                 Q(description__unaccent_icontains=q)
             )
 
-        # ============================
         # Filtro por estado de stock
-        # ============================
         if stock_filter == "with_stock":
             qs = qs.filter(
-                Q(_stock__gt=0) |
-                Q(variants__stock__gt=0)
+                Q(_stock__gt=0) | Q(variants__stock__gt=0)
             ).distinct()
         elif stock_filter == "low_stock":
             qs = qs.filter(
@@ -310,18 +311,50 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
         elif stock_filter == "no_stock":
             qs = qs.filter(
                 Q(_stock__isnull=True) | Q(_stock__lte=0),
-                Q(variants__stock__isnull=True) | Q(variants__stock__lte=0)
+                Q(variants__stock__isnull=True) | Q(variants__stock__lte=0),
             ).distinct()
 
         qs = qs.order_by("name")
 
+
+        # Reservas activas
+        active_reservations = Reservation.objects.filter(status="active").values_list("id", flat=True)
+
+        reserved_by_product = (
+            InventoryMovement.objects.filter(
+                movement_type="reserve",
+                reservation_id__in=active_reservations,
+                variant__isnull=True
+            )
+            .values("product_id")
+            .annotate(reserved_qty=Sum("quantity"))
+        )
+        reserved_by_product = {r["product_id"]: r["reserved_qty"] for r in reserved_by_product}
+
+        reserved_by_variant = (
+            InventoryMovement.objects.filter(
+                movement_type="reserve",
+                reservation_id__in=active_reservations,
+                variant__isnull=False
+            )
+            .values("variant_id")
+            .annotate(reserved_qty=Sum("quantity"))
+        )
+        reserved_by_variant = {r["variant_id"]: r["reserved_qty"] for r in reserved_by_variant}
+
+        # Conteo total de reservas (para la estadística global)
+        reserved_count = sum(reserved_by_product.values()) + sum(reserved_by_variant.values())
+
+        # Contexto principal
         ctx["products"] = qs
         ctx["query"] = q
         ctx["stock_filter"] = stock_filter
+        ctx["reserved_by_product"] = reserved_by_product
+        ctx["reserved_by_variant"] = reserved_by_variant
+        ctx["reserved_count"] = reserved_count
 
-        # ============================
+
         # Estadísticas de inventario
-        # ============================
         # Productos sin variantes
         productos_sin_variantes = Product.objects.filter(variants__isnull=True).distinct()
 
@@ -361,6 +394,14 @@ class ProductVariantsView(LoginRequiredMixin, PermissionRequiredMixin, TemplateV
         product = get_object_or_404(Product, pk=kwargs.get("pk"))
         ctx["product"] = product
         ctx["variants"] = product.variants.all()
+
+        active_reservations = Reservation.objects.filter(status="active").values_list("id", flat=True)
+        reserved_by_variant = (
+            InventoryMovement.objects.filter(movement_type="reserve", reservation_id__in=active_reservations)
+            .values("variant_id")
+            .annotate(reserved_qty=Sum("quantity"))
+        )
+        ctx["reserved_by_variant"] = {r["variant_id"]: r["reserved_qty"] for r in reserved_by_variant}
         return ctx
 
 

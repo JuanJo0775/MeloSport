@@ -288,7 +288,7 @@ class ReservationListView(LoginRequiredMixin, PermissionRequiredMixin, ListView)
     paginate_by = 20
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related("client").prefetch_related("items")
+        qs = super().get_queryset().prefetch_related("items", "items__product", "items__variant")
         # Revisar vencimientos y liberar stock si aplica
         for r in qs:
             if r.status == "active" and r.due_date < timezone.now():
