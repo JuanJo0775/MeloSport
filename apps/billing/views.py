@@ -21,91 +21,171 @@ from .forms import InvoiceForm, ReservationForm, InvoiceItemFormSet, \
 # Registrar venta (Salida de inventario)
 
 class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    """Crear una venta (directa o desde apartado) que genera salida en inventario y factura."""
+    """Registrar una venta (directa o desde reserva) con productos seleccionados estilo tarjetas."""
     permission_required = "billing.add_invoice"
     model = Invoice
     form_class = InvoiceForm
     template_name = "backoffice/billing/sale_create.html"
+    paginate_by = 12  # productos por página
 
+    # 🔹 Prefill inicial (si viene de reserva)
     def get_initial(self):
-        """Si viene de un apartado, hereda datos del cliente."""
         initial = super().get_initial()
         reservation_id = self.request.GET.get("reservation")
         if reservation_id:
             res = get_object_or_404(Reservation, pk=reservation_id)
             initial.update({
-                "reservation": res,
                 "client_first_name": res.client_first_name,
                 "client_last_name": res.client_last_name,
                 "client_phone": res.client_phone,
+                "amount_paid": res.amount_deposited or Decimal("0.00"),
+                "reservation": res,
             })
         return initial
 
-    def get_context_data(self, **kwargs):
-        data = super().get_context_data(**kwargs)
-        if self.request.POST:
-            data["items_formset"] = InvoiceItemFormSet(self.request.POST)
-        else:
-            reservation_id = self.request.GET.get("reservation")
-            if reservation_id:
-                # Prellenar los items desde el apartado
-                res = get_object_or_404(Reservation, pk=reservation_id)
-                data["items_formset"] = InvoiceItemFormSet(
-                    queryset=InvoiceItem.objects.none(),
-                    initial=[
-                        {
-                            "product": item.product,
-                            "variant": item.variant,
-                            "quantity": item.quantity,
-                            "unit_price": item.unit_price,
-                        }
-                        for item in res.items.all()
-                    ],
-                )
-            else:
-                data["items_formset"] = InvoiceItemFormSet()
-        return data
+    # 🔹 Queryset / filtros
+    def get_queryset(self):
+        qs = (
+            Product.objects.filter(status="active")
+            .prefetch_related("variants", "images")
+        )
+        request = self.request
+        q = request.GET.get("q", "").strip()
+        filter_type = request.GET.get("type", "all")
+        stock_filter = request.GET.get("stock", "in_stock")
 
+        if q:
+            qs = qs.filter(
+                Q(name__unaccent_icontains=q) |
+                Q(sku__unaccent_icontains=q) |
+                Q(description__unaccent_icontains=q)
+            ).distinct()
+
+        simples = qs.filter(variants__isnull=True).order_by("name")
+        variantes = qs.filter(variants__isnull=False).distinct().order_by("name")
+
+        if filter_type == "simple":
+            final_qs = simples
+        elif filter_type == "variants":
+            final_qs = variantes
+        else:
+            final_qs = list(simples) + list(variantes)
+
+        if stock_filter == "in_stock":
+            final_qs = [
+                p for p in final_qs
+                if (getattr(p, "stock", 0) and p.stock > 0) or
+                   any((getattr(v, "stock", 0) or 0) > 0 for v in p.variants.all())
+            ]
+        return final_qs
+
+    # 🔹 Contexto
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        reservation_id = self.request.GET.get("reservation")
+        reservation = None
+        if reservation_id:
+            reservation = get_object_or_404(Reservation, pk=reservation_id)
+
+        # --- formset ---
+        if self.request.POST:
+            context["items_formset"] = InvoiceItemFormSet(self.request.POST, prefix="items")
+        elif reservation:
+            context["items_formset"] = InvoiceItemFormSet(
+                queryset=InvoiceItem.objects.none(),
+                initial=[
+                    {
+                        "product": item.product,
+                        "variant": item.variant,
+                        "quantity": item.quantity,
+                        "unit_price": item.unit_price,
+                    }
+                    for item in reservation.items.all()
+                ],
+                prefix="items",
+            )
+        else:
+            context["items_formset"] = InvoiceItemFormSet(prefix="items")
+
+        # --- catálogo de productos ---
+        qs = self.get_queryset()
+        paginator = Paginator(qs, self.paginate_by)
+        page_number = self.request.GET.get("page")
+        page_obj = paginator.get_page(page_number)
+
+        context.update({
+            "products": page_obj,
+            "page_obj": page_obj,
+            "is_paginated": page_obj.has_other_pages(),
+            "paginator": paginator,
+            "current_q": self.request.GET.get("q", ""),
+            "current_filter_type": self.request.GET.get("type", "all"),
+            "current_stock_filter": self.request.GET.get("stock", "in_stock"),
+            "querystring": self._get_querystring(),
+            "reservation": reservation,
+        })
+
+        # Si proviene de reserva → totales dinámicos
+        if reservation:
+            total = sum(item.subtotal for item in reservation.items.all())
+            abono = reservation.amount_deposited or Decimal("0.00")
+            saldo = total - abono
+            context.update({
+                "reservation_total": total,
+                "reservation_abono": abono,
+                "reservation_saldo": saldo,
+            })
+
+        return context
+
+    def _get_querystring(self):
+        qs_copy = self.request.GET.copy()
+        if "page" in qs_copy:
+            qs_copy.pop("page")
+        return qs_copy.urlencode()
+
+    # 🔹 Guardado
     def form_valid(self, form):
         context = self.get_context_data()
         items_formset = context["items_formset"]
 
+        if not items_formset.is_valid():
+            return self.form_invalid(form)
+
         with transaction.atomic():
             self.object = form.save(commit=False)
-            self.object.compute_totals()
+
+            # Si viene de reserva, asociarla
+            reservation_id = self.request.GET.get("reservation")
+            if reservation_id:
+                res = get_object_or_404(Reservation, pk=reservation_id)
+                self.object.reservation = res
+
             self.object.save()
 
-            if items_formset.is_valid():
-                items_formset.instance = self.object
-                items_formset.save()
-            else:
+            items_formset.instance = self.object
+            items_formset.save()
+
+            try:
+                self.object.finalize(user=self.request.user, request=self.request)
+            except Exception as e:
+                form.add_error(None, str(e))
+                transaction.set_rollback(True)
                 return self.form_invalid(form)
 
-            # Si viene de un apartado → heredar cliente y marcar apartado como completado
-            if self.object.reservation:
-                reservation = self.object.reservation
-                self.object.client_first_name = reservation.client_first_name
-                self.object.client_last_name = reservation.client_last_name
-                self.object.client_phone = reservation.client_phone
-                reservation.status = "completed"
-                reservation.save(update_fields=["status"])
-                self.object.save()
-
-            # Aplicar movimientos de inventario
-            self.object.apply_inventory_movements(user=self.request.user, request=self.request)
-
-            # Auditoría
             AuditLog.log_action(
                 request=self.request,
                 user=self.request.user,
                 action="create",
-                model="Invoice",
+                model=Invoice,
                 obj=self.object,
                 description=f"Factura #{self.object.code} registrada",
             )
 
         messages.success(self.request, f"Venta registrada correctamente. Factura #{self.object.code}")
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))
+
 
 
 # Facturas (ventas realizadas)

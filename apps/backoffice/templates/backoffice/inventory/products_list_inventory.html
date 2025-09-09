@@ -230,7 +230,7 @@
                     {% if p.stock <= 0 %}text-danger{% elif p.stock <= 5 %}text-warning{% else %}text-success{% endif %}">
                     {{ p.stock }}
                   </span>
-                {% with reserved_qty=reserved_by_product|get_item:p.id %}
+                {% with reserved_qty=reserved_total_by_product|get_item:p.id %}
                   {% if reserved_qty %}
                     <div><small class="text-muted">Reservado: {{ reserved_qty }}</small></div>
                   {% endif %}

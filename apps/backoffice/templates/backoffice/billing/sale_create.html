@@ -1,85 +1,345 @@
 {% extends "backoffice/base_backoffice.html" %}
-{% load breadcrumbs %}
+{% load static %}
 {% load money %}
+{% load breadcrumbs %}
 
-{% block title %}Registrar Venta{% endblock %}
+{% block title %}Crear Venta{% endblock %}
 
 {% block breadcrumb %}
-  {% breadcrumb "Facturación|backoffice:billing:invoice_list" "Facturas|backoffice:billing:invoice_list" "Nueva venta" %}
+  {% breadcrumb "Ventas|backoffice:billing:invoice_list" "Crear Venta" %}
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-  <div class="card">
+<div id="sale-page" class="container-fluid py-4">
+
+  <!-- FORMULARIO PRINCIPAL -->
+  <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Nueva Venta</h5>
-      <a href="{% url 'backoffice:billing:invoice_list' %}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Volver a Facturas
+      <h5 class="mb-0">
+        <i class="bi bi-plus-circle me-2"></i>
+        Nueva Venta
+      </h5>
+      <a href="{% url 'backoffice:billing:invoice_list' %}"
+         class="btn btn-outline-secondary"
+         data-bs-toggle="tooltip"
+         title="Volver a la lista">
+        <i class="bi bi-arrow-left me-1"></i>Volver
       </a>
     </div>
 
     <div class="card-body">
-      <form method="post" novalidate>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <form id="sale-form" method="post" novalidate>
         {% csrf_token %}
-        {% if form.non_field_errors %}
-          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-        {% endif %}
 
-        <div class="row g-3">
+        <!-- Datos del cliente -->
+        <div class="row g-3 mb-4">
           <div class="col-md-4">
-            <label class="form-label fw-semibold">{{ form.client_first_name.label }}</label>
+            <label class="form-label">Nombre del cliente</label>
             {{ form.client_first_name }}
+            {% if form.client_first_name.errors %}
+              <div class="invalid-feedback d-block">{{ form.client_first_name.errors.0 }}</div>
+            {% endif %}
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">{{ form.client_last_name.label }}</label>
+            <label class="form-label">Apellido del cliente</label>
             {{ form.client_last_name }}
+            {% if form.client_last_name.errors %}
+              <div class="invalid-feedback d-block">{{ form.client_last_name.errors.0 }}</div>
+            {% endif %}
           </div>
           <div class="col-md-4">
-            <label class="form-label fw-semibold">{{ form.client_phone.label }}</label>
+            <label class="form-label">Teléfono de contacto</label>
             {{ form.client_phone }}
+            {% if form.client_phone.errors %}
+              <div class="invalid-feedback d-block">{{ form.client_phone.errors.0 }}</div>
+            {% endif %}
           </div>
+        </div>
 
-          <div class="col-12">
-            <hr/>
-            <h6>Items de la factura</h6>
-
-            {% if items_formset %}
-              {{ items_formset.management_form }}
-              <div id="invoice-items">
-                {% for f in items_formset.forms %}
-                  <div class="row g-2 align-items-end mb-2 p-2 border rounded">
-                    <div class="col-md-5">{{ f.product.label_tag }} {{ f.product }}</div>
-                    <div class="col-md-3">{{ f.variant.label_tag }} {{ f.variant }}</div>
-                    <div class="col-md-2">{{ f.quantity.label_tag }} {{ f.quantity }}</div>
-                    <div class="col-md-2 text-end">{{ f.unit_price.label_tag }} {{ f.unit_price }}</div>
-                    {{ f.id }} {{ f.DELETE }}
-                  </div>
-                {% endfor %}
-              </div>
-            {% else %}
-              <div class="alert alert-warning">La vista debe pasar `items_formset` con el inline formset de InvoiceItem.</div>
+        <!-- Datos de factura / pago -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <label class="form-label">Descuento</label>
+            {{ form.discount_percentage }}
+            {% if form.discount_percentage.errors %}
+              <div class="invalid-feedback d-block">{{ form.discount_percentage.errors.0 }}</div>
             {% endif %}
           </div>
 
-          <div class="col-12 d-flex justify-content-end gap-2 mt-3">
-            <a href="{% url 'backoffice:billing:invoice_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-            <button type="submit" class="btn btn-primary">Registrar Venta</button>
+          <div class="col-md-3">
+            <label class="form-label d-block">Método de pago</label>
+            {{ form.payment_method }}
+            {% if form.payment_method.errors %}
+              <div class="invalid-feedback d-block">{{ form.payment_method.errors.0 }}</div>
+            {% endif %}
           </div>
+
+          <div class="col-md-3" id="payment-provider-group" style="display:none;">
+            <label class="form-label">Proveedor (digital)</label>
+            {{ form.payment_provider }}
+            {% if form.payment_provider.errors %}
+              <div class="invalid-feedback d-block">{{ form.payment_provider.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Monto pagado</label>
+            {{ form.amount_paid }}
+            {% if form.amount_paid.errors %}
+              <div class="invalid-feedback d-block">{{ form.amount_paid.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <label class="form-label">¿Pagada?</label><br>
+            {{ form.paid }}
+            {% if form.paid.errors %}
+              <div class="invalid-feedback d-block">{{ form.paid.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha de pago</label>
+            {{ form.payment_date }}
+            {% if form.payment_date.errors %}
+              <div class="invalid-feedback d-block">{{ form.payment_date.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Notas</label>
+            {{ form.notes }}
+            {% if form.notes.errors %}
+              <div class="invalid-feedback d-block">{{ form.notes.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- formset (oculto) -->
+        {{ items_formset.management_form }}
+        <div id="items-forms-container" class="d-none">
+          {% for f in items_formset.forms %}
+            <div class="form-row">{{ f.as_p }}</div>
+          {% endfor %}
+        </div>
+
+        <!-- TABLA DE PRODUCTOS SELECCIONADOS -->
+        <div class="mb-4">
+          <h6><i class="bi bi-cart3 me-1"></i>Productos Seleccionados</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle" id="selected-products-table">
+              <thead>
+                <tr>
+                  <th style="width:60px;">#</th>
+                  <th>Producto / Variante</th>
+                  <th class="text-center" style="width:110px">Cantidad</th>
+                  <th class="text-end" style="width:120px">Precio</th>
+                  <th class="text-end" style="width:120px">Subtotal</th>
+                  <th style="width:60px;"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="4" class="text-end">Total de la venta:</th>
+                  <th class="text-end" id="total-display">$ 0</th>
+                  <th></th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Crear Venta
+          </button>
+          <a href="{% url 'backoffice:billing:invoice_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Cancelar
+          </a>
         </div>
       </form>
     </div>
   </div>
+
+  <!-- PANEL DE PRODUCTOS DISPONIBLES -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-grid3x3-gap me-1"></i>Catálogo de Productos</h6>
+    </div>
+    <div class="card-body">
+      <!-- Filtros y búsqueda -->
+      <form method="get" class="row g-3 mb-3">
+        <div class="col-md-5">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input name="q" value="{{ current_q }}" type="text" class="form-control" placeholder="Buscar por nombre o SKU...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <select name="type" class="form-select" onchange="this.form.submit()">
+            <option value="all" {% if current_filter_type == "all" %}selected{% endif %}>Todos los productos</option>
+            <option value="simple" {% if current_filter_type == "simple" %}selected{% endif %}>Sin variantes</option>
+            <option value="variants" {% if current_filter_type == "variants" %}selected{% endif %}>Con variantes</option>
+          </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-funnel me-1"></i>Filtrar
+          </button>
+          <a href="{% url 'backoffice:billing:sale_create' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle me-1"></i>Limpiar
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <div class="card-body border-top" style="max-height: 600px; overflow-y: auto;">
+      <div id="products-container" class="row g-3">
+        {% for p in products %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <div class="d-flex align-items-start p-2">
+                <div class="flex-shrink-0 me-3">
+                  <img src="{{ p.get_main_image_url|default:p.images.first.image.url|default:'/static/img/no-image.png' }}"
+                       alt="{{ p.name }}"
+                       style="width:80px; height:80px; object-fit:cover; border-radius:6px;">
+                </div>
+
+                <div class="flex-grow-1">
+                  <h6 class="card-title mb-2 text-truncate">{{ p.name }}</h6>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted text-mono">SKU: {{ p.sku }}</small>
+                    <small class="text-muted">Stock:
+                      <span class="{% if p.stock > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ p.stock|default:"-" }}
+                      </span>
+                    </small>
+                  </div>
+
+                  {% if p.variants.exists %}
+                    <div class="table-responsive">
+                      <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                          {% for v in p.variants.all %}
+                            <tr>
+                              <td class="ps-0">
+                                <div class="small fw-semibold">
+                                  {% if v.size %}{{ v.size }}{% endif %}
+                                  {% if v.color %}{% if v.size %} - {% endif %}{{ v.color }}{% endif %}
+                                </div>
+                                <small class="text-muted text-mono">{{ v.sku }}</small>
+                              </td>
+                              <td class="text-end">
+                                <div class="small fw-semibold">{{ v.price|default:p.price|cop }}</div>
+                                <small class="{% if v.stock > 0 %}text-success{% else %}text-danger{% endif %}">
+                                  Stock: {{ v.stock }}
+                                </small>
+                              </td>
+                              <td style="width:60px;">
+                                <input type="number" min="1" value="1" class="form-control form-control-sm variant-qty-input">
+                              </td>
+                              <td style="width:80px;">
+                                <button class="btn btn-sm btn-primary btn-add-variant w-100"
+                                        data-product='{"id":{{ p.pk }},"name":"{{ p.name|escapejs }}","sku":"{{ p.sku|escapejs }}"}'
+                                        data-variant='{"id":{{ v.pk }},
+                                                       "label":"{% if v.size %}{{ v.size }}{% endif %}{% if v.color %}{% if v.size %} - {% endif %}{{ v.color }}{% endif %}",
+                                                       "sku":"{{ v.sku|escapejs }}",
+                                                       "stock":{{ v.stock|default:0 }},
+                                                       "price":"{{ v.price|default:p.price }}"}'>
+                                  <i class="bi bi-plus-circle"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  {% else %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <div class="fw-semibold text-primary">{{ p.price|cop }}</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <input type="number" min="1" value="1" class="form-control form-control-sm simple-qty" style="width:80px;">
+                      <button class="btn btn-sm btn-primary flex-grow-1 btn-add-simple"
+                              data-product='{"id":{{ p.pk }},
+                                             "name":"{{ p.name|escapejs }}",
+                                             "sku":"{{ p.sku|escapejs }}",
+                                             "price":"{{ p.price }}",
+                                             "stock":{{ p.stock|default:0 }}}'>
+                        <i class="bi bi-plus-circle me-1"></i>Agregar
+                      </button>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="col-12 text-center text-muted py-4">
+            <i class="bi bi-inbox display-6 d-block mb-2 text-muted"></i>
+            No hay productos disponibles con los filtros aplicados
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Paginación -->
+      {% if is_paginated %}
+        <nav class="mt-4">
+          <ul class="pagination pagination-sm justify-content-center">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">
+                  <i class="bi bi-chevron-left"></i>
+                </a>
+              </li>
+            {% endif %}
+
+            {% for num in paginator.page_range %}
+              {% if num == page_obj.number %}
+                <li class="page-item active">
+                  <span class="page-link">{{ num }}</span>
+                </li>
+              {% else %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ num }}&{{ querystring }}">{{ num }}</a>
+                </li>
+              {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ querystring }}">
+                  <i class="bi bi-chevron-right"></i>
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Template para formset (oculto) -->
+  <textarea id="empty-item-template" class="d-none">{{ items_formset.empty_form.as_p|escape }}</textarea>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('form input, form select, form textarea').forEach(el => {
-    if (!el.classList.contains('form-control') && el.type !== 'checkbox' && el.type !== 'radio') {
-      el.classList.add('form-control');
-    }
-  });
-});
+  // prefix para el formset (debe coincidir con InvoiceItemFormSet prefix)
+  window.SALE_CONFIG = { prefix: "items" };
 </script>
+<script src="{% static 'js/sale_create.js' %}"></script>
 {% endblock %}

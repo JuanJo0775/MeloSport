@@ -1,5 +1,5 @@
-{% extends "backoffice/billing/invoice_base.html" %}
-
+{% extends "backoffice/billing/invoice_template/invoice_base.html" %}
+{% load money %}
 {% block title %}Factura {{ invoice.code }}{% endblock %}
 
 {% block header_right %}

@@ -500,8 +500,6 @@ class InventoryMovement(models.Model):
             p_new.save(update_fields=['_stock'])
 
 
-    # Borrado: revertir movimiento
-
     @transaction.atomic
     def delete(self, *args, **kwargs):
         signed = int(self._signed_qty())  # in=+, out=-, adjust=±

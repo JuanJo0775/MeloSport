@@ -316,7 +316,6 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
 
         qs = qs.order_by("name")
 
-
         # Reservas activas
         active_reservations = Reservation.objects.filter(status="active").values_list("id", flat=True)
 
@@ -342,6 +341,15 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
         )
         reserved_by_variant = {r["variant_id"]: r["reserved_qty"] for r in reserved_by_variant}
 
+        # ✅ Total reservado por producto (producto + todas sus variantes)
+        reserved_total_by_product = {}
+        for product in qs:
+            total_reserved = reserved_by_product.get(product.id, 0)
+            for v in product.variants.all():
+                total_reserved += reserved_by_variant.get(v.id, 0)
+            if total_reserved > 0:
+                reserved_total_by_product[product.id] = total_reserved
+
         # Conteo total de reservas (para la estadística global)
         reserved_count = sum(reserved_by_product.values()) + sum(reserved_by_variant.values())
 
@@ -351,8 +359,8 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
         ctx["stock_filter"] = stock_filter
         ctx["reserved_by_product"] = reserved_by_product
         ctx["reserved_by_variant"] = reserved_by_variant
+        ctx["reserved_total_by_product"] = reserved_total_by_product  # 👈 usar este en la tabla
         ctx["reserved_count"] = reserved_count
-
 
         # Estadísticas de inventario
         # Productos sin variantes
