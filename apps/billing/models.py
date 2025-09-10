@@ -95,6 +95,19 @@ class Reservation(models.Model):
                 description=f"Apartado liberado (ID {self.pk}) Motivo: {reason}"
             )
 
+    def cancel(self):
+        if self.status != "active":
+            return  # solo puedes cancelar si está activa
+        self.status = "canceled"
+        self.save(update_fields=["status"])
+
+        # marcar movimientos como consumidos para que no cuenten en reserved_stock
+        InventoryMovement.objects.filter(
+            reservation_id=self.pk,
+            movement_type="reserve",
+            consumed=False
+        ).update(consumed=True)
+
     @property
     def remaining_due(self):
         total = self.total or Decimal("0.00")

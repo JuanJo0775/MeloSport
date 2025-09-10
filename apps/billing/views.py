@@ -371,10 +371,11 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         abono = reservation.amount_deposited or Decimal("0.00")
 
+        # 🔹 Ahora ambos plazos son corridos
         if total > 0 and abono >= (Decimal("0.20") * total):
-            reservation.due_date = add_business_days(timezone.now(), 30)
+            reservation.due_date = timezone.now() + timedelta(days=30)
         else:
-            reservation.due_date = add_business_days(timezone.now(), 3)
+            reservation.due_date = timezone.now() + timedelta(days=3)
 
         with transaction.atomic():
             reservation.save()
@@ -419,19 +420,17 @@ class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateV
         with transaction.atomic():
             self.object = form.save(commit=False)
 
-            # usamos la propiedad total del modelo
             total = self.object.total
             abono = self.object.amount_deposited or Decimal("0.00")
 
-            # recalcular vencimiento desde HOY
+            # 🔹 Recalcular vencimiento en días corridos
             if total > 0 and abono >= (Decimal("0.20") * total):
-                self.object.due_date = add_business_days(timezone.now(), 30)
+                self.object.due_date = timezone.now() + timedelta(days=30)
             else:
-                self.object.due_date = add_business_days(timezone.now(), 3)
+                self.object.due_date = timezone.now() + timedelta(days=3)
 
             self.object.save()
 
-            # Auditoría
             AuditLog.log_action(
                 request=self.request,
                 action="Update",
