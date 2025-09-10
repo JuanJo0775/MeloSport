@@ -90,18 +90,16 @@
         </div>
       </div>
 
-      <!-- formset (oculto) -->
-        {{ items_formset.management_form }}
-        <div id="items-forms-container" class="d-none">
-          {% for f in items_formset.forms %}
-            <div class="form-row">
-              {{ f.product }}    {# normalmente HiddenInput #}
-              {{ f.variant }}    {# HiddenInput o select según tu widget #}
-              {{ f.quantity }}
-              {{ f.unit_price }}
-            </div>
-          {% endfor %}
-        </div>
+    <!-- formset (oculto) -->
+    {{ items_formset.management_form }}
+    <div id="items-forms-container" class="d-none"></div>
+
+    <!-- plantilla vacía para clonar en JS -->
+    <textarea id="empty-item-template" class="d-none">
+      {{ items_formset.empty_form.as_p|escape }}
+    </textarea>
+
+
 
 
       <!-- TABLA DE PRODUCTOS SELECCIONADOS -->
@@ -345,4 +343,11 @@
   window.SALE_CONFIG = { prefix: "items" };
 </script>
 <script src="{% static 'js/sale_create.js' %}"></script>
+
+        <script>
+      window.SALE_CONFIG = {
+        prefix: "items",
+        reservationItems: {{ reservation_items_json|safe }}
+      };
+    </script>
 {% endblock %}

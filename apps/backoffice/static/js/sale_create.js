@@ -130,9 +130,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- formset ----------
     function insertFormsetForm(row) {
       const tpl = emptyTemplateTextarea?.value || "";
-      const html = tpl.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-                      .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+      if (!tpl) {
+        console.error("❌ No se encontró plantilla de formset vacío");
+        return;
+      }
+
+      const html = tpl
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'");
       const newForm = html.replace(/__prefix__/g, row.formIndex);
+
       itemsFormsContainer.insertAdjacentHTML("beforeend", newForm);
 
       const base = `${prefix}-${row.formIndex}`;
@@ -141,11 +150,23 @@ document.addEventListener("DOMContentLoaded", function () {
       const qtyEl = itemsFormsContainer.querySelector(`[name="${base}-quantity"]`);
       const upEl = itemsFormsContainer.querySelector(`[name="${base}-unit_price"]`);
 
-      if (prodEl) prodEl.value = row.product_id;
-      if (variantEl) variantEl.value = row.variant_id || "";
-      if (qtyEl) qtyEl.value = row.qty;
+      if (prodEl) {
+        prodEl.value = String(row.product_id);
+        prodEl.dataset.name = row.product_name || "Producto";
+        prodEl.dataset.sku = row.sku || "";
+      }
+      if (variantEl) {
+        variantEl.value = row.variant_id || "";
+        if (row.variant_label) variantEl.dataset.label = row.variant_label;
+      }
+      if (qtyEl) qtyEl.value = String(row.qty);
       if (upEl) upEl.value = String(row.unit_price);
+
+      console.log(`✅ Formset insertado en índice ${row.formIndex}`, {
+        prodEl, variantEl, qtyEl, upEl,
+      });
     }
+
 
     // ---------- tabla ----------
     function insertPreviewRow(row) {
@@ -200,47 +221,37 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // ---------- cargar items iniciales (reserva) ----------
     function loadInitialItems() {
-      const forms = itemsFormsContainer.querySelectorAll(`.form-row`);
+      const items = (window.SALE_CONFIG && window.SALE_CONFIG.reservationItems) || [];
       console.group("DEBUG loadInitialItems");
-      forms.forEach((f, idx) => {
-        const productEl = f.querySelector(`[name="${prefix}-${idx}-product"]`);
-        const variantEl = f.querySelector(`[name="${prefix}-${idx}-variant"]`);
-        const qtyEl = f.querySelector(`[name="${prefix}-${idx}-quantity"]`);
-        const upEl = f.querySelector(`[name="${prefix}-${idx}-unit_price"]`);
+      console.log("📦 ReservationItems recibidos:", items);
 
-        console.log(`Formset[${idx}]`, {
-          productEl,
-          productValue: productEl?.value,
-          productDataset: productEl?.dataset,
-          variantEl,
-          variantValue: variantEl?.value,
-          variantDataset: variantEl?.dataset,
-          qty: qtyEl?.value,
-          unit_price: upEl?.value,
-        });
+      items.forEach((it, idx) => {
+        const row = {
+          key: it.variant_id ? `${it.product_id}::${it.variant_id}` : `p::${it.product_id}`,
+          product_id: it.product_id,
+          product_name: it.product_name || "Producto",
+          sku: it.sku || "",
+          variant_id: it.variant_id || "",
+          variant_label: it.variant_label || "",
+          unit_price: parsePrice(it.unit_price),
+          qty: parseInt(it.qty || "1"),
+          formIndex: idx,  // fijo para reserva
+        };
 
-        if (productEl && qtyEl && upEl) {
-          const row = {
-            key: variantEl?.value
-              ? `${productEl.value}::${variantEl.value}`
-              : `p::${productEl.value}`,
-            product_id: productEl.value,
-            product_name: productEl.dataset?.name || "Producto",
-            sku: productEl.dataset?.sku || "",
-            variant_id: variantEl?.value || "",
-            variant_label: variantEl?.dataset?.label || "",
-            unit_price: parsePrice(upEl.value),
-            qty: parseInt(qtyEl.value || "1"),
-            formIndex: idx,
-          };
-          console.log("➡️ Parsed row:", row);
-          insertPreviewRow(row);
-          previewMap.set(row.key, row);
-        }
+        insertFormsetForm(row);
+        insertPreviewRow(row);
+        previewMap.set(row.key, row);
       });
+
+      // 🔹 Ajustar TOTAL_FORMS = cantidad de items insertados
+      if (totalFormsEl) {
+        totalFormsEl.value = String(items.length);
+      }
+
       console.groupEnd();
       recalcTotals();
     }
+
 
     // ---------- totales extendidos ----------
     function recalcTotals() {
@@ -363,9 +374,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // paidInput?.addEventListener("input", recalcTotals);
 
     // ---------- submit ----------
-    saleForm?.addEventListener("submit", e => {
-      if (!validateBeforeSubmit(e)) return;
-    });
+  saleForm?.addEventListener("submit", e => {
+    console.log("TOTAL_FORMS al enviar:", totalFormsEl?.value);  // 👈 Debug
+    if (!validateBeforeSubmit(e)) return;
+  });
 
     // ---------- init ----------
     attachAddButtons();

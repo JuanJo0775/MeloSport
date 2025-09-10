@@ -87,41 +87,32 @@ class InvoiceForm(forms.ModelForm):
         paid = cleaned.get("amount_paid") or Decimal("0.00")
         reservation = cleaned.get("reservation")
 
-        # 🔹 Pago digital necesita proveedor
+        # 🔹 Validación de proveedor para pagos digitales
         if pm == "DI" and not prov:
             raise ValidationError(
                 "Debes elegir un proveedor (Nequi o Daviplata) si seleccionas pago digital."
             )
 
+        # 🔹 El pago nunca puede ser negativo
         if paid < 0:
             raise ValidationError("El monto pagado no puede ser negativo.")
 
-        # 🔹 Si viene de reserva
+        # 🔹 Caso: viene de reserva
         if reservation:
-            total = self.instance.total or Decimal("0.00")
+            # El abono de la reserva debe ser válido
             abono = reservation.amount_deposited or Decimal("0.00")
-            restante = total - abono
+            if abono < 0:
+                raise ValidationError("El abono de la reserva no puede ser negativo.")
 
-            if restante < 0:
-                raise ValidationError("El restante a pagar no puede ser negativo.")
-            if paid > restante:
-                raise ValidationError(
-                    f"El monto pagado ({paid}) no puede exceder el restante ({restante})."
-                )
+            # ⚠️ No validamos contra total aquí porque todavía es 0.00
+            # Solo dejamos el valor ingresado y en form_valid lo forzamos al saldo pendiente
+            cleaned["amount_paid"] = paid
 
-            # ✅ Forzar pago completo de la deuda
-            cleaned["amount_paid"] = restante
-
-        # 🔹 Venta directa
+        # 🔹 Caso: venta directa
         else:
-            total = self.instance.total or Decimal("0.00")
-            if paid > total:
-                raise ValidationError(
-                    f"El monto pagado ({paid}) no puede exceder el total de la venta ({total})."
-                )
-
-            # ✅ Forzar pago completo
-            cleaned["amount_paid"] = total
+            # ⚠️ Tampoco validamos contra total aquí (porque aún no hay ítems)
+            # El valor final de `amount_paid` se ajusta en form_valid
+            cleaned["amount_paid"] = paid
 
         return cleaned
 

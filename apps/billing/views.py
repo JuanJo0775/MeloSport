@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
-
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
@@ -92,34 +93,39 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         if reservation_id:
             reservation = get_object_or_404(Reservation, pk=reservation_id)
 
-        if self.request.POST:
-            # Si el usuario está enviando el formulario
+        # 👉 construir el formset según el método
+        if self.request.method == "POST":
             context["items_formset"] = InvoiceItemSimpleFormSet(self.request.POST, prefix="items")
+        else:
+            context["items_formset"] = InvoiceItemSimpleFormSet(prefix="items")
 
-        elif reservation:
-            # Si viene de una reserva → precargar con los items (instancias completas)
-            initial_data = [
+        # 👉 si hay reserva, exportar ítems como JSON para el JS
+        if reservation:
+            items_json = [
                 {
-                    "product": item.product,  # ✅ instancia
-                    "variant": item.variant,
-                    "quantity": item.quantity,
-                    "unit_price": item.unit_price,
+                    "product_id": item.product_id,
+                    "product_name": item.product.name,
+                    "sku": item.product.sku,
+                    "variant_id": item.variant_id or "",
+                    "variant_label": " • ".join(
+                        filter(None, [item.variant.size, item.variant.color])
+                    ) if item.variant else "",
+                    "unit_price": str(item.unit_price),
+                    "qty": item.quantity,
                 }
                 for item in reservation.items.all()
             ]
-            context["items_formset"] = InvoiceItemSimpleFormSet(initial=initial_data, prefix="items")
-
+            context["reservation_items_json"] = json.dumps(items_json, cls=DjangoJSONEncoder)
         else:
-            # Si no hay POST ni reserva
-            context["items_formset"] = InvoiceItemSimpleFormSet(prefix="items")
+            context["reservation_items_json"] = "[]"
 
-        # Catálogo de productos
+        # --- catálogo de productos ---
         qs = self.get_queryset()
         paginator = Paginator(qs, self.paginate_by)
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
-        # Valores de abono y saldo (aunque no haya reserva, defaults)
+        # --- valores de abono y saldo (aunque no haya reserva, defaults) ---
         abono = Decimal("0.00")
         saldo = Decimal("0.00")
         if reservation:
@@ -137,8 +143,8 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             "current_stock_filter": self.request.GET.get("stock", "in_stock"),
             "querystring": self._get_querystring(),
             "reservation": reservation,
-            "reservation_abono": abono,  # 👈 siempre presente
-            "reservation_saldo": saldo,  # 👈 opcional, útil para debug
+            "reservation_abono": abono,
+            "reservation_saldo": saldo,
         })
 
         return context
@@ -155,6 +161,9 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         items_formset = context["items_formset"]
 
         if not items_formset.is_valid():
+            print("❌ FORMSET INVÁLIDO")
+            print("errors:", items_formset.errors)
+            print("management:", items_formset.management_form.errors)
             return self.form_invalid(form)
 
         with transaction.atomic():
@@ -163,36 +172,23 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             if not self.object.payment_date:
                 self.object.payment_date = timezone.now()
 
-            reservation_id = self.request.GET.get("reservation")
-            if reservation_id:
-                res = get_object_or_404(Reservation, pk=reservation_id)
-                self.object.reservation = res
-
-                # ✅ calcular saldo pendiente (total - abono)
-                total_res = sum(item.subtotal for item in res.items.all())
-                abono_res = res.amount_deposited or Decimal("0.00")
-                saldo_res = total_res - abono_res
-                self.object.amount_paid = saldo_res
-            else:
-                self.object.amount_paid = self.object.total
-
-            # Guardar factura
+            # 🔹 Guardar factura inicial (necesario para FK en items)
             self.object.save()
 
-            # Guardar items manualmente a partir del simple formset
+            # 🔹 Guardar items y calcular total
+            total_calculado = Decimal("0.00")
             for f in items_formset:
                 if not f.cleaned_data or f.cleaned_data.get("DELETE"):
                     continue
+
                 product = f.cleaned_data["product"]
                 variant = f.cleaned_data.get("variant")
                 qty = f.cleaned_data["quantity"]
                 unit_price = f.cleaned_data["unit_price"]
 
-                # Validación de stock
-                stock = variant.stock if variant else getattr(product, "stock", 0)
+                stock = variant.stock if variant else getattr(product, "_stock", 0)
                 if qty > stock:
                     f.add_error("quantity", "Cantidad mayor al stock disponible.")
-                    transaction.set_rollback(True)
                     return self.form_invalid(form)
 
                 InvoiceItem.objects.create(
@@ -203,24 +199,58 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     unit_price=unit_price,
                 )
 
-                stock_obj = variant if variant else product
-                stock_obj.stock -= qty
-                stock_obj.save(update_fields=["stock"])
+                total_calculado += (unit_price * qty)
+
+                if variant:
+                    variant.stock -= qty
+                    variant.save(update_fields=["stock"])
+                else:
+                    product._stock -= qty
+                    product.save(update_fields=["_stock"])
 
                 InventoryMovement.objects.create(
                     product=product,
                     variant=variant,
-                    quantity=-qty,
-                    reason="sale",
-                    reference_invoice=self.object,
+                    movement_type="out",
+                    quantity=qty,
+                    notes=f"Venta de {product.name}"
+                          + (f" ({variant.size} {variant.color})" if variant else ""),
+                    user=self.request.user,
+                    unit_price=unit_price,
+                    discount_percentage=self.object.discount_percentage or Decimal("0.00"),
                 )
 
-            # Finalizar lógica de la venta
+            # 🔹 Ahora sí, asignar total y monto pagado
+            self.object.total = total_calculado
+
+            reservation_id = self.request.GET.get("reservation")
+            if reservation_id:
+                res = get_object_or_404(Reservation, pk=reservation_id)
+                self.object.reservation = res
+
+                abono_res = res.amount_deposited or Decimal("0.00")
+                saldo_res = total_calculado - abono_res
+                if saldo_res < 0:
+                    saldo_res = Decimal("0.00")
+                self.object.amount_paid = saldo_res
+            else:
+                self.object.amount_paid = total_calculado
+
+            # 🔹 Validar formulario de nuevo con totales ya completos
+            form = self.get_form(self.get_form_class())
+            form.instance = self.object
+            if not form.is_valid():
+                print("❌ FORMULARIO PRINCIPAL INVÁLIDO")
+                print("errors:", form.errors)
+                return self.form_invalid(form)
+
+            # Guardar factura final
+            self.object.save()
+
             try:
                 self.object.finalize(user=self.request.user, request=self.request)
             except Exception as e:
                 form.add_error(None, str(e))
-                transaction.set_rollback(True)
                 return self.form_invalid(form)
 
             AuditLog.log_action(
