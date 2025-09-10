@@ -144,19 +144,18 @@ class InvoiceItemForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Si el formset viene con instancia (cuando hay reserva → inicializa items)
-        p = getattr(self.instance, "product", None)
-        v = getattr(self.instance, "variant", None)
+        # ✅ soportar initial con instancias completas
+        p = self.initial.get("product") or getattr(self.instance, "product", None)
+        v = self.initial.get("variant") or getattr(self.instance, "variant", None)
 
-        if p:
-            # Atributos seguros para que JS los use en la tabla
+        if p and not isinstance(p, int):
             self.fields["product"].widget.attrs.update({
                 "data-name": p.name or "Producto",
                 "data-sku": p.sku or "",
             })
 
-        if v:
-            label = " ".join(filter(None, [v.size, v.color]))
+        if v and not isinstance(v, int):
+            label = " • ".join(filter(None, [v.size, v.color]))
             self.fields["variant"].widget.attrs.update({
                 "data-label": label,
             })

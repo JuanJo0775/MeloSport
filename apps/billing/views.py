@@ -34,12 +34,16 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         reservation_id = self.request.GET.get("reservation")
         if reservation_id:
             res = get_object_or_404(Reservation, pk=reservation_id)
+            total_res = sum(item.subtotal for item in res.items.all())
+            abono_res = res.amount_deposited or Decimal("0.00")
+            saldo_res = total_res - abono_res
+
             initial.update({
                 "client_first_name": res.client_first_name,
                 "client_last_name": res.client_last_name,
                 "client_phone": res.client_phone,
                 "reservation": res,
-                "amount_paid": res.remaining_due,
+                "amount_paid": saldo_res,   # ✅ ahora solo el saldo pendiente
             })
         return initial
 
@@ -93,11 +97,11 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             context["items_formset"] = InvoiceItemSimpleFormSet(self.request.POST, prefix="items")
 
         elif reservation:
-            # Si viene de una reserva → precargar con los items
+            # Si viene de una reserva → precargar con los items (instancias completas)
             initial_data = [
                 {
-                    "product": item.product.pk,
-                    "variant": item.variant.pk if item.variant else None,
+                    "product": item.product,  # ✅ instancia
+                    "variant": item.variant,
                     "quantity": item.quantity,
                     "unit_price": item.unit_price,
                 }
@@ -109,11 +113,19 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             # Si no hay POST ni reserva
             context["items_formset"] = InvoiceItemSimpleFormSet(prefix="items")
 
-        # (catálogo de productos igual que antes)
+        # Catálogo de productos
         qs = self.get_queryset()
         paginator = Paginator(qs, self.paginate_by)
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
+
+        # Valores de abono y saldo (aunque no haya reserva, defaults)
+        abono = Decimal("0.00")
+        saldo = Decimal("0.00")
+        if reservation:
+            abono = reservation.amount_deposited or Decimal("0.00")
+            total_reserva = sum(item.subtotal for item in reservation.items.all())
+            saldo = total_reserva - abono
 
         context.update({
             "products": page_obj,
@@ -125,6 +137,8 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             "current_stock_filter": self.request.GET.get("stock", "in_stock"),
             "querystring": self._get_querystring(),
             "reservation": reservation,
+            "reservation_abono": abono,  # 👈 siempre presente
+            "reservation_saldo": saldo,  # 👈 opcional, útil para debug
         })
 
         return context
@@ -153,7 +167,12 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             if reservation_id:
                 res = get_object_or_404(Reservation, pk=reservation_id)
                 self.object.reservation = res
-                self.object.amount_paid = res.remaining_due()
+
+                # ✅ calcular saldo pendiente (total - abono)
+                total_res = sum(item.subtotal for item in res.items.all())
+                abono_res = res.amount_deposited or Decimal("0.00")
+                saldo_res = total_res - abono_res
+                self.object.amount_paid = saldo_res
             else:
                 self.object.amount_paid = self.object.total
 
@@ -215,7 +234,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
 
         messages.success(self.request, f"Venta registrada correctamente. Factura #{self.object.code}")
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))
-
 
 # Facturas (ventas realizadas)
 
