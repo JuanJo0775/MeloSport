@@ -323,6 +323,7 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
             InventoryMovement.objects.filter(
                 movement_type="reserve",
                 reservation_id__in=active_reservations,
+                consumed=False,
                 variant__isnull=True
             )
             .values("product_id")
@@ -334,6 +335,7 @@ class ProductsInventoryListView(LoginRequiredMixin, PermissionRequiredMixin, Tem
             InventoryMovement.objects.filter(
                 movement_type="reserve",
                 reservation_id__in=active_reservations,
+                consumed=False,
                 variant__isnull=False
             )
             .values("variant_id")
@@ -403,13 +405,23 @@ class ProductVariantsView(LoginRequiredMixin, PermissionRequiredMixin, TemplateV
         ctx["product"] = product
         ctx["variants"] = product.variants.all()
 
-        active_reservations = Reservation.objects.filter(status="active").values_list("id", flat=True)
+        active_reservations = Reservation.objects.filter(
+            status="active"
+        ).values_list("id", flat=True)
+
         reserved_by_variant = (
-            InventoryMovement.objects.filter(movement_type="reserve", reservation_id__in=active_reservations)
+            InventoryMovement.objects.filter(
+                movement_type="reserve",
+                reservation_id__in=active_reservations,
+                consumed=False
+            )
             .values("variant_id")
             .annotate(reserved_qty=Sum("quantity"))
         )
-        ctx["reserved_by_variant"] = {r["variant_id"]: r["reserved_qty"] for r in reserved_by_variant}
+
+        ctx["reserved_by_variant"] = {
+            r["variant_id"]: r["reserved_qty"] for r in reserved_by_variant
+        }
         return ctx
 
 

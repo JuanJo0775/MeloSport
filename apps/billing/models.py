@@ -95,18 +95,26 @@ class Reservation(models.Model):
                 description=f"Apartado liberado (ID {self.pk}) Motivo: {reason}"
             )
 
-    def cancel(self):
+    def cancel(self, user=None, request=None):
         if self.status != "active":
-            return  # solo puedes cancelar si está activa
-        self.status = "canceled"
-        self.save(update_fields=["status"])
-
-        # marcar movimientos como consumidos para que no cuenten en reserved_stock
-        InventoryMovement.objects.filter(
-            reservation_id=self.pk,
-            movement_type="reserve",
-            consumed=False
-        ).update(consumed=True)
+            return
+        with transaction.atomic():
+            self.status = "cancelled"  # CORRECCIÓN (antes: "canceled")
+            self.save(update_fields=["status"])
+            InventoryMovement.objects.filter(
+                reservation_id=self.pk,
+                movement_type="reserve",
+                consumed=False
+            ).update(consumed=True)
+            AuditLog.log_action(
+                request=request,
+                user=user,
+                action="update",
+                model=Reservation,
+                obj=self,
+                description=f"Apartado {self.pk} cancelado manualmente."
+            )
+            logger.info("Reserva %s cancelada y movimientos marcados como consumidos", self.pk)
 
     @property
     def remaining_due(self):
