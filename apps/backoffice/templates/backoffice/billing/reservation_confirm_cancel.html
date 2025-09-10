@@ -1,0 +1,105 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+{% load money %}
+{% block title %}Cancelar Reserva #{{ reservation.id }}{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Reservas|backoffice:billing:reservation_list" "Cancelar Reserva" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="mb-1"><i class="bi bi-x-circle me-1"></i>Confirmar cancelación de Reserva #{{ reservation.id }}</h5>
+      <p class="text-muted mb-0">Esta acción cambiará el estado de la reserva a <strong>Cancelada</strong> y liberará las cantidades reservadas en inventario. No eliminará el registro de la reserva.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-box-seam me-1"></i>Productos que se Liberarán</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-center">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in reservation.items.all %}
+                <tr>
+                  <td>
+                    <div class="small fw-semibold">{{ item.product.name }}</div>
+                    {% if item.variant %}
+                      <div class="small text-muted">
+                        {% if item.variant.size %}{{ item.variant.size }}{% endif %}
+                        {% if item.variant.color %}{% if item.variant.size %} - {% endif %}{{ item.variant.color }}{% endif %}
+                      </div>
+                      <small class="text-mono text-muted">{{ item.variant.sku }}</small>
+                    {% else %}
+                      <small class="text-mono text-muted">{{ item.product.sku }}</small>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-warning">{{ item.quantity }}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmación y contraseña -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-key me-1"></i>Confirmación de Seguridad</h6>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="alert alert-warning" role="alert">
+              <i class="bi bi-shield-check me-1"></i>
+              <strong>Verificación requerida:</strong> Para confirmar esta acción, ingrese su contraseña de usuario.
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label"><i class="bi bi-lock me-1"></i>Contraseña del usuario</label>
+              <input type="password" name="password" id="password" class="form-control" required placeholder="Ingrese su contraseña para continuar">
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <a href="{% url 'backoffice:billing:reservation_detail' reservation.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Cancelar y volver
+              </a>
+              <button type="submit" class="btn btn-danger">
+                <i class="bi bi-x-circle me-1"></i>Confirmar Cancelación de Reserva
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card mt-3 border-info">
+        <div class="card-body small text-muted">
+          <strong>Consecuencias:</strong>
+          <ul class="mb-0">
+            <li>La reserva pasará a estado <em>Cancelada</em>.</li>
+            <li>Las cantidades marcadas como reservadas se liberarán y estarán disponibles.</li>
+            <li>La acción quedará registrada en auditoría.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

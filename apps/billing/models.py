@@ -8,7 +8,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 from apps.products.models import Product, ProductVariant, InventoryMovement
 from apps.users.models import AuditLog
-
+import logging
+logger = logging.getLogger(__name__)
 
 def add_business_days(start_date, days):
     """Suma días hábiles (lunes-viernes)."""
@@ -115,6 +116,29 @@ class Reservation(models.Model):
                 description=f"Apartado {self.pk} cancelado manualmente."
             )
             logger.info("Reserva %s cancelada y movimientos marcados como consumidos", self.pk)
+
+    def complete(self, user=None, request=None):
+        """Marca la reserva como completada (convertida en venta) y libera los movimientos reservados."""
+        if self.status != "active":
+            return
+        with transaction.atomic():
+            self.status = "completed"
+            self.save(update_fields=["status"])
+            InventoryMovement.objects.filter(
+                reservation_id=self.pk,
+                movement_type="reserve",
+                consumed=False
+            ).update(consumed=True)
+            AuditLog.log_action(
+                request=request,
+                user=user,
+                action="update",
+                model=Reservation,
+                obj=self,
+                description=f"Apartado {self.pk} completado y convertido en venta."
+            )
+            logger.info("Reserva %s completada y movimientos marcados como consumidos", self.pk)
+
 
     @property
     def remaining_due(self):

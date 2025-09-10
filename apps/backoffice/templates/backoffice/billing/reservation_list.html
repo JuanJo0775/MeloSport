@@ -192,30 +192,34 @@
                 <span class="badge bg-danger">Vencida</span>
               {% elif reservation.status == "cancelled" %}
                 <span class="badge bg-secondary">Cancelada</span>
+              {% elif reservation.status == "completed" %}
+                <span class="badge bg-success">Completado</span>
               {% else %}
                 <span class="badge bg-secondary">{{ reservation.get_status_display }}</span>
               {% endif %}
             </td>
             <td class="text-center">
-              <div class="d-flex justify-content-end">
-                <a href="{% url 'backoffice:billing:reservation_detail' reservation.pk %}"
-                   class="btn btn-sm btn-outline-primary me-1"
-                   data-bs-toggle="tooltip" title="Ver reserva">
-                  <i class="bi bi-eye"></i>
-                </a>
-                {% if reservation.status == "active" %}
-                <a href="{% url 'backoffice:billing:reservation_update' reservation.pk %}"
-                   class="btn btn-sm btn-outline-secondary me-1"
-                   data-bs-toggle="tooltip" title="Editar reserva">
-                  <i class="bi bi-pencil"></i>
-                </a>
-                {% endif %}
-                <a href="{% url 'backoffice:billing:reservation_delete' reservation.pk %}"
-                   class="btn btn-sm btn-outline-danger"
-                   data-bs-toggle="tooltip" title="Eliminar reserva">
-                  <i class="bi bi-trash"></i>
-                </a>
-              </div>
+            <div class="d-flex justify-content-end">
+              <a href="{% url 'backoffice:billing:reservation_detail' reservation.pk %}"
+                 class="btn btn-sm btn-outline-primary me-1"
+                 data-bs-toggle="tooltip" title="Ver reserva">
+                <i class="bi bi-eye"></i>
+              </a>
+
+              {% if reservation.status == "active" %}
+              <a href="{% url 'backoffice:billing:reservation_update' reservation.pk %}"
+                 class="btn btn-sm btn-outline-secondary me-1"
+                 data-bs-toggle="tooltip" title="Editar reserva">
+                <i class="bi bi-pencil"></i>
+              </a>
+
+              <a href="{% url 'backoffice:billing:reservation_cancel' reservation.pk %}"
+                 class="btn btn-sm btn-outline-danger me-1"
+                 data-bs-toggle="tooltip" title="Cancelar reserva">
+                <i class="bi bi-x-circle"></i>
+              </a>
+              {% endif %}
+            </div>
             </td>
           </tr>
           {% empty %}

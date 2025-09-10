@@ -1,10 +1,12 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import logging
 import json
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
+from django.views import View
 from django.views.generic import CreateView, ListView, DetailView, TemplateView, DeleteView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.shortcuts import redirect, get_object_or_404, render
@@ -20,7 +22,7 @@ from .models import Invoice, Reservation, InvoiceItem, ReservationItem, add_busi
 from .forms import InvoiceForm, ReservationForm, InvoiceItemFormSet, \
     ReservationItemFormSetCreate, ReservationItemFormSetUpdate, InvoiceItemSimpleFormSet
 
-
+logger = logging.getLogger(__name__)
 
 
 class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -163,12 +165,40 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
 
         try:
             with transaction.atomic():
+                # -------------------------
+                # 1) Crear/guardar factura base
+                # -------------------------
                 self.object = form.save(commit=False)
                 self.object.paid = True
                 if not self.object.payment_date:
                     self.object.payment_date = timezone.now()
+
+                # Intentar obtener la reserva desde cleaned_data (si el form la incluye)
+                reservation = form.cleaned_data.get("reservation") if hasattr(form, "cleaned_data") else None
+
+                # Si no vino en el form, buscar en POST/GET o en la propia instancia
+                if not reservation:
+                    reservation_id = (
+                            self.request.POST.get("reservation")
+                            or self.request.GET.get("reservation")
+                            or getattr(self.object, "reservation_id", None)
+                    )
+                    if reservation_id:
+                        try:
+                            reservation = Reservation.objects.get(pk=reservation_id)
+                        except Reservation.DoesNotExist:
+                            reservation = None
+
+                # Si encontramos la reserva, la adjuntamos a la factura antes de guardar
+                if reservation:
+                    self.object.reservation = reservation
+
+                # Guardar la factura preliminar
                 self.object.save()
 
+                # -------------------------
+                # 2) Crear items de la factura
+                # -------------------------
                 total_calculado = Decimal("0.00")
                 for f in items_formset:
                     if not f.cleaned_data or f.cleaned_data.get("DELETE"):
@@ -193,38 +223,76 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     )
                     total_calculado += (unit_price * qty)
 
-                # 🔹 Totales y monto pagado
+                # -------------------------
+                # 3) Totales y monto pagado
+                # -------------------------
                 self.object.total = total_calculado
-                reservation = form.cleaned_data.get("reservation")
+
+                # Si obtuvimos reservation arriba, usamos esa info para calcular amount_paid
                 if reservation:
-                    self.object.reservation = reservation
                     abono_res = reservation.amount_deposited or Decimal("0.00")
                     saldo_res = total_calculado - abono_res
                     if saldo_res < 0:
                         saldo_res = Decimal("0.00")
                     self.object.amount_paid = saldo_res
                 else:
-                    self.object.amount_paid = total_calculado
+                    # Si el form trae campo amount_paid, se respetará; sino asumimos total
+                    if not self.object.amount_paid or self.object.amount_paid == Decimal("0.00"):
+                        self.object.amount_paid = total_calculado
 
-                # 🔹 Revalidar con totales completos
+                # -------------------------
+                # 4) Revalidar formset (igual que antes)
+                # -------------------------
                 form = self.get_form(self.get_form_class())
                 form.instance = self.object
                 if not items_formset.is_valid():
-                    print("❌ FORMSET inválido:", items_formset.errors)
-                    print("❌ MANAGEMENT form:", items_formset.management_form.errors)
+                    print("❌ FORMSET inválido (post-save):", items_formset.errors)
+                    print("❌ MANAGEMENT form (post-save):", items_formset.management_form.errors)
                     return self.form_invalid(form)
 
+                # -------------------------
+                # 5) Guardar factura definitiva y aplicar movimientos
+                # -------------------------
                 self.object.save()
+                # finalize aplicará movimientos de inventario y actualizará el estado de la factura
                 self.object.finalize(user=self.request.user, request=self.request)
 
+                # -------------------------
+                # 6) FORZAR completion de la reserva (si existe) — mismo botón hace todo
+                # -------------------------
+                # Reobtener/lockear la reserva para mayor consistencia
+                if self.object.reservation:
+                    try:
+                        res = Reservation.objects.select_for_update().get(pk=self.object.reservation.pk)
+                        print(
+                            f"[form_valid] reservation BEFORE id={res.pk} status={res.status} movement_created={res.movement_created}")
+                        # Llamamos al método del modelo (es idempotente: si no está 'active' no hará cambios)
+                        res.complete(user=self.request.user, request=self.request)
+                        AuditLog.log_action(
+                            request=self.request,
+                            user=self.request.user,
+                            action="update",
+                            model=Reservation,
+                            obj=res,
+                            description=f"Reserva #{res.pk} completada al crear venta (botón crear venta)."
+                        )
+                        print(f"[form_valid] reservation AFTER id={res.pk} status={res.status}")
+                    except Reservation.DoesNotExist:
+                        print(
+                            f"[form_valid] reservation id {self.object.reservation.pk} no encontrada al intentar completar.")
+
+                # -------------------------
+                # 7) Log de la factura
+                # -------------------------
                 AuditLog.log_action(
                     request=self.request,
                     user=self.request.user,
-                    action="Create",
+                    action="create",
                     model=Invoice,
                     obj=self.object,
                     description=f"Factura #{self.object.code} registrada",
                 )
+
         except IntegrityError:
             return self.form_invalid(form)
         except Exception as e:
@@ -232,8 +300,11 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             form.add_error(None, str(e))
             return self.form_invalid(form)
 
+        # Mensaje y redirección final al detalle de la factura
         messages.success(self.request, f"Venta registrada correctamente. Factura #{self.object.code}")
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))
+
+
 
 # Facturas (ventas realizadas)
 
@@ -609,3 +680,118 @@ class ReservationDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteV
             messages.success(request, f"Reserva #{self.object.pk} cancelada y stock liberado.")
 
         return super().delete(request, *args, **kwargs)
+
+
+class ReservationCancelView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """
+    Cancela (no borra) una reserva:
+    - valida contraseña del usuario en POST
+    - llama a reservation.cancel(...) que marca movimientos reserve como consumed=True
+    - registra acción en AuditLog y muestra mensaje
+    """
+    permission_required = "billing.change_reservation"  # puedes cambiar a 'billing.delete_reservation' si prefieres ese permiso
+    template_name = "backoffice/billing/reservation_confirm_cancel.html"
+
+    def get(self, request, pk, *args, **kwargs):
+        reservation = get_object_or_404(Reservation, pk=pk)
+        return render(request, self.template_name, {"reservation": reservation})
+
+    def post(self, request, pk, *args, **kwargs):
+        reservation = get_object_or_404(Reservation, pk=pk)
+
+        password = request.POST.get("password")
+        if not password or not request.user.check_password(password):
+            messages.error(request, "Contraseña incorrecta. No se pudo cancelar la reserva.")
+            return render(request, self.template_name, {"reservation": reservation})
+
+        if reservation.status != "active":
+            messages.warning(request, "Solo se pueden cancelar reservas con estado 'Activo'.")
+            return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
+
+        with transaction.atomic():
+            # Usa el método del modelo para mantener la lógica atómica y consistente
+            reservation.cancel(user=request.user, request=request)
+
+            AuditLog.log_action(
+                request=request,
+                user=request.user,
+                action="update",
+                model=Reservation,
+                obj=reservation,
+                description=f"Reserva #{reservation.pk} cancelada desde UI."
+            )
+
+            messages.success(request, f"Reserva #{reservation.pk} cancelada correctamente.")
+
+        return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
+
+
+class ReservationCompleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """
+    Marca una reserva como completada tras crear una venta y redirige a la factura.
+    Implementado con locking y updates atómicos para garantizar que los movimientos 'reserve'
+    queden marcados como consumed=True.
+    """
+    permission_required = "billing.change_reservation"
+
+    def get(self, request, pk, *args, **kwargs):
+        invoice_id = request.GET.get("invoice")
+        try:
+            with transaction.atomic():
+                # Lockear la fila de la reserva para evitar race conditions
+                res = Reservation.objects.select_for_update().get(pk=pk)
+                print(f"[reservation_complete] invoked for reservation {pk} (status={res.status})")
+                logger.info("[reservation_complete] invoked for reservation %s (status=%s)", pk, res.status)
+
+                if res.status == "active":
+                    # Marcar como completed (persistir)
+                    res.status = "completed"
+                    res.save(update_fields=["status"])
+                    print(f"[reservation_complete] reservation {pk} status set to 'completed'")
+
+                    # Obtener movimientos 'reserve' no consumidos y marcarlos consumed=True
+                    reserve_qs = InventoryMovement.objects.filter(
+                        reservation_id=res.pk,
+                        movement_type="reserve",
+                        consumed=False
+                    )
+
+                    reserve_ids = list(reserve_qs.values_list("id", flat=True))
+                    if reserve_ids:
+                        # Lockear movimientos antes de actualizar para consistencia
+                        InventoryMovement.objects.select_for_update().filter(id__in=reserve_ids)
+
+                    updated = reserve_qs.update(consumed=True)
+                    print(f"[reservation_complete] updated reserve movements consumed=True count={updated}")
+                    logger.info("[reservation_complete] reserve movements updated (consumed) = %s for reservation %s", updated, res.pk)
+
+                    # Asegurar flag movement_created
+                    if not res.movement_created:
+                        res.movement_created = True
+                        res.save(update_fields=["movement_created"])
+
+                    AuditLog.log_action(
+                        request=request,
+                        user=request.user,
+                        action="update",
+                        model=Reservation,
+                        obj=res,
+                        description=f"Reserva #{res.pk} completada por conversión a venta (ReservationCompleteView)."
+                    )
+                    messages.success(request, f"Reserva #{res.pk} completada correctamente.")
+                else:
+                    # Si no está activa, solo informar
+                    logger.info("[reservation_complete] reservation %s not active (status=%s)", res.pk, res.status)
+                    messages.info(request, f"La reserva #{res.pk} no está en estado activo (estado actual: {res.status}).")
+
+        except Reservation.DoesNotExist:
+            messages.error(request, "Reserva no encontrada.")
+            if invoice_id:
+                return redirect(reverse("backoffice:billing:invoice_detail", args=[invoice_id]))
+            return redirect(reverse("backoffice:billing:reservation_list"))
+
+        # Redirigir a la factura creada (si se pasó invoice id), si no al detalle de la reserva
+        if invoice_id:
+            return redirect(reverse("backoffice:billing:invoice_detail", args=[invoice_id]))
+
+        return redirect(reverse("backoffice:billing:reservation_detail", args=[res.pk]))

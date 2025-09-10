@@ -14,6 +14,8 @@ urlpatterns = [
     path("reservations/<int:pk>/", views.ReservationDetailView.as_view(), name="reservation_detail"),
     path("reservations/<int:pk>/update/", views.ReservationUpdateView.as_view(), name="reservation_update"),
     path("reservations/<int:pk>/delete/", views.ReservationDeleteView.as_view(), name="reservation_delete"),
+    path("reservations/<int:pk>/cancel/", views.ReservationCancelView.as_view(), name="reservation_cancel"),
+    path("reservations/<int:pk>/complete/", views.ReservationCompleteView.as_view(), name="reservation_complete"),
 
     # Facturas
     path("invoices/", views.InvoiceListView.as_view(), name="invoice_list"),
