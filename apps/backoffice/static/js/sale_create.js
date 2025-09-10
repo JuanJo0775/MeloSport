@@ -47,7 +47,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return JSON.parse(str);
       } catch (e) {
         try {
-          // eslint-disable-next-line no-new-func
           return new Function("return (" + str + ")")();
         } catch {
           return {};
@@ -71,6 +70,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const tableBody = $qs("#selected-products-table tbody", pageRoot);
     const totalDisplay = $qs("#total-display", pageRoot);
+    const discountInput = $qs("#id_discount_percentage", pageRoot); // porcentaje
+    const depositDisplay = $qs("#deposit-display", pageRoot);
+    const paidInput = $qs("#id_amount_paid", pageRoot);
+    const remainingDisplay = $qs("#remaining-display", pageRoot);
+
     const saleForm = $qs("#sale-form", pageRoot);
     const itemsFormsContainer = $qs("#items-forms-container", pageRoot);
     const emptyTemplateTextarea = $qs("#empty-item-template", pageRoot);
@@ -194,11 +198,76 @@ document.addEventListener("DOMContentLoaded", function () {
       if (el) el.value = qty;
     }
 
-    // ---------- totales ----------
+    // ---------- cargar items iniciales (reserva) ----------
+    function loadInitialItems() {
+      const forms = itemsFormsContainer.querySelectorAll(`.form-row`);
+      console.group("DEBUG loadInitialItems");
+      forms.forEach((f, idx) => {
+        const productEl = f.querySelector(`[name="${prefix}-${idx}-product"]`);
+        const variantEl = f.querySelector(`[name="${prefix}-${idx}-variant"]`);
+        const qtyEl = f.querySelector(`[name="${prefix}-${idx}-quantity"]`);
+        const upEl = f.querySelector(`[name="${prefix}-${idx}-unit_price"]`);
+
+        console.log(`Formset[${idx}]`, {
+          productEl,
+          productValue: productEl?.value,
+          productDataset: productEl?.dataset,
+          variantEl,
+          variantValue: variantEl?.value,
+          variantDataset: variantEl?.dataset,
+          qty: qtyEl?.value,
+          unit_price: upEl?.value,
+        });
+
+        if (productEl && qtyEl && upEl) {
+          const row = {
+            key: variantEl?.value
+              ? `${productEl.value}::${variantEl.value}`
+              : `p::${productEl.value}`,
+            product_id: productEl.value,
+            product_name: productEl.dataset?.name || "Producto",
+            sku: productEl.dataset?.sku || "",
+            variant_id: variantEl?.value || "",
+            variant_label: variantEl?.dataset?.label || "",
+            unit_price: parsePrice(upEl.value),
+            qty: parseInt(qtyEl.value || "1"),
+            formIndex: idx,
+          };
+          console.log("➡️ Parsed row:", row);
+          insertPreviewRow(row);
+          previewMap.set(row.key, row);
+        }
+      });
+      console.groupEnd();
+      recalcTotals();
+    }
+
+    // ---------- totales extendidos ----------
     function recalcTotals() {
-      let total = 0;
-      previewMap.forEach(r => { total += r.unit_price * r.qty; });
-      totalDisplay.textContent = fmtCOP(total);
+      let subtotal = 0;
+      previewMap.forEach(r => { subtotal += r.unit_price * r.qty; });
+
+      const discountPct = parsePrice(discountInput?.value || 0);
+      const discount = Math.round(subtotal * (discountPct / 100));
+      const deposit = parsePrice(depositDisplay?.dataset.value || 0);
+
+      const totalAfterDiscount = Math.max(0, subtotal - discount);
+
+      // ✅ forzar siempre el valor del campo de pago al saldo pendiente
+      paidInput.value = totalAfterDiscount - deposit;
+      const paid = parsePrice(paidInput.value || 0);
+
+      const remaining = Math.max(0, totalAfterDiscount - deposit - paid);
+
+      // actualizar spans
+      $qs("#subtotal-display").textContent = fmtCOP(subtotal);
+      $qs("#discount-display").textContent = fmtCOP(discount);
+      depositDisplay.textContent = fmtCOP(deposit);
+      $qs("#paid-display").textContent = fmtCOP(paid);
+      remainingDisplay.textContent = fmtCOP(remaining);
+
+      // mantener total principal en el footer de la tabla
+      totalDisplay.textContent = fmtCOP(totalAfterDiscount);
     }
 
     // ---------- eventos: añadir botones ----------
@@ -234,7 +303,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
-    // ---------- validación del pago en cliente ----------
+    // ---------- validación del pago ----------
     function getSelectedPaymentMethod() {
       const els = pageRoot.querySelectorAll('[name="payment_method"]');
       if (!els || els.length === 0) return null;
@@ -248,7 +317,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const pm = getSelectedPaymentMethod();
       const providerGroup = $qs("#payment-provider-group", pageRoot);
       if (!providerGroup) return;
-      if (pm === "DI" || pm === "DI" /* defensive */) {
+      if (pm === "DI") {
         providerGroup.style.display = "";
       } else {
         providerGroup.style.display = "none";
@@ -258,58 +327,50 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function validateBeforeSubmit(e) {
-      // requerir al menos un producto
       if (previewMap.size === 0) {
         e.preventDefault();
         alert("Debe agregar al menos un producto.");
         return false;
       }
-
-      // validar proveedor si pago digital
       const pm = getSelectedPaymentMethod();
       if (pm === "DI") {
         const prov = pageRoot.querySelector('[name="payment_provider"]');
         if (!prov || !prov.value) {
           e.preventDefault();
-          alert("Debes seleccionar el proveedor para pago digital (Nequi / Daviplata).");
+          alert("Debes seleccionar el proveedor (Nequi / Daviplata).");
           return false;
         }
       }
-
-      // validar monto pagado (no mayor al total)
-      const amountPaidEl = pageRoot.querySelector('#id_amount_paid');
-      const amountPaid = amountPaidEl ? parsePrice(amountPaidEl.value) : 0;
-      // calcular total actual
-      let total = 0;
-      previewMap.forEach(r => { total += r.unit_price * r.qty; });
-
-      if (amountPaid > total) {
+      const remainingText = remainingDisplay?.textContent || "";
+      if (remainingText.startsWith("-")) {
         e.preventDefault();
-        alert("El monto pagado no puede ser mayor al total de la venta.");
+        alert("El saldo restante no puede ser negativo.");
         return false;
       }
-
-      // todo ok (server-side hará validaciones definitivas)
       return true;
     }
 
-    // ---------- attach payment method listeners ----------
+    // ---------- attach ----------
     function attachPaymentListeners() {
       const pmEls = pageRoot.querySelectorAll('[name="payment_method"]');
       pmEls.forEach(el => el.addEventListener("change", togglePaymentProviderVisibility));
-      // initial state
       togglePaymentProviderVisibility();
     }
+
+    discountInput?.addEventListener("input", recalcTotals);
+
+    // quitamos el listener manual de amount_paid porque ahora es automático
+    // paidInput?.addEventListener("input", recalcTotals);
 
     // ---------- submit ----------
     saleForm?.addEventListener("submit", e => {
       if (!validateBeforeSubmit(e)) return;
-      // allow submit
     });
 
     // ---------- init ----------
     attachAddButtons();
     attachPaymentListeners();
+    loadInitialItems();
     recalcTotals();
   })();
 });

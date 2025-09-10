@@ -8,24 +8,17 @@ from django.forms import inlineformset_factory
 from .models import Invoice, InvoiceItem, Reservation, ReservationItem
 
 
-# ------------------------
-# 🔹 Descuentos predefinidos
-# ------------------------
 DISCOUNT_CHOICES = [
-    (0, "0%"),
-    (10, "10%"),
-    (20, "20%"),
-    (50, "50%"),
-    (70, "70%"),
+    ("0", "0%"),
+    ("5", "5%"),
+    ("10", "10%"),
+    ("15", "15%"),
 ]
 
 
-# ------------------------
-# 🔹 Facturas
-# ------------------------
 class InvoiceForm(forms.ModelForm):
     discount_percentage = forms.ChoiceField(
-        label="Descuento",
+        label="Descuento (%)",
         choices=DISCOUNT_CHOICES,
         required=False,
         widget=forms.Select(attrs={"class": "form-control"}),
@@ -49,7 +42,13 @@ class InvoiceForm(forms.ModelForm):
         max_digits=12,
         decimal_places=2,
         required=True,
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "readonly": "readonly",  # 👈 aquí queda fijo
+            }
+        ),
     )
 
     class Meta:
@@ -76,7 +75,7 @@ class InvoiceForm(forms.ModelForm):
     def clean_discount_percentage(self):
         raw = self.cleaned_data.get("discount_percentage")
         try:
-            return Decimal(raw)
+            return Decimal(raw or "0.00")
         except Exception:
             return Decimal("0.00")
 
@@ -87,22 +86,41 @@ class InvoiceForm(forms.ModelForm):
         paid = cleaned.get("amount_paid") or Decimal("0.00")
         reservation = cleaned.get("reservation")
 
-        # Validaciones básicas
+        # 🔹 Pago digital necesita proveedor
         if pm == "DI" and not prov:
-            raise ValidationError("Debes elegir un proveedor (Nequi o Daviplata) si seleccionas pago digital.")
+            raise ValidationError(
+                "Debes elegir un proveedor (Nequi o Daviplata) si seleccionas pago digital."
+            )
 
         if paid < 0:
             raise ValidationError("El monto pagado no puede ser negativo.")
 
-        # Validar restante si viene de reserva
-        if reservation and reservation.amount_deposited is not None:
+        # 🔹 Si viene de reserva
+        if reservation:
             total = self.instance.total or Decimal("0.00")
-            abono = reservation.amount_deposited
-            remaining = total - abono
-            if remaining < 0:
+            abono = reservation.amount_deposited or Decimal("0.00")
+            restante = total - abono
+
+            if restante < 0:
                 raise ValidationError("El restante a pagar no puede ser negativo.")
-            if paid > remaining:
-                raise ValidationError(f"El monto pagado ({paid}) no puede exceder el restante ({remaining}).")
+            if paid > restante:
+                raise ValidationError(
+                    f"El monto pagado ({paid}) no puede exceder el restante ({restante})."
+                )
+
+            # ✅ Forzar pago completo de la deuda
+            cleaned["amount_paid"] = restante
+
+        # 🔹 Venta directa
+        else:
+            total = self.instance.total or Decimal("0.00")
+            if paid > total:
+                raise ValidationError(
+                    f"El monto pagado ({paid}) no puede exceder el total de la venta ({total})."
+                )
+
+            # ✅ Forzar pago completo
+            cleaned["amount_paid"] = total
 
         return cleaned
 
@@ -114,13 +132,33 @@ class InvoiceItemForm(forms.ModelForm):
         model = InvoiceItem
         fields = ["product", "variant", "quantity", "unit_price"]
         widgets = {
-            "product": forms.HiddenInput(),  # lo maneja el modal
+            "product": forms.HiddenInput(),  # lo maneja el modal / formset
             "variant": forms.Select(attrs={"class": "form-control"}),
             "quantity": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "unit_price": forms.NumberInput(
                 attrs={"class": "form-control", "step": "0.01"}
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Si el formset viene con instancia (cuando hay reserva → inicializa items)
+        p = getattr(self.instance, "product", None)
+        v = getattr(self.instance, "variant", None)
+
+        if p:
+            # Atributos seguros para que JS los use en la tabla
+            self.fields["product"].widget.attrs.update({
+                "data-name": p.name or "Producto",
+                "data-sku": p.sku or "",
+            })
+
+        if v:
+            label = " ".join(filter(None, [v.size, v.color]))
+            self.fields["variant"].widget.attrs.update({
+                "data-label": label,
+            })
 
     def clean(self):
         cleaned = super().clean()
@@ -136,11 +174,14 @@ class InvoiceItemForm(forms.ModelForm):
 
         # 🔹 Validación extra contra stock
         if product and qty:
-            available = variant.stock if variant else product._stock
+            available = variant.stock if variant else getattr(product, "stock", 0)
             if qty > available:
-                raise ValidationError(f"No hay suficiente stock. Disponible: {available}.")
+                raise ValidationError(
+                    f"No hay suficiente stock. Disponible: {available}."
+                )
 
         return cleaned
+
 
 
 InvoiceItemFormSet = inlineformset_factory(

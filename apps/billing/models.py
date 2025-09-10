@@ -96,6 +96,11 @@ class Reservation(models.Model):
             )
 
     @property
+    def remaining_due(self):
+        total = self.total or Decimal("0.00")
+        return (total - (self.amount_deposited or Decimal("0.00"))).quantize(Decimal("0.01"))
+
+    @property
     def total(self):
         return sum(item.subtotal for item in self.items.all())
 
@@ -151,7 +156,13 @@ class Invoice(models.Model):
     client_phone = models.CharField("Teléfono del cliente", max_length=30, null=True, blank=True)
 
     created_at = models.DateTimeField("Creado el", auto_now_add=True)
-    reservation = models.ForeignKey(Reservation, verbose_name="Apartado relacionado", null=True, blank=True, on_delete=models.SET_NULL)
+    reservation = models.ForeignKey(
+        Reservation,
+        verbose_name="Apartado relacionado",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
 
     # 👇 Descuento directo en la venta
     discount_percentage = models.DecimalField(
@@ -159,14 +170,14 @@ class Invoice(models.Model):
         max_digits=5,
         decimal_places=2,
         default=Decimal("0.00"),
-        validators=[MinValueValidator(0), MaxValueValidator(100)]
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
     discount_amount = models.DecimalField("Monto descuento", max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
     subtotal = models.DecimalField("Subtotal", max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total = models.DecimalField("Total", max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
-    # Payment fields (nuevos)
+    # Campos de pago
     payment_method = models.CharField("Método de pago", max_length=2, choices=PAYMENT_METHODS, null=True, blank=True)
     payment_provider = models.CharField("Proveedor digital", max_length=20, choices=DIGITAL_PROVIDERS, null=True, blank=True)
     amount_paid = models.DecimalField("Monto pagado", max_digits=12, decimal_places=2, default=Decimal("0.00"))
@@ -183,22 +194,29 @@ class Invoice(models.Model):
         verbose_name = "Factura"
         verbose_name_plural = "Facturas"
 
+    # 🔹 Métodos de cálculo
+    def apply_discount(self, base: Decimal) -> Decimal:
+        """Devuelve el total aplicando descuento sobre un subtotal."""
+        discount = (base * self.discount_percentage / Decimal("100.00")).quantize(Decimal("0.01"))
+        return (base - discount).quantize(Decimal("0.01"))
+
     def compute_totals(self):
         subtotal = sum([li.subtotal for li in self.items.all()]) if hasattr(self, "items") else Decimal("0.00")
         self.subtotal = Decimal(subtotal).quantize(Decimal("0.01"))
         self.discount_amount = (self.subtotal * self.discount_percentage / Decimal("100.00")).quantize(Decimal("0.01"))
-        self.total = (self.subtotal - self.discount_amount).quantize(Decimal("0.01"))
+        self.total = self.apply_discount(self.subtotal)
 
     def remaining_due(self):
         """
-        Si viene de reserva, calcula restante = total - abono_previo (reservation.amount_deposited).
-        Si no hay reserva, remaining = total - amount_paid.
+        Si viene de reserva: total - abono_previo (reservation.amount_deposited).
+        Si no hay reserva: total - amount_paid.
         """
         if self.reservation:
             abono = self.reservation.amount_deposited or Decimal("0.00")
             return (self.total - abono).quantize(Decimal("0.01"))
         return (self.total - (self.amount_paid or Decimal("0.00"))).quantize(Decimal("0.01"))
 
+    # 🔹 Código de factura
     def generate_code(self):
         now = timezone.now()
         return f"FAC-{now.year}-{self.pk:06d}"
@@ -209,8 +227,9 @@ class Invoice(models.Model):
             code = self.generate_code()
             Invoice.objects.filter(pk=self.pk).update(code=code)
 
+    # 🔹 Inventario
     def apply_inventory_movements(self, user=None, request=None):
-        """Crea movimientos 'out' por cada item de la factura."""
+        """Crea movimientos 'out' por cada item de la factura y descuenta stock."""
         if self.inventory_moved:
             return
         with transaction.atomic():
@@ -223,8 +242,13 @@ class Invoice(models.Model):
                     user=user,
                     unit_price=item.unit_price,
                     discount_percentage=self.discount_percentage,
-                    notes=f"Venta factura {self.code or self.pk}"
+                    notes=f"Venta factura {self.code or self.pk}",
                 )
+                # 🔹 actualizar stock real
+                stock_obj = item.variant if item.variant else item.product
+                stock_obj.stock = (stock_obj.stock or 0) - item.quantity
+                stock_obj.save(update_fields=["stock"])
+
             self.inventory_moved = True
             self.save(update_fields=["inventory_moved"])
             AuditLog.log_action(
@@ -233,53 +257,39 @@ class Invoice(models.Model):
                 action="create",
                 model=Invoice,
                 obj=self,
-                description=f"Movimientos de inventario aplicados por factura {self.code}"
+                description=f"Movimientos de inventario aplicados por factura {self.code}",
             )
 
+    # 🔹 Finalización
     def finalize(self, user=None, request=None, mark_reservation_completed=True):
         """
-        Método de conveniencia para finalizar la venta:
+        Finaliza la venta:
          - recalcula totales
-         - valida restante cuando viene de reserva
-         - marca pago / estado según amount_paid / reservation.amount_deposited
+         - valida restante
+         - marca pago / estado
          - aplica movimientos de inventario
          - marca reserva completada si aplica
          - registra auditoría
         """
         with transaction.atomic():
-            # recalcula totales (asegúrate que items ya están guardados)
             self.compute_totals()
 
-            # validar restante si viene de reserva
-            if self.reservation:
-                remaining = self.total - (self.reservation.amount_deposited or Decimal("0.00"))
-                if remaining < Decimal("0.00"):
-                    raise ValueError("El restante a pagar no puede ser negativo.")
-                # Si amount_paid provisto en invoice, lo podemos comparar con remaining
-                if (self.amount_paid or Decimal("0.00")) >= remaining:
-                    self.paid = True
-                    self.payment_date = timezone.now()
-                    self.status = "completed"
-                else:
-                    # pago parcial
-                    self.paid = False
-                    self.status = "pending"
+            remaining = self.remaining_due()
+            if remaining < Decimal("0.00"):
+                raise ValueError("El restante a pagar no puede ser negativo.")
+
+            if (self.amount_paid or Decimal("0.00")) >= remaining:
+                self.paid = True
+                self.payment_date = timezone.now()
+                self.status = "completed"
             else:
-                # sin reserva
-                if (self.amount_paid or Decimal("0.00")) >= self.total:
-                    self.paid = True
-                    self.payment_date = timezone.now()
-                    self.status = "completed"
-                else:
-                    self.paid = False
-                    self.status = "pending"
+                self.paid = False
+                self.status = "pending"
 
             self.save()
 
-            # aplicar movimientos (descarta el 'reserve' lógico; siempre crear 'out' para descontar físico)
             self.apply_inventory_movements(user=user, request=request)
 
-            # si viene de reserva y policy es completar -> marcar reserva completada
             if self.reservation and mark_reservation_completed and self.status == "completed":
                 self.reservation.status = "completed"
                 self.reservation.save(update_fields=["status"])
@@ -289,17 +299,48 @@ class Invoice(models.Model):
                     action="update",
                     model=Reservation,
                     obj=self.reservation,
-                    description=f"Apartado {self.reservation.pk} marcado como completado por factura {self.code}"
+                    description=f"Apartado {self.reservation.pk} marcado como completado por factura {self.code}",
                 )
 
-            # auditar la finalización
             AuditLog.log_action(
                 request=request,
                 user=user,
                 action="update",
                 model=Invoice,
                 obj=self,
-                description=f"Factura finalizada (estado={self.status}, pagada={self.paid})"
+                description=f"Factura finalizada (estado={self.status}, pagada={self.paid})",
+            )
+
+    def update_amount_paid(self, amount: Decimal, user=None, request=None, save=True):
+        """
+        Actualiza el monto pagado acumulado en la factura.
+        Recalcula si está pagada o no, y actualiza estado.
+        Útil para registrar pagos parciales posteriores.
+        """
+        if amount <= 0:
+            raise ValueError("El monto del pago debe ser mayor a 0.")
+
+        self.amount_paid = (self.amount_paid or Decimal("0.00")) + amount
+        remaining = self.remaining_due()
+
+        if remaining <= Decimal("0.00"):
+            self.paid = True
+            self.payment_date = timezone.now()
+            self.status = "completed"
+        else:
+            self.paid = False
+            self.status = "pending"
+
+        if save:
+            self.save(update_fields=["amount_paid", "paid", "payment_date", "status"])
+
+            AuditLog.log_action(
+                request=request,
+                user=user,
+                action="update",
+                model=Invoice,
+                obj=self,
+                description=f"Factura {self.code or self.pk} actualizada con pago adicional: {amount}",
             )
 
     def __str__(self):
@@ -319,6 +360,10 @@ class InvoiceItem(models.Model):
         verbose_name_plural = "Productos facturados"
 
     def save(self, *args, **kwargs):
+        if self.quantity <= 0:
+            raise ValueError("La cantidad debe ser mayor que 0.")
+        if self.unit_price < 0:
+            raise ValueError("El precio unitario no puede ser negativo.")
         self.subtotal = (self.unit_price * self.quantity).quantize(Decimal("0.01"))
         super().save(*args, **kwargs)
 
