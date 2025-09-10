@@ -91,17 +91,17 @@
       </div>
 
       <!-- formset (oculto) -->
-    {{ items_formset.management_form }}
-    <div id="items-forms-container" class="d-none">
-      {% for f in items_formset.forms %}
-        <div class="form-row">
-          {{ f.product }}
-          {{ f.variant }}
-          {{ f.quantity }}
-          {{ f.unit_price }}
+        {{ items_formset.management_form }}
+        <div id="items-forms-container" class="d-none">
+          {% for f in items_formset.forms %}
+            <div class="form-row">
+              {{ f.product }}    {# normalmente HiddenInput #}
+              {{ f.variant }}    {# HiddenInput o select según tu widget #}
+              {{ f.quantity }}
+              {{ f.unit_price }}
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
-    </div>
 
 
       <!-- TABLA DE PRODUCTOS SELECCIONADOS -->

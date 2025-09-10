@@ -4,6 +4,7 @@ from decimal import Decimal
 from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
+from django.forms import formset_factory
 
 from .models import Invoice, InvoiceItem, Reservation, ReservationItem
 
@@ -183,6 +184,7 @@ class InvoiceItemForm(forms.ModelForm):
         return cleaned
 
 
+InvoiceItemSimpleFormSet = formset_factory(InvoiceItemForm, extra=0, can_delete=True)
 
 InvoiceItemFormSet = inlineformset_factory(
     Invoice,
