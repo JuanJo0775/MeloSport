@@ -11,13 +11,15 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
 from django.db import transaction
+from django.utils import timezone
+from django.db import transaction, IntegrityError
 
 from apps.products.models import InventoryMovement, Product
 from apps.users.models import AuditLog
 from .models import Invoice, Reservation, InvoiceItem, ReservationItem, add_business_days
 from .forms import InvoiceForm, ReservationForm, InvoiceItemFormSet, \
     ReservationItemFormSetCreate, ReservationItemFormSetUpdate, InvoiceItemSimpleFormSet
-from django.utils import timezone
+
 
 
 
@@ -44,7 +46,7 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 "client_last_name": res.client_last_name,
                 "client_phone": res.client_phone,
                 "reservation": res,
-                "amount_paid": saldo_res,   # ✅ ahora solo el saldo pendiente
+                "amount_paid": saldo_res,
             })
         return initial
 
@@ -87,19 +89,16 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     # 🔹 Contexto
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
         reservation_id = self.request.GET.get("reservation")
         reservation = None
         if reservation_id:
             reservation = get_object_or_404(Reservation, pk=reservation_id)
 
-        # 👉 construir el formset según el método
         if self.request.method == "POST":
             context["items_formset"] = InvoiceItemSimpleFormSet(self.request.POST, prefix="items")
         else:
             context["items_formset"] = InvoiceItemSimpleFormSet(prefix="items")
 
-        # 👉 si hay reserva, exportar ítems como JSON para el JS
         if reservation:
             items_json = [
                 {
@@ -119,13 +118,11 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         else:
             context["reservation_items_json"] = "[]"
 
-        # --- catálogo de productos ---
         qs = self.get_queryset()
         paginator = Paginator(qs, self.paginate_by)
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
-        # --- valores de abono y saldo (aunque no haya reserva, defaults) ---
         abono = Decimal("0.00")
         saldo = Decimal("0.00")
         if reservation:
@@ -146,7 +143,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             "reservation_abono": abono,
             "reservation_saldo": saldo,
         })
-
         return context
 
     def _get_querystring(self):
@@ -161,106 +157,80 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         items_formset = context["items_formset"]
 
         if not items_formset.is_valid():
-            print("❌ FORMSET INVÁLIDO")
-            print("errors:", items_formset.errors)
-            print("management:", items_formset.management_form.errors)
+            print("❌ FORMSET inválido:", items_formset.errors)
+            print("❌ MANAGEMENT form:", items_formset.management_form.errors)
             return self.form_invalid(form)
 
-        with transaction.atomic():
-            self.object = form.save(commit=False)
-            self.object.paid = True
-            if not self.object.payment_date:
-                self.object.payment_date = timezone.now()
+        try:
+            with transaction.atomic():
+                self.object = form.save(commit=False)
+                self.object.paid = True
+                if not self.object.payment_date:
+                    self.object.payment_date = timezone.now()
+                self.object.save()
 
-            # 🔹 Guardar factura inicial (necesario para FK en items)
-            self.object.save()
+                total_calculado = Decimal("0.00")
+                for f in items_formset:
+                    if not f.cleaned_data or f.cleaned_data.get("DELETE"):
+                        continue
 
-            # 🔹 Guardar items y calcular total
-            total_calculado = Decimal("0.00")
-            for f in items_formset:
-                if not f.cleaned_data or f.cleaned_data.get("DELETE"):
-                    continue
+                    product = f.cleaned_data["product"]
+                    variant = f.cleaned_data.get("variant")
+                    qty = f.cleaned_data["quantity"]
+                    unit_price = f.cleaned_data["unit_price"]
 
-                product = f.cleaned_data["product"]
-                variant = f.cleaned_data.get("variant")
-                qty = f.cleaned_data["quantity"]
-                unit_price = f.cleaned_data["unit_price"]
+                    stock = variant.stock if variant else getattr(product, "_stock", 0)
+                    if qty > stock:
+                        f.add_error("quantity", "Cantidad mayor al stock disponible.")
+                        raise IntegrityError("Stock insuficiente")
 
-                stock = variant.stock if variant else getattr(product, "_stock", 0)
-                if qty > stock:
-                    f.add_error("quantity", "Cantidad mayor al stock disponible.")
+                    InvoiceItem.objects.create(
+                        invoice=self.object,
+                        product=product,
+                        variant=variant,
+                        quantity=qty,
+                        unit_price=unit_price,
+                    )
+                    total_calculado += (unit_price * qty)
+
+                # 🔹 Totales y monto pagado
+                self.object.total = total_calculado
+                reservation = form.cleaned_data.get("reservation")
+                if reservation:
+                    self.object.reservation = reservation
+                    abono_res = reservation.amount_deposited or Decimal("0.00")
+                    saldo_res = total_calculado - abono_res
+                    if saldo_res < 0:
+                        saldo_res = Decimal("0.00")
+                    self.object.amount_paid = saldo_res
+                else:
+                    self.object.amount_paid = total_calculado
+
+                # 🔹 Revalidar con totales completos
+                form = self.get_form(self.get_form_class())
+                form.instance = self.object
+                if not items_formset.is_valid():
+                    print("❌ FORMSET inválido:", items_formset.errors)
+                    print("❌ MANAGEMENT form:", items_formset.management_form.errors)
                     return self.form_invalid(form)
 
-                InvoiceItem.objects.create(
-                    invoice=self.object,
-                    product=product,
-                    variant=variant,
-                    quantity=qty,
-                    unit_price=unit_price,
-                )
-
-                total_calculado += (unit_price * qty)
-
-                if variant:
-                    variant.stock -= qty
-                    variant.save(update_fields=["stock"])
-                else:
-                    product._stock -= qty
-                    product.save(update_fields=["_stock"])
-
-                InventoryMovement.objects.create(
-                    product=product,
-                    variant=variant,
-                    movement_type="out",
-                    quantity=qty,
-                    notes=f"Venta de {product.name}"
-                          + (f" ({variant.size} {variant.color})" if variant else ""),
-                    user=self.request.user,
-                    unit_price=unit_price,
-                    discount_percentage=self.object.discount_percentage or Decimal("0.00"),
-                )
-
-            # 🔹 Ahora sí, asignar total y monto pagado
-            self.object.total = total_calculado
-
-            reservation_id = self.request.GET.get("reservation")
-            if reservation_id:
-                res = get_object_or_404(Reservation, pk=reservation_id)
-                self.object.reservation = res
-
-                abono_res = res.amount_deposited or Decimal("0.00")
-                saldo_res = total_calculado - abono_res
-                if saldo_res < 0:
-                    saldo_res = Decimal("0.00")
-                self.object.amount_paid = saldo_res
-            else:
-                self.object.amount_paid = total_calculado
-
-            # 🔹 Validar formulario de nuevo con totales ya completos
-            form = self.get_form(self.get_form_class())
-            form.instance = self.object
-            if not form.is_valid():
-                print("❌ FORMULARIO PRINCIPAL INVÁLIDO")
-                print("errors:", form.errors)
-                return self.form_invalid(form)
-
-            # Guardar factura final
-            self.object.save()
-
-            try:
+                self.object.save()
                 self.object.finalize(user=self.request.user, request=self.request)
-            except Exception as e:
-                form.add_error(None, str(e))
-                return self.form_invalid(form)
 
-            AuditLog.log_action(
-                request=self.request,
-                user=self.request.user,
-                action="Create",
-                model=Invoice,
-                obj=self.object,
-                description=f"Factura #{self.object.code} registrada",
-            )
+                AuditLog.log_action(
+                    request=self.request,
+                    user=self.request.user,
+                    action="Create",
+                    model=Invoice,
+                    obj=self.object,
+                    description=f"Factura #{self.object.code} registrada",
+                )
+        except IntegrityError:
+            return self.form_invalid(form)
+        except Exception as e:
+            print("❌ ERROR en finalize o transacción:", str(e))
+            form.add_error(None, str(e))
+            return self.form_invalid(form)
 
         messages.success(self.request, f"Venta registrada correctamente. Factura #{self.object.code}")
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))

@@ -244,10 +244,13 @@ class Invoice(models.Model):
                     discount_percentage=self.discount_percentage,
                     notes=f"Venta factura {self.code or self.pk}",
                 )
-                # 🔹 actualizar stock real
-                stock_obj = item.variant if item.variant else item.product
-                stock_obj.stock = (stock_obj.stock or 0) - item.quantity
-                stock_obj.save(update_fields=["stock"])
+                # 🔹 actualizar stock real según si es variante o producto simple
+                if item.variant:
+                    item.variant.stock = (item.variant.stock or 0) - item.quantity
+                    item.variant.save(update_fields=["stock"])
+                else:
+                    item.product._stock = (item.product._stock or 0) - item.quantity
+                    item.product.save(update_fields=["_stock"])
 
             self.inventory_moved = True
             self.save(update_fields=["inventory_moved"])
@@ -267,18 +270,19 @@ class Invoice(models.Model):
          - recalcula totales
          - valida restante
          - marca pago / estado
-         - aplica movimientos de inventario
-         - marca reserva completada si aplica
+         - aplica movimientos de inventario (out)
+         - marca reserva completada si aplica (y marca movimientos de reserva como consumidos)
          - registra auditoría
         """
         with transaction.atomic():
+            # 1) recalcular totales y estado
             self.compute_totals()
 
             remaining = self.remaining_due()
             if remaining < Decimal("0.00"):
                 raise ValueError("El restante a pagar no puede ser negativo.")
 
-            if (self.amount_paid or Decimal("0.00")) >= remaining:
+            if (self.amount_paid or Decimal("0.00")) >= remaining or remaining <= Decimal("0.00"):
                 self.paid = True
                 self.payment_date = timezone.now()
                 self.status = "completed"
@@ -286,22 +290,57 @@ class Invoice(models.Model):
                 self.paid = False
                 self.status = "pending"
 
-            self.save()
+            # guardar estado de la factura antes de mover inventario
+            self.save(update_fields=["paid", "payment_date", "status", "subtotal", "total", "discount_amount"])
 
+            # 2) aplicar salidas de inventario (crea movimientos 'out' y descuenta stock)
             self.apply_inventory_movements(user=user, request=request)
 
+            # 3) si proviene de una reserva y la factura quedó completada
             if self.reservation and mark_reservation_completed and self.status == "completed":
-                self.reservation.status = "completed"
-                self.reservation.save(update_fields=["status"])
+                # lockear la reserva para evitar race conditions
+                res = Reservation.objects.select_for_update().get(pk=self.reservation.pk)
+
+                # DEBUG: imprime en consola para confirmar
+                print(
+                    f"[finalize] Reservation BEFORE id={res.pk} status={res.status} movement_created={res.movement_created}")
+
+                # marcar reserva completed (persistir inmediatamente)
+                res.status = "completed"
+                res.save(update_fields=["status"])
+
+                # Marcar movimientos "reserve" como consumidos (no los borramos)
+                reserve_qs = InventoryMovement.objects.filter(
+                    reservation_id=res.pk,
+                    movement_type="reserve",
+                    consumed=False
+                )
+
+                # bloqueo opcional de movimientos antes de update (mejor consistencia)
+                # obtenemos ids para lockear
+                reserve_ids = list(reserve_qs.values_list("id", flat=True))
+                if reserve_ids:
+                    # select_for_update sobre un queryset base
+                    InventoryMovement.objects.select_for_update().filter(id__in=reserve_ids)
+
+                updated = reserve_qs.update(consumed=True)
+                print(f"[finalize] reserve movements updated (consumed) = {updated}")
+
+                # asegurar movement_created flag (por si no se marcó antes)
+                if not res.movement_created:
+                    res.movement_created = True
+                    res.save(update_fields=["movement_created"])
+
                 AuditLog.log_action(
                     request=request,
                     user=user,
                     action="update",
                     model=Reservation,
-                    obj=self.reservation,
-                    description=f"Apartado {self.reservation.pk} marcado como completado por factura {self.code}",
+                    obj=res,
+                    description=f"Apartado {res.pk} marcado como completado por factura {self.code or self.pk}",
                 )
 
+            # 4) Log de la factura
             AuditLog.log_action(
                 request=request,
                 user=user,

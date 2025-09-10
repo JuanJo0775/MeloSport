@@ -151,6 +151,29 @@ class Product(models.Model):
             return round(suggested, 2)
         except Exception:
             return Decimal("0.00")
+    @property
+    def reserved_stock(self):
+        """
+        Cantidad reservada de este producto (solo reservas activas no consumidas
+        y que no usan variantes).
+        """
+        from django.db.models import Sum
+        return (
+            InventoryMovement.objects.filter(
+                product=self,
+                variant__isnull=True,
+                movement_type="reserve",
+                consumed=False
+            ).aggregate(total=Sum("quantity"))["total"] or 0
+        )
+
+    @property
+    def available_stock(self):
+        """
+        Stock disponible real = stock físico - reservado.
+        """
+        return (self.stock or 0) - self.reserved_stock
+
 
     def clean(self):
         super().clean()
@@ -221,6 +244,28 @@ class ProductVariant(models.Model):
         if self.color:
             attrs.append(f"Color: {self.color}")
         return f"{self.product.name} ({', '.join(attrs)})" if attrs else f"{self.product.name} (Base)"
+
+    @property
+    def reserved_stock(self):
+        """
+        Cantidad reservada de esta variante (solo reservas activas no consumidas).
+        """
+        from django.db.models import Sum
+        return (
+            InventoryMovement.objects.filter(
+                variant=self,
+                movement_type="reserve",
+                consumed=False
+            ).aggregate(total=Sum("quantity"))["total"] or 0
+        )
+
+    @property
+    def available_stock(self):
+        """
+        Stock disponible real = stock físico - reservado.
+        """
+        return (self.stock or 0) - self.reserved_stock
+
 
     def save(self, *args, **kwargs):
         """Validación estricta de producto existente y generación de SKU para la variante"""
@@ -349,6 +394,11 @@ class InventoryMovement(models.Model):
         default=Decimal('0.00'),
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="% Descuento"
+    )
+
+    consumed = models.BooleanField(
+        default=False,
+        help_text="Marca si un movimiento de reserva ya fue consumido en una venta"
     )
 
     class Meta:

@@ -106,6 +106,8 @@ class ProductAdmin(admin.ModelAdmin):
         'stock_status',
         'status',
         'stock_display',
+        'reserved_stock_display',  # 👈 nuevo
+        'available_stock_display',  # 👈 nuevo
         'has_variants',
         'absolute_category',
         'categories_display',
@@ -297,6 +299,42 @@ class ProductAdmin(admin.ModelAdmin):
             base_fields.append('_stock')  # Bloquear edición si tiene variantes
         return base_fields
 
+    # --- NUEVAS COLUMNAS ---
+    def reserved_stock_display(self, obj):
+        return obj.reserved_stock
+    reserved_stock_display.short_description = "Stock reservado"
+
+    def available_stock_display(self, obj):
+        return obj.available_stock
+    available_stock_display.short_description = "Stock disponible"
+
+    # --- NUEVO FILTRO ---
+    def has_reserved_stock(self, request, queryset):
+        return queryset.filter(movements__movement_type="reserve", movements__consumed=False).distinct()
+    has_reserved_stock.title = "Con reservas activas"
+    has_reserved_stock.parameter_name = "reserved"
+
+    def get_list_filter(self, request):
+        """
+        Sobrescribimos para que el filtro aparezca como booleano.
+        """
+        from django.contrib.admin import SimpleListFilter
+
+        class ReservedStockFilter(SimpleListFilter):
+            title = "Con reservas activas"
+            parameter_name = "reserved"
+
+            def lookups(self, request, model_admin):
+                return (("yes", "Sí"), ("no", "No"))
+
+            def queryset(self, request, queryset):
+                if self.value() == "yes":
+                    return queryset.filter(movements__movement_type="reserve", movements__consumed=False).distinct()
+                if self.value() == "no":
+                    return queryset.exclude(movements__movement_type="reserve", movements__consumed=False).distinct()
+                return queryset
+
+        return super().get_list_filter(request) + (ReservedStockFilter,)
 
 
 
