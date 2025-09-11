@@ -1,78 +1,224 @@
 {% extends "backoffice/billing/invoice_template/invoice_base.html" %}
 {% load money %}
+
 {% block title %}Factura {{ invoice.code }}{% endblock %}
 
 {% block header_right %}
-  <h2 class="mb-0">Factura</h2>
-  <div># {{ invoice.code }}</div>
-  <div>{{ invoice.created_at|date:"Y-m-d H:i" }}</div>
+  <div class="text-end">
+    <h2 class="mb-1 text-primary">FACTURA</h2>
+    <div class="fw-bold fs-5 text-dark"># {{ invoice.code }}</div>
+    <div class="text-muted">{{ invoice.created_at|date:"d/m/Y H:i" }}</div>
+  </div>
 {% endblock %}
 
 {% block content %}
-  <!-- Datos del cliente -->
-  <section class="mb-3">
-    <strong>Cliente:</strong>
-    <div>{{ invoice.client_first_name }} {{ invoice.client_last_name }}</div>
-    <div>Tel: {{ invoice.client_phone|default:"—" }}</div>
+
+<div class="ticket-border p-3">
+  <!-- Información del cliente -->
+  <section class="client-section mb-3">
+    <div class="d-flex align-items-center mb-2">
+      <i class="bi bi-person-circle me-2 text-primary fs-5"></i>
+      <strong class="text-primary">DATOS DEL CLIENTE</strong>
+    </div>
+    <div class="row">
+      <div class="col-md-8">
+        <div class="fw-bold fs-5 text-dark">
+          {{ invoice.client_first_name }} {{ invoice.client_last_name }}
+        </div>
+        {% if invoice.client_phone %}
+        <div class="text-muted">
+          <i class="bi bi-telephone me-1"></i>{{ invoice.client_phone }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="col-md-4 text-end">
+        <div class="small text-muted">Fecha de facturación</div>
+        <div class="fw-semibold">{{ invoice.created_at|date:"d/m/Y" }}</div>
+        <div class="small text-muted">{{ invoice.created_at|date:"H:i" }}</div>
+      </div>
+    </div>
   </section>
 
   <!-- Tabla de productos -->
-  <table class="table table-bordered align-middle">
-    <thead class="table-light">
-      <tr>
-        <th style="width: 55%;">Producto</th>
-        <th style="width: 10%;" class="text-center">Cant.</th>
-        <th style="width: 15%;" class="text-end">Precio unitario</th>
-        <th style="width: 20%;" class="text-end">Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in invoice.items.all %}
-      <tr>
-        <td>
-          <div class="fw-semibold">{{ item.product.name }}</div>
-          {% if item.variant %}
-            <small class="text-muted">
-              {% if item.variant.label %}{{ item.variant.label }}{% endif %}
-              {% if item.variant.size %} | Talla: {{ item.variant.size }}{% endif %}
-              {% if item.variant.color %} | Color: {{ item.variant.color }}{% endif %}
-            </small>
-          {% endif %}
-        </td>
-        <td class="text-center">{{ item.quantity }}</td>
-        <td class="text-end">{{ item.unit_price|cop }}</td>
-        <td class="text-end">{{ item.subtotal|cop }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-responsive mb-3">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-primary">
+        <tr>
+          <th style="width: 50%;">Producto</th>
+          <th style="width: 10%;" class="text-center">Cant.</th>
+          <th style="width: 20%;" class="text-end">Precio Unit.</th>
+          <th style="width: 20%;" class="text-end">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items.all %}
+        <tr class="product-row">
+          <td>
+            <div class="fw-semibold">{{ item.product.name }}</div>
+            {% if item.variant %}
+              <small class="text-muted d-block">
+                {% if item.variant.label %}
+                  <i class="bi bi-tag me-1"></i>{{ item.variant.label }}
+                {% endif %}
+                {% if item.variant.size %}
+                  <span class="badge bg-light text-dark ms-1">Talla: {{ item.variant.size }}</span>
+                {% endif %}
+                {% if item.variant.color %}
+                  <span class="badge bg-light text-dark ms-1">Color: {{ item.variant.color }}</span>
+                {% endif %}
+              </small>
+              {% if item.variant.sku %}
+              <small class="text-muted text-mono d-block">SKU: {{ item.variant.sku }}</small>
+              {% endif %}
+            {% else %}
+              {% if item.product.sku %}
+              <small class="text-muted text-mono d-block">SKU: {{ item.product.sku }}</small>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold px-2 py-1">
+              {{ item.quantity }}
+            </span>
+          </td>
+          <td class="text-end fw-medium">{{ item.unit_price|cop }}</td>
+          <td class="text-end fw-bold text-primary">{{ item.subtotal|cop }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center text-muted py-3">
+            <i class="bi bi-inbox me-1"></i>No hay productos en esta factura.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-  <!-- Totales -->
-  <div class="d-flex justify-content-end mt-3">
-    <div class="w-50">
-      <div class="d-flex justify-content-between">
-        <span>Subtotal:</span>
-        <span>{{ invoice.subtotal|cop }}</span>
+  <!-- Sección de totales -->
+  <div class="totals-section p-3">
+    <div class="row justify-content-end">
+      <div class="col-md-6 col-lg-5">
+        <table class="table table-sm table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td class="fw-medium">Subtotal:</td>
+              <td class="text-end fw-medium">{{ invoice.subtotal|cop }}</td>
+            </tr>
+            {% if invoice.discount_amount > 0 %}
+            <tr>
+              <td class="fw-medium text-danger">
+                <i class="bi bi-percent me-1"></i>Descuento:
+              </td>
+              <td class="text-end fw-medium text-danger">- {{ invoice.discount_amount|cop }}</td>
+            </tr>
+            {% endif %}
+            <tr class="border-top">
+              <td class="fw-bold fs-5 text-primary">TOTAL:</td>
+              <td class="text-end fw-bold fs-4 text-primary">{{ invoice.total|cop }}</td>
+            </tr>
+            <tr>
+              <td class="fw-medium text-success">
+                <i class="bi bi-check-circle me-1"></i>Pagado:
+              </td>
+              <td class="text-end fw-medium text-success">{{ invoice.amount_paid|cop }}</td>
+            </tr>
+            {% if balance_due > 0 %}
+            <tr>
+              <td class="fw-bold text-warning">
+                <i class="bi bi-exclamation-triangle me-1"></i>Saldo pendiente:
+              </td>
+              <td class="text-end fw-bold text-warning">{{ balance_due|cop }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
-      <div class="d-flex justify-content-between">
-        <span>Descuento:</span>
-        <span>- {{ invoice.discount_amount|cop }}</span>
-      </div>
-      <hr/>
-      <div class="d-flex justify-content-between fw-bold">
-        <span>Total:</span>
-        <span>{{ invoice.total|cop }}</span>
-      </div>
-      {% if invoice.amount_paid and invoice.amount_paid < invoice.total %}
-      <div class="d-flex justify-content-between">
-        <span>Pagado:</span>
-        <span>{{ invoice.amount_paid|cop }}</span>
-      </div>
-    <div class="d-flex justify-content-between">
-      <span>Saldo pendiente:</span>
-      <span>{{ balance_due|cop }}</span>
     </div>
+  </div>
+
+  <!-- Información de pago -->
+  <div class="row mt-3">
+    <div class="col-md-6">
+      <div class="small">
+        <strong class="text-primary">Método de pago:</strong>
+        {% if invoice.payment_method == "EF" %}
+          <span class="badge bg-success ms-1">
+            <i class="bi bi-cash me-1"></i>Efectivo
+          </span>
+        {% elif invoice.payment_method == "DI" %}
+          {% if invoice.payment_provider == "NEQUI" %}
+            <span class="badge bg-info ms-1">
+              <i class="bi bi-phone me-1"></i>Nequi
+            </span>
+          {% elif invoice.payment_provider == "DAVIPLATA" %}
+            <span class="badge bg-warning text-dark ms-1">
+              <i class="bi bi-phone me-1"></i>Daviplata
+            </span>
+          {% else %}
+            <span class="badge bg-info ms-1">
+              <i class="bi bi-phone me-1"></i>Digital
+            </span>
+          {% endif %}
+        {% endif %}
+      </div>
+      {% if invoice.payment_date %}
+      <div class="small text-muted mt-1">
+        <i class="bi bi-calendar-check me-1"></i>
+        Fecha de pago: {{ invoice.payment_date|date:"d/m/Y H:i" }}
+      </div>
+      {% endif %}
+    </div>
+    <div class="col-md-6 text-end">
+      {% if invoice.notes %}
+      <div class="small">
+        <strong class="text-primary">Notas:</strong>
+        <div class="text-muted mt-1">{{ invoice.notes }}</div>
+      </div>
       {% endif %}
     </div>
   </div>
+
+  <!-- Separador de ticket -->
+  <div class="text-center my-3">
+    <div style="border-top: 1px dashed #dee2e6; position: relative;">
+      <span style="background: white; padding: 0 1rem; color: #6c757d; font-size: 0.8rem; position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%);">
+        ✂️ Cortar por aquí
+      </span>
+    </div>
+  </div>
+
+  <!-- Mensaje de agradecimiento -->
+  <div class="text-center">
+    <div class="mb-2">
+      <i class="bi bi-heart-fill text-danger me-1"></i>
+      <strong class="text-primary">¡Gracias por su compra!</strong>
+      <i class="bi bi-heart-fill text-danger ms-1"></i>
+    </div>
+    <small class="text-muted">
+      Conserve esta factura como comprobante de su compra
+    </small>
+  </div>
+</div>
+
+<!-- Información adicional para el cliente -->
+<div class="row mt-4 no-print">
+  <div class="col-md-12">
+    <div class="alert alert-info border-left-info">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+        <div>
+          <strong>Información importante:</strong>
+          <ul class="mb-0 mt-2">
+            <li>Esta factura es válida como comprobante de compra</li>
+            <li>Conserve este documento para garantías y cambios</li>
+            <li>Los cambios solo se aceptan dentro de los 8 días siguientes a la compra</li>
+            <li>El producto debe estar en perfecto estado con etiquetas originales</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

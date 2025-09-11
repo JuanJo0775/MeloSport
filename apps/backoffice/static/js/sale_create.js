@@ -86,10 +86,28 @@ document.addEventListener("DOMContentLoaded", function () {
     function increaseTotalForms() {
       const val = getNextFormIndex() + 1;
       if (totalFormsEl) totalFormsEl.value = String(val);
+      // retornamos el índice disponible (val - 1)
       return val - 1;
     }
     function decreaseTotalForms() {
       if (totalFormsEl) totalFormsEl.value = String(Math.max(0, getNextFormIndex() - 1));
+    }
+
+    // ---------- utilidades de UI: placeholder y numeración ----------
+    function updateRowNumbers() {
+      const rows = tableBody.querySelectorAll("tr.product-row");
+      rows.forEach((r, idx) => {
+        const firstCell = r.querySelector("td");
+        if (firstCell) firstCell.textContent = String(idx + 1);
+      });
+    }
+
+    function toggleNoProductsRow() {
+      const noRow = $qs("#no-products-row", pageRoot);
+      if (!noRow) return;
+      noRow.style.display = previewMap.size > 0 ? "none" : "";
+      // siempre actualizar numeración cuando cambia el estado
+      updateRowNumbers();
     }
 
     // ---------- añadir item ----------
@@ -113,7 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
           product_name: productObj.name || productObj.label || "",
           sku: variantObj ? (variantObj.sku || "") : (productObj.sku || ""),
           variant_id: variantObj ? variantObj.id : "",
-          variant_label: variantObj ? (variantObj.label || "") : "",
+          variant_label: variantObj ? variantObj.label : "",
           unit_price: unitPrice,
           qty: qty,
           formIndex: formIndex
@@ -167,29 +185,42 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
-
     // ---------- tabla ----------
     function insertPreviewRow(row) {
       const tr = document.createElement("tr");
       tr.dataset.key = row.key;
+      tr.classList.add("product-row");
       tr.innerHTML = `
-        <td></td>
+        <td class="text-muted small align-middle">#</td>
         <td>
-          <div class="small">${escapeHtml(row.product_name)}</div>
-          ${row.variant_label ? `<div class="text-muted small">${escapeHtml(row.variant_label)}</div>` : ""}
-          <div class="small text-muted">SKU: ${escapeHtml(row.sku)}</div>
+          <div class="fw-semibold text-dark small">${escapeHtml(row.product_name)}</div>
+          ${row.variant_label 
+            ? `<div class="text-muted small">Variante: <span class="fw-medium">${escapeHtml(row.variant_label)}</span></div>` 
+            : ""}
+          <div class="text-muted text-mono small">SKU: ${escapeHtml(row.sku) || "-"}</div>
         </td>
-        <td class="text-center">
-          <input type="number" min="1" value="${row.qty}" class="form-control form-control-sm preview-qty" style="width:80px;">
+        <td class="text-center align-middle">
+          <input type="number" min="1" value="${row.qty}" 
+                 class="form-control form-control-sm text-center preview-qty" 
+                 style="width:75px;">
         </td>
-        <td class="text-end unit-price">${fmtCOP(row.unit_price)}</td>
-        <td class="text-end subtotal">${fmtCOP(row.unit_price * row.qty)}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-danger btn-remove-item" type="button">&times;</button>
+        <td class="text-end align-middle unit-price fw-medium text-primary">
+          ${fmtCOP(row.unit_price)}
+        </td>
+        <td class="text-end align-middle subtotal fw-bold text-success">
+          ${fmtCOP(row.unit_price * row.qty)}
+        </td>
+        <td class="text-center align-middle">
+          <button class="btn btn-sm btn-outline-danger btn-remove-item" type="button"
+                  title="Quitar producto">
+            <i class="bi bi-trash"></i>
+          </button>
         </td>
       `;
+      // append al tbody (si existe placeholder, seguirá ahí pero oculto cuando haya productos)
       tableBody.appendChild(tr);
 
+      // eventos de cantidad
       const qtyInput = tr.querySelector(".preview-qty");
       qtyInput.addEventListener("input", e => {
         const v = Math.max(1, Math.floor(Number(e.target.value || 1)));
@@ -199,19 +230,27 @@ document.addEventListener("DOMContentLoaded", function () {
         recalcTotals();
       });
 
+      // evento eliminar
       tr.querySelector(".btn-remove-item").addEventListener("click", () => {
         previewMap.delete(row.key);
         tr.remove();
         decreaseTotalForms();
         recalcTotals();
+        toggleNoProductsRow();  // asegurar actualización del placeholder y numeración
       });
+
+      toggleNoProductsRow();  // esconder placeholder y renumerar
     }
 
     function updatePreviewRow(row) {
       const tr = tableBody.querySelector(`tr[data-key="${row.key}"]`);
       if (!tr) return;
-      tr.querySelector(".preview-qty").value = row.qty;
-      tr.querySelector(".subtotal").textContent = fmtCOP(row.unit_price * row.qty);
+      const qtyInput = tr.querySelector(".preview-qty");
+      if (qtyInput) qtyInput.value = row.qty;
+      const subtotalEl = tr.querySelector(".subtotal");
+      if (subtotalEl) subtotalEl.textContent = fmtCOP(row.unit_price * row.qty);
+      // renumerar por si algo cambió
+      updateRowNumbers();
     }
 
     function updateFormQuantity(index, qty) {
@@ -222,9 +261,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- cargar items iniciales (reserva) ----------
     function loadInitialItems() {
       const items = (window.SALE_CONFIG && window.SALE_CONFIG.reservationItems) || [];
-      console.group("DEBUG loadInitialItems");
-      console.log("📦 ReservationItems recibidos:", items);
-
       items.forEach((it, idx) => {
         const row = {
           key: it.variant_id ? `${it.product_id}::${it.variant_id}` : `p::${it.product_id}`,
@@ -235,7 +271,7 @@ document.addEventListener("DOMContentLoaded", function () {
           variant_label: it.variant_label || "",
           unit_price: parsePrice(it.unit_price),
           qty: parseInt(it.qty || "1"),
-          formIndex: idx,  // fijo para reserva
+          formIndex: idx,
         };
 
         insertFormsetForm(row);
@@ -243,15 +279,13 @@ document.addEventListener("DOMContentLoaded", function () {
         previewMap.set(row.key, row);
       });
 
-      // 🔹 Ajustar TOTAL_FORMS = cantidad de items insertados
       if (totalFormsEl) {
         totalFormsEl.value = String(items.length);
       }
 
-      console.groupEnd();
       recalcTotals();
+      toggleNoProductsRow(); // asegura el estado inicial
     }
-
 
     // ---------- totales extendidos ----------
     function recalcTotals() {
@@ -264,21 +298,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const totalAfterDiscount = Math.max(0, subtotal - discount);
 
-      // ✅ forzar siempre el valor del campo de pago al saldo pendiente
+      // forzar siempre el valor del campo de pago al saldo pendiente neto de depósito
       paidInput.value = totalAfterDiscount - deposit;
       const paid = parsePrice(paidInput.value || 0);
 
       const remaining = Math.max(0, totalAfterDiscount - deposit - paid);
 
       // actualizar spans
-      $qs("#subtotal-display").textContent = fmtCOP(subtotal);
-      $qs("#discount-display").textContent = fmtCOP(discount);
+      $qs("#subtotal-display", pageRoot).textContent = fmtCOP(subtotal);
+      $qs("#discount-display", pageRoot).textContent = fmtCOP(discount);
       depositDisplay.textContent = fmtCOP(deposit);
-      $qs("#paid-display").textContent = fmtCOP(paid);
+      $qs("#paid-display", pageRoot).textContent = fmtCOP(paid);
       remainingDisplay.textContent = fmtCOP(remaining);
 
       // mantener total principal en el footer de la tabla
-      totalDisplay.textContent = fmtCOP(totalAfterDiscount);
+      if (totalDisplay) totalDisplay.textContent = fmtCOP(totalAfterDiscount);
+
+      // actualizar placeholder / numeración
+      toggleNoProductsRow();
     }
 
     // ---------- eventos: añadir botones ----------
@@ -374,10 +411,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // paidInput?.addEventListener("input", recalcTotals);
 
     // ---------- submit ----------
-  saleForm?.addEventListener("submit", e => {
-    console.log("TOTAL_FORMS al enviar:", totalFormsEl?.value);  // 👈 Debug
-    if (!validateBeforeSubmit(e)) return;
-  });
+    saleForm?.addEventListener("submit", e => {
+      console.log("TOTAL_FORMS al enviar:", totalFormsEl?.value);  // 👈 Debug (puedes eliminar)
+      if (!validateBeforeSubmit(e)) return;
+    });
 
     // ---------- init ----------
     attachAddButtons();

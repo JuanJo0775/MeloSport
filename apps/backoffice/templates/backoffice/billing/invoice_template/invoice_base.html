@@ -1,64 +1,78 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Factura{% endblock %}</title>
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <!-- Estilos personalizados -->
+  <!-- Estilos globales -->
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/styles_inventario.css' %}">
+    <link rel="stylesheet" href="{% static 'css/styles_factura.css' %}">
 
-  <style>
-    @media print {
-      .no-print { display: none !important; }
-    }
-  </style>
 </head>
-<body class="container py-4">
+<body>
 
-  <!-- HEADER GLOBAL DE FACTURA -->
-  <header class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h4 class="fw-bold mb-0">MeloSport</h4>
-      <div>Tel: ...</div>
-      <div>Dirección: ...</div>
+  <div class="invoice-container">
+    <!-- Header de la empresa -->
+    <header class="company-header">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="company-logo">MeloSport</div>
+          <div class="company-info">
+            <div><i class="bi bi-telephone me-1"></i>Teléfono: +57 300 123 4567</div>
+            <div><i class="bi bi-geo-alt me-1"></i>Armenia, Quindío - Colombia</div>
+            <div><i class="bi bi-envelope me-1"></i>info@melosport.com</div>
+          </div>
+        </div>
+        <div class="text-end">
+          {% block header_right %}{% endblock %}
+        </div>
+      </div>
+    </header>
+
+    <!-- Botón de imprimir (solo visible en pantalla) -->
+    <div class="text-end mb-3 no-print">
+      <button onclick="window.print()" class="btn btn-primary btn-sm">
+        <i class="bi bi-printer me-1"></i>Imprimir Factura
+      </button>
     </div>
-    <div class="text-end">
-      {% block header_right %}{% endblock %}
-    </div>
-  </header>
 
-  <hr/>
+    <!-- Contenido principal -->
+    <main>
+      {% block content %}{% endblock %}
+    </main>
 
-  <!-- BOTÓN DE IMPRIMIR (solo visible en pantalla) -->
-  <div class="text-end mb-3 no-print">
-    <button onclick="window.print()" class="btn btn-primary btn-sm">
-      <i class="bi bi-printer me-1"></i> Imprimir
-    </button>
+    <!-- Footer -->
+    <footer class="invoice-footer text-center">
+      <p class="mb-1"><strong>MeloSport</strong> © {{ now|date:"Y" }} — Todos los derechos reservados</p>
+      <p class="mb-0">
+        <small>
+          <i class="bi bi-info-circle me-1"></i>
+          IVA incluido en los precios mostrados • Factura válida como soporte contable
+        </small>
+      </p>
+    </footer>
   </div>
-
-  <!-- CONTENIDO CENTRAL -->
-  <main>
-    {% block content %}{% endblock %}
-  </main>
-
-  <!-- FOOTER GLOBAL -->
-  <footer class="text-center text-muted small mt-5">
-    <hr/>
-    <p class="mb-0">MeloSport © {{ now|date:"Y" }} — Todos los derechos reservados</p>
-    <p class="mb-0">IVA incluido</p>
-  </footer>
 
   <!-- Script para imprimir automáticamente al abrir -->
   <script>
+    // Imprimir automáticamente cuando se abra la página
     window.addEventListener("load", function() {
-      window.print();
+      // Esperar un momento para que se carguen todos los estilos
+      setTimeout(function() {
+        window.print();
+      }, 500);
     });
+
+    // Función para imprimir manualmente
+    function printInvoice() {
+      window.print();
+    }
   </script>
 
 </body>

@@ -9,128 +9,240 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid">
 
-  <!-- Header -->
-  <div class="card mb-4 shadow-sm">
-    <div class="card-body d-flex justify-content-between align-items-center">
-      <div>
-        <h4 class="mb-1">Factura #{{ invoice.code }}</h4>
-        <small class="text-muted">
-          {{ invoice.created_at|date:"d/m/Y H:i" }} • Cliente: {{ invoice.client_first_name }} {{ invoice.client_last_name }}
-        </small>
-      </div>
-      <div class="d-flex gap-2">
+  <!-- Header con información principal -->
+  <div class="card mb-4 shadow-sm border-left-primary">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h4 class="mb-2 text-primary">
+            <i class="bi bi-receipt me-2"></i>Factura #{{ invoice.code }}
+          </h4>
+          <div class="text-muted">
+            <i class="bi bi-calendar3 me-1"></i>{{ invoice.created_at|date:"d/m/Y H:i" }}
+            <span class="mx-2">•</span>
+            <i class="bi bi-person me-1"></i>{{ invoice.client_first_name }} {{ invoice.client_last_name }}
+          </div>
+        </div>
+        <div class="d-flex gap-2">
           <a href="{% url 'backoffice:billing:invoice_list' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Volver
           </a>
-        <a href="{% url 'backoffice:billing:invoice_html' invoice.pk %}" class="btn btn-primary btn-sm">
-          <i class="bi bi-printer me-1"></i> Imprimir
-        </a>
+          <a href="{% url 'backoffice:billing:invoice_html' invoice.pk %}" class="btn btn-primary" target="_blank">
+            <i class="bi bi-printer me-1"></i>Imprimir
+          </a>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Resumen financiero -->
-  <div class="card mb-4 shadow-sm">
-    <div class="card-body row text-center">
-      <div class="col-md-3 border-end">
-        <h6 class="text-muted mb-1">Estado</h6>
-        {% if invoice.status == "completed" %}
-          <span class="badge bg-success px-3 py-2">Completada</span>
-        {% elif invoice.status == "pending" %}
-          <span class="badge bg-warning text-dark px-3 py-2">Pendiente</span>
-        {% elif invoice.status == "cancelled" %}
-          <span class="badge bg-danger px-3 py-2">Cancelada</span>
-        {% endif %}
+<div class="card mb-4 shadow-sm">
+  <div class="card-header">
+    <h6 class="mb-0"><i class="bi bi-calculator me-2"></i>Resumen Financiero</h6>
+  </div>
+  <div class="card-body">
+    <div class="row text-center">
+      <div class="col-md-4">
+        <div class="border-end pe-3">
+          <h6 class="text-muted mb-2">Estado</h6>
+          {% if invoice.status == "completed" %}
+            <span class="badge bg-success px-3 py-2 fs-6">
+              <i class="bi bi-check-circle me-1"></i>Completada
+            </span>
+          {% elif invoice.status == "pending" %}
+            <span class="badge bg-warning text-dark px-3 py-2 fs-6">
+              <i class="bi bi-clock me-1"></i>Pendiente
+            </span>
+          {% elif invoice.status == "cancelled" %}
+            <span class="badge bg-danger px-3 py-2 fs-6">
+              <i class="bi bi-x-circle me-1"></i>Cancelada
+            </span>
+          {% endif %}
+        </div>
       </div>
-      <div class="col-md-3 border-end">
-        <h6 class="text-muted mb-1">Total</h6>
-        <h5 class="mb-0">{{ invoice.total|cop }}</h5>
+      <div class="col-md-4">
+        <div class="border-end pe-3">
+          <h6 class="text-muted mb-2">Total</h6>
+          <h4 class="mb-0 text-primary">{{ invoice.total|cop }}</h4>
+        </div>
       </div>
-      <div class="col-md-3 border-end">
-        <h6 class="text-muted mb-1">Pagado</h6>
-        <h5 class="mb-0">{{ invoice.amount_paid|cop }}</h5>
-      </div>
-      <div class="col-md-3">
-        <h6 class="text-muted mb-1">Saldo</h6>
-        <h5 class="mb-0">{{ balance_due|cop }}</h5>
+      <div class="col-md-4">
+        <h6 class="text-muted mb-2">Pagado</h6>
+        <h4 class="mb-0 text-success">{{ invoice.amount_paid|cop }}</h4>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Datos cliente y pago -->
+
+  <!-- Información del cliente y pago -->
   <div class="row mb-4">
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-person me-2 text-primary"></i>Información del Cliente</h6>
+        </div>
         <div class="card-body">
-          <h6 class="fw-bold mb-3"><i class="bi bi-person me-2 text-primary"></i> Cliente</h6>
           <dl class="row mb-0">
-            <dt class="col-sm-4">Nombre</dt><dd class="col-sm-8">{{ invoice.client_first_name }} {{ invoice.client_last_name }}</dd>
-            <dt class="col-sm-4">Teléfono</dt><dd class="col-sm-8">{{ invoice.client_phone|default:"—" }}</dd>
+            <dt class="col-sm-4">Nombre completo</dt>
+            <dd class="col-sm-8 fw-medium">{{ invoice.client_first_name }} {{ invoice.client_last_name }}</dd>
+
+            <dt class="col-sm-4">Teléfono</dt>
+            <dd class="col-sm-8">
+              {% if invoice.client_phone %}
+                <span class="text-mono">{{ invoice.client_phone }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </dd>
           </dl>
         </div>
       </div>
     </div>
+
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-credit-card me-2 text-primary"></i>Información de Pago</h6>
+        </div>
         <div class="card-body">
-          <h6 class="fw-bold mb-3"><i class="bi bi-credit-card me-2 text-primary"></i> Pago</h6>
           <dl class="row mb-0">
-            <dt class="col-sm-5">Método</dt><dd class="col-sm-7">{{ invoice.get_payment_method_display|default:"—" }}</dd>
-            <dt class="col-sm-5">Proveedor</dt><dd class="col-sm-7">{{ invoice.get_payment_provider_display|default:"—" }}</dd>
-            <dt class="col-sm-5">Fecha de pago</dt><dd class="col-sm-7">{{ invoice.payment_date|date:"d/m/Y H:i"|default:"—" }}</dd>
+            <dt class="col-sm-5">Método de pago</dt>
+            <dd class="col-sm-7">
+              {% if invoice.payment_method == "EF" %}
+                <span class="badge bg-success">
+                  <i class="bi bi-cash me-1"></i>Efectivo
+                </span>
+              {% elif invoice.payment_method == "DI" %}
+                <span class="badge bg-info">
+                  <i class="bi bi-phone me-1"></i>Digital
+                </span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-5">Proveedor</dt>
+            <dd class="col-sm-7">
+              {% if invoice.payment_provider %}
+                {% if invoice.payment_provider == "NEQUI" %}
+                  <span class="badge bg-info">Nequi</span>
+                {% elif invoice.payment_provider == "DAVIPLATA" %}
+                  <span class="badge bg-warning text-dark">Daviplata</span>
+                {% else %}
+                  {{ invoice.get_payment_provider_display }}
+                {% endif %}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-5">Fecha de pago</dt>
+            <dd class="col-sm-7">
+              {% if invoice.payment_date %}
+                <span class="text-mono">{{ invoice.payment_date|date:"d/m/Y H:i" }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </dd>
           </dl>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Reserva asociada -->
+  <!-- Reserva asociada (si existe) -->
   {% if reservation_info %}
-  <div class="card mb-4 shadow-sm border-info">
+  <div class="card mb-4 shadow-sm border-left-info">
+    <div class="card-header">
+      <h6 class="mb-0 text-info">
+        <i class="bi bi-journal-bookmark me-2"></i>Reserva Asociada
+      </h6>
+    </div>
     <div class="card-body">
-      <h6 class="fw-bold mb-3 text-info"><i class="bi bi-journal-bookmark me-2"></i> Reserva asociada</h6>
       <div class="row">
         <div class="col-md-6">
-          <p class="mb-1">#{{ reservation_info.id }} ({{ reservation_info.status }})</p>
-          <p class="mb-0">Vence: {{ reservation_info.vence|date:"d/m/Y H:i" }}</p>
+          <dl class="row">
+            <dt class="col-sm-4">Número</dt>
+            <dd class="col-sm-8 fw-semibold text-info">#{{ reservation_info.id }}</dd>
+
+            <dt class="col-sm-4">Estado</dt>
+            <dd class="col-sm-8">
+              <span class="badge bg-info">{{ reservation_info.status }}</span>
+            </dd>
+
+            <dt class="col-sm-4">Vence</dt>
+            <dd class="col-sm-8 text-mono">{{ reservation_info.vence|date:"d/m/Y H:i" }}</dd>
+          </dl>
         </div>
         <div class="col-md-6">
-          <ul class="list-unstyled mb-0">
-            <li>Total: {{ reservation_info.total|cop }}</li>
-            <li>Abonado: {{ reservation_info.abonado|cop }}</li>
-            <li>Saldo: {{ reservation_info.saldo|cop }}</li>
-          </ul>
+          <dl class="row">
+            <dt class="col-sm-4">Total</dt>
+            <dd class="col-sm-8 fw-bold">{{ reservation_info.total|cop }}</dd>
+
+            <dt class="col-sm-4">Abonado</dt>
+            <dd class="col-sm-8 text-success">{{ reservation_info.abonado|cop }}</dd>
+
+            <dt class="col-sm-4">Saldo</dt>
+            <dd class="col-sm-8 {% if reservation_info.saldo > 0 %}text-warning{% else %}text-success{% endif %}">
+              {{ reservation_info.saldo|cop }}
+            </dd>
+          </dl>
         </div>
       </div>
     </div>
   </div>
   {% endif %}
 
-  <!-- Items facturados -->
+  <!-- Productos facturados -->
   <div class="card shadow-sm">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-box-seam me-2 text-primary"></i>Productos Facturados</h6>
+    </div>
     <div class="card-body">
-      <h6 class="fw-bold mb-3"><i class="bi bi-box-seam me-2 text-primary"></i> Productos facturados</h6>
       <div class="table-responsive">
-        <table class="table table-striped align-middle">
-          <thead class="table-light">
+        <table class="table table-hover align-middle">
+          <thead>
             <tr>
               <th>Producto</th>
               <th>Variante</th>
               <th class="text-center">Cantidad</th>
-              <th class="text-end">Precio unitario</th>
+              <th class="text-end">Precio Unitario</th>
               <th class="text-end">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {% for item in items %}
             <tr>
-              <td>{{ item.product.name }}</td>
-              <td>{% if item.variant %}{{ item.variant }}{% else %}-{% endif %}</td>
-              <td class="text-center">{{ item.quantity }}</td>
-              <td class="text-end">{{ item.unit_price|cop }}</td>
-              <td class="text-end">{{ item.subtotal|cop }}</td>
+              <td>
+                <div class="fw-semibold">{{ item.product.name }}</div>
+                {% if item.product.sku %}
+                <small class="text-muted text-mono">SKU: {{ item.product.sku }}</small>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.variant %}
+                  <div class="fw-medium">{{ item.variant }}</div>
+                  {% if item.variant.sku %}
+                  <small class="text-muted text-mono">{{ item.variant.sku }}</small>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <span class="badge bg-light text-dark fw-semibold">{{ item.quantity }}</span>
+              </td>
+              <td class="text-end fw-medium">{{ item.unit_price|cop }}</td>
+              <td class="text-end fw-bold text-primary">{{ item.subtotal|cop }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                No hay productos en esta factura.
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -138,24 +250,31 @@
       </div>
 
       <!-- Totales -->
-      <div class="d-flex justify-content-end mt-3">
-        <div class="w-50">
-          <div class="d-flex justify-content-between">
-            <span>Subtotal:</span><span>{{ subtotal|cop }}</span>
-          </div>
-          <div class="d-flex justify-content-between">
-            <span>Descuento:</span><span>- {{ discount|cop }}</span>
-          </div>
-          <hr/>
-          <div class="d-flex justify-content-between fw-bold">
-            <span>Total:</span><span>{{ total|cop }}</span>
-          </div>
-          <div class="d-flex justify-content-between">
-            <span>Pagado:</span><span>{{ amount_paid|cop }}</span>
+      <div class="row justify-content-end mt-4">
+        <div class="col-md-6 col-lg-4">
+          <div class="card bg-light">
+            <div class="card-body">
+              <div class="d-flex justify-content-between mb-2">
+                <span>Subtotal:</span>
+                <span class="fw-medium">{{ subtotal|cop }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Descuento:</span>
+                <span class="fw-medium text-danger">- {{ discount|cop }}</span>
+              </div>
+              <hr class="my-2">
+              <div class="d-flex justify-content-between mb-2">
+                <span class="fw-bold fs-5">Total:</span>
+                <span class="fw-bold fs-5 text-primary">{{ total|cop }}</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span>Pagado:</span>
+                <span class="fw-medium text-success">{{ amount_paid|cop }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 
