@@ -250,6 +250,7 @@ class UserSetPasswordView(LoginRequiredMixin, PermissionRequiredMixin, FormView)
 
 
 # ========== AUDITORÍA ==========
+# ========== AUDITORÍA NORMAL ==========
 class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = AuditLog
     template_name = "backoffice/users/auditlog_list.html"
@@ -260,6 +261,9 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     def get_queryset(self):
         qs = AuditLog.objects.select_related("user").all()
 
+        # 🚫 excluir navegación
+        qs = qs.exclude(action="access")
+
         # parámetros
         q = (self.request.GET.get("q") or "").strip()
         only_users = self.request.GET.get("only_users")
@@ -267,42 +271,34 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         date = self.request.GET.get("date")
         period = self.request.GET.get("period")  # day, week, month, year
 
-        # filtrar por usuario específico (viene del enlace "ver auditoría" en detalle de usuario)
         if user_id:
             try:
                 qs = qs.filter(user_id=int(user_id))
             except (TypeError, ValueError):
                 pass
 
-        # solo registros con usuario (excluir "Sistema")
         if only_users in ("1", "true", "True", "on"):
             qs = qs.filter(user__isnull=False)
 
-        # búsqueda flexible
         if q:
             base_q = (
-                    Q(user__username__unaccent_icontains=q) |
-                    Q(user__email__unaccent_icontains=q) |
-                    Q(user__first_name__unaccent_icontains=q) |
-                    Q(user__last_name__unaccent_icontains=q) |
-                    Q(action__unaccent_icontains=q) |
-                    Q(model__unaccent_icontains=q) |
-                    Q(description__unaccent_icontains=q)
+                Q(user__username__unaccent_icontains=q) |
+                Q(user__email__unaccent_icontains=q) |
+                Q(user__first_name__unaccent_icontains=q) |
+                Q(user__last_name__unaccent_icontains=q) |
+                Q(action__unaccent_icontains=q) |
+                Q(model__unaccent_icontains=q) |
+                Q(description__unaccent_icontains=q)
             )
             qs = qs.filter(base_q)
-
-            # intentar búsqueda en JSONField `data` si el motor lo soporta (seguro en Postgres JSONB).
             try:
                 qs = qs | AuditLog.objects.filter(data__icontains=q)
             except Exception:
-                # si el backend no soporta data__icontains o lanza error, lo ignoramos
                 pass
 
-        # filtro por fecha exacta
         if date:
             qs = qs.filter(created_at__date=date)
 
-        # filtro por periodo relativo
         if period:
             now_ = now()
             if period == "day":
@@ -322,9 +318,81 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
         ctx["last_model"] = AuditLog.objects.order_by("-created_at").values_list("model", flat=True).first() or "-"
         ctx["unique_users"] = AuditLog.objects.values("user").distinct().count()
         ctx["unique_models"] = AuditLog.objects.values("model").distinct().count()
-        ctx["total_logs"] = AuditLog.objects.count()
-        # para mantener el estado del filtro en la plantilla
+        ctx["total_logs"] = AuditLog.objects.exclude(action="access").count()
         ctx["only_users"] = self.request.GET.get("only_users", "")
+        return ctx
+
+
+# ========== AUDITORÍA DE ACCESOS ==========
+class AuditLogAccessListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    model = AuditLog
+    template_name = "backoffice/users/auditlog_access_list.html"  # 👈 crea plantilla separada
+    context_object_name = "logs"
+    paginate_by = 30
+    permission_required = "users.view_auditlog"
+
+    def get_queryset(self):
+        qs = AuditLog.objects.select_related("user").filter(action="access")
+
+        # filtros opcionales
+        q = (self.request.GET.get("q") or "").strip()
+        user_id = self.request.GET.get("user")
+        date = self.request.GET.get("date")
+        period = self.request.GET.get("period")  # day, week, month, year
+
+        if user_id:
+            try:
+                qs = qs.filter(user_id=int(user_id))
+            except (TypeError, ValueError):
+                pass
+
+        if q:
+            base_q = (
+                Q(user__username__unaccent_icontains=q) |
+                Q(user__email__unaccent_icontains=q) |
+                Q(user__first_name__unaccent_icontains=q) |
+                Q(user__last_name__unaccent_icontains=q) |
+                Q(description__unaccent_icontains=q)
+            )
+            qs = qs.filter(base_q)
+
+        if date:
+            qs = qs.filter(created_at__date=date)
+
+        if period:
+            now_ = now()
+            if period == "day":
+                qs = qs.filter(created_at__date=now_.date())
+            elif period == "week":
+                start_week = now_ - timedelta(days=now_.weekday())
+                qs = qs.filter(created_at__date__gte=start_week.date())
+            elif period == "month":
+                qs = qs.filter(created_at__year=now_.year, created_at__month=now_.month)
+            elif period == "year":
+                qs = qs.filter(created_at__year=now_.year)
+
+        return qs.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["unique_users"] = AuditLog.objects.filter(action="access").values("user").distinct().count()
+        ctx["total_access"] = AuditLog.objects.filter(action="access").count()
+        return ctx
+
+class AuditLogAccessDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    """Vista de detalle de un acceso / navegación."""
+    model = AuditLog
+    template_name = "backoffice/users/auditlog_access_detail.html"
+    context_object_name = "log"
+    permission_required = "users.view_auditlog"
+
+    def get_queryset(self):
+        # 🔒 Solo mostrar registros de accesos
+        return AuditLog.objects.select_related("user").filter(action="access")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["data_pretty"] = self.object.get_data_display()
         return ctx
 
 

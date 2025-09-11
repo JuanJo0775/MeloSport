@@ -85,55 +85,56 @@
   </div>
 
   <!-- Filtros -->
-  <div class="card mb-4">
-    <div class="card-header bg-white">
-      <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros de Búsqueda</h6>
-    </div>
-    <div class="card-body">
-      <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-4">
-          <label for="q" class="form-label small">Buscar Usuario / Acción</label>
-          <input type="text" name="q" id="q" class="form-control form-control-sm"
-                 placeholder="Nombre, email, acción, modelo" value="{{ request.GET.q }}">
-        </div>
-
-        <div class="col-md-2">
-          <label for="only_users" class="form-label small">Tipo de registros</label>
-          <select name="only_users" id="only_users" class="form-select form-select-sm">
-            <option value="" {% if not request.GET.only_users %}selected{% endif %}>Todos</option>
-            <option value="1" {% if request.GET.only_users == "1" %}selected{% endif %}>Solo usuarios</option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <label for="period" class="form-label small">Periodo</label>
-          <select name="period" id="period" class="form-select form-select-sm">
-            <option value="">-- Todos --</option>
-            <option value="day" {% if request.GET.period == "day" %}selected{% endif %}>Hoy</option>
-            <option value="week" {% if request.GET.period == "week" %}selected{% endif %}>Semana</option>
-            <option value="month" {% if request.GET.period == "month" %}selected{% endif %}>Mes</option>
-            <option value="year" {% if request.GET.period == "year" %}selected{% endif %}>Año</option>
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <label for="date" class="form-label small">Fecha específica</label>
-          <input type="date" name="date" id="date" class="form-control form-control-sm" value="{{ request.GET.date }}">
-        </div>
-
-        <div class="col-md-2 text-end">
-          <div class="btn-group w-100">
-            <button type="submit" class="btn btn-primary">
-              <i class="bi bi-search me-1"></i> Filtrar
-            </button>
-            <a href="{% url 'backoffice:users:auditlog_list' %}" class="btn btn-outline-secondary">
-              <i class="bi bi-arrow-clockwise me-1"></i> Limpiar
-            </a>
-          </div>
-        </div>
-      </form>
-    </div>
+<div class="card mb-4">
+  <div class="card-header bg-white">
+    <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Filtros de Búsqueda</h6>
   </div>
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label for="q" class="form-label small">Buscar Usuario / Ruta</label>
+        <input type="text" name="q" id="q" class="form-control form-control-sm"
+               placeholder="Nombre, email, ruta" value="{{ request.GET.q }}">
+      </div>
+
+      <div class="col-md-2">
+        <label for="period" class="form-label small">Periodo</label>
+        <select name="period" id="period" class="form-select form-select-sm">
+          <option value="">-- Todos --</option>
+          <option value="day" {% if request.GET.period == "day" %}selected{% endif %}>Hoy</option>
+          <option value="week" {% if request.GET.period == "week" %}selected{% endif %}>Semana</option>
+          <option value="month" {% if request.GET.period == "month" %}selected{% endif %}>Mes</option>
+          <option value="year" {% if request.GET.period == "year" %}selected{% endif %}>Año</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label for="date" class="form-label small">Fecha específica</label>
+        <input type="date" name="date" id="date" class="form-control form-control-sm"
+               value="{{ request.GET.date }}">
+      </div>
+
+      <!-- Botones de filtrar/limpiar -->
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary me-2">
+          <i class="bi bi-funnel me-1"></i> Filtrar
+        </button>
+        <a href="{% url 'backoffice:users:auditlog_list' %}" class="btn btn-outline-secondary" title="Restablecer">
+          <i class="bi bi-arrow-clockwise"></i> Limpiar
+        </a>
+      </div>
+
+      <!-- Botón Navegación al extremo derecho -->
+      <div class="col-md-2 d-flex align-items-end justify-content-end">
+        <a href="{% url 'backoffice:users:auditlog_access_list' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-bezier2 me-1"></i> Navegación
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+
 
   <!-- Tabla (print-area) -->
       <div class="card print-area">

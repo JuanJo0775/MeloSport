@@ -1,18 +1,26 @@
-# apps/users/signals.py
 from django.db.models.signals import post_save, post_delete
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.dispatch import receiver
 from .models import AuditLog
 from django.forms.models import model_to_dict
+from django.conf import settings
 
-SKIP = {"AuditLog", "LogEntry"}
+# 🚫 Modelos que NO queremos auditar vía signals
+SKIP = {
+    "AuditLog",
+    "LogEntry",
+    "Session",       # 👈 agregado
+    "ContentType",   # 👈 agregado
+    "Permission",    # 👈 agregado
+}
+
 
 # ========================================================
 # Señales de modelos (crear/actualizar/eliminar instancias)
 # ========================================================
 @receiver(post_save)
 def log_save(sender, instance, created, **kwargs):
-    if sender.__name__ in SKIP:
+    if sender.__name__ in getattr(settings, "AUDITLOG_SKIP_MODELS", set()):
         return
 
     try:
@@ -24,7 +32,7 @@ def log_save(sender, instance, created, **kwargs):
         user=getattr(instance, "last_modified_by", None),
         action="create" if created else "update",
         model=sender.__name__,
-        obj=None,  # no pasamos el objeto entero
+        obj=None,  # no pasamos el objeto entero para no llenar demasiado
         description=f"Registro {'creado' if created else 'actualizado'} vía signal",
         extra_data={"snapshot": payload},
     )
@@ -44,10 +52,11 @@ def log_delete(sender, instance, **kwargs):
         user=getattr(instance, "last_modified_by", None),
         action="delete",
         model=sender.__name__,
-        obj=None,  # tampoco aquí
+        obj=None,
         description="Registro eliminado vía signal",
         extra_data={"snapshot": payload},
     )
+
 
 # ========================================================
 # Señales de autenticación (login / logout / login fallido)

@@ -7,7 +7,9 @@ from django.forms.utils import ErrorDict, ErrorList
 from django.db.models import Model, QuerySet
 from django.http import QueryDict
 from django.utils import timezone
+from django.conf import settings
 import json
+
 
 
 class Role(models.Model):
@@ -85,6 +87,7 @@ class AuditLog(models.Model):
         ("delete", "Eliminación"),
         ("login", "Inicio de sesión"),
         ("logout", "Cierre de sesión"),
+        ("access", "Acceso / Navegación"),  # 👈 nuevo tipo
         ("other", "Otro"),
     ]
 
@@ -121,37 +124,27 @@ class AuditLog(models.Model):
 
     @classmethod
     def _to_jsonable(cls, value):
-        """
-        Convierte value en algo 100% serializable por json (recursivo).
-        Maneja Model, Form, QueryDict, ErrorDict, QuerySet, listas, etc.
-        """
-        # primitivos
+        """Convierte value en algo 100% serializable por json (recursivo)."""
         if value is None or isinstance(value, (str, int, float, bool)):
             return value
 
-        # dict
         if isinstance(value, dict):
             return {str(k): cls._to_jsonable(v) for k, v in value.items()}
 
-        # listas/tuplas/sets
         if isinstance(value, (list, tuple, set)):
             return [cls._to_jsonable(v) for v in value]
 
-        # QueryDict (request.POST / GET)
         if isinstance(value, QueryDict):
             return {k: (vals if len(vals) > 1 else vals[0]) for k, vals in value.lists()}
 
-        # Errores de formulario
         if isinstance(value, ErrorDict):
             return {k: [str(e) for e in v] for k, v in value.items()}
         if isinstance(value, ErrorList):
             return [str(e) for e in value]
 
-        # Model
         if isinstance(value, Model):
             try:
                 data = model_to_dict(value)
-                # Manejar ManyToMany (ej: groups, roles, user_permissions)
                 for field in value._meta.many_to_many:
                     try:
                         related = getattr(value, field.name).all()
@@ -162,28 +155,24 @@ class AuditLog(models.Model):
             except Exception:
                 return {"object": str(value), "pk": getattr(value, "pk", None)}
 
-        # QuerySet
         if isinstance(value, QuerySet):
             try:
                 return list(value.values())
             except Exception:
                 return [str(x) for x in value]
 
-        # Form (usa cleaned_data si existe)
         if hasattr(value, "cleaned_data"):
             try:
                 return cls._to_jsonable(getattr(value, "cleaned_data", {}))
             except Exception:
                 return {"form": str(value)}
 
-        # Objetos con get_json_data (p. ej. errors)
         if hasattr(value, "get_json_data"):
             try:
                 return value.get_json_data()
             except Exception:
                 pass
 
-        # último intento con el encoder de Django
         try:
             json.dumps(value, cls=DjangoJSONEncoder)
             return value
@@ -192,9 +181,7 @@ class AuditLog(models.Model):
 
     @classmethod
     def _mask_sensitive(cls, payload):
-        """
-        Enmascara valores de claves sensibles (password, token, etc.).
-        """
+        """Enmascara valores de claves sensibles (password, token, etc.)."""
         if isinstance(payload, dict):
             out = {}
             for k, v in payload.items():
@@ -211,24 +198,33 @@ class AuditLog(models.Model):
     # ========= API pública =========
     @classmethod
     def log_action(
-        cls,
-        *,
-        user=None,
-        request=None,
-        action="other",
-        model=None,
-        obj=None,
-        description="",
-        extra_data=None,
+            cls,
+            *,
+            user=None,
+            request=None,
+            action="other",
+            model=None,
+            obj=None,
+            description="",
+            extra_data=None,
     ):
-        """
-        Logger robusto: acepta casi cualquier cosa en obj/extra_data.
-        """
+        """Logger robusto con control de accesos y filtrado de ruido."""
+
+        # 🚫 Ignorar modelos definidos en settings
+        if model in getattr(settings, "AUDITLOG_SKIP_MODELS", set()):
+            return None
+
         # Usuario
         if not user and request:
             user = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
 
-        # IP (real si hay proxy)
+        # Solo guardar accesos válidos
+        if action.lower() == "access" and request:
+            if request.path.startswith(("/static/", "/media/", "/favicon.ico")):
+                return None
+            description = description or f"Entró a {request.path} ({request.method})"
+
+        # IP
         ip = None
         if request:
             xff = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -249,7 +245,7 @@ class AuditLog(models.Model):
             merged["extra"] = cls._to_jsonable(extra_data)
             data = merged
 
-        # Enmascarar sensibles SIEMPRE
+        # Enmascarar sensibles
         data = cls._mask_sensitive(data if isinstance(data, (dict, list)) else {"value": data})
 
         return cls.objects.create(
