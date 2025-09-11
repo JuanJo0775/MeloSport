@@ -313,7 +313,63 @@ class InvoiceListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Invoice
     template_name = "backoffice/billing/invoice_list.html"
     context_object_name = "invoices"
+    paginate_by = 20
     ordering = ["-created_at"]
+
+    def get_queryset(self):
+        qs = super().get_queryset().prefetch_related("items", "items__product", "items__variant")
+
+        request = self.request
+        q = request.GET.get("q", "").strip()
+        payment_method = request.GET.get("payment_method", "").strip()
+        payment_provider = request.GET.get("payment_provider", "").strip()
+        date_from = request.GET.get("date_from", "").strip()
+        date_to = request.GET.get("date_to", "").strip()
+
+        # --- búsqueda cliente o código ---
+        if q:
+            qs = qs.filter(
+                Q(client_first_name__unaccent_icontains=q) |
+                Q(client_last_name__unaccent_icontains=q) |
+                Q(code__icontains=q)
+            )
+
+        if payment_method:
+            qs = qs.filter(payment_method=payment_method)
+
+        if payment_provider:
+            qs = qs.filter(payment_provider=payment_provider)
+
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+        return qs.order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        full_qs = Invoice.objects.all()
+
+        # 🔹 estadísticas rápidas
+        context["stats"] = {
+            "total_facturas": full_qs.count(),
+            "total_vendido": sum(inv.total for inv in full_qs),
+            "efectivo": full_qs.filter(payment_method="EF").count(),
+            "digital": full_qs.filter(payment_method="DI").count(),
+            "nequi": full_qs.filter(payment_provider="NEQUI").count(),
+            "daviplata": full_qs.filter(payment_provider="DAVIPLATA").count(),
+        }
+
+        # 🔹 filtros actuales
+        context["current_q"] = self.request.GET.get("q", "")
+        context["current_payment_method"] = self.request.GET.get("payment_method", "")
+        context["current_payment_provider"] = self.request.GET.get("payment_provider", "")
+        context["current_date_from"] = self.request.GET.get("date_from", "")
+        context["current_date_to"] = self.request.GET.get("date_to", "")
+
+        return context
 
 
 class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -321,6 +377,46 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
     model = Invoice
     template_name = "backoffice/billing/invoice_detail.html"
     context_object_name = "invoice"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        invoice = self.object
+
+        # Totales
+        subtotal = invoice.subtotal or Decimal("0.00")
+        total = invoice.total or Decimal("0.00")
+        discount = invoice.discount_amount or Decimal("0.00")
+        amount_paid = invoice.amount_paid or Decimal("0.00")
+        balance_due = invoice.remaining_due()
+
+        # Información de reserva (si existe)
+        reservation = invoice.reservation
+        reservation_info = None
+        if reservation:
+            reservation_info = {
+                "id": reservation.pk,
+                "status": reservation.status,
+                "total": reservation.total,
+                "abonado": reservation.amount_deposited,
+                "saldo": reservation.remaining_due,
+                "vence": reservation.due_date,
+            }
+
+        # Productos facturados
+        items = invoice.items.select_related("product", "variant").all()
+
+        # Armamos datos para mostrar bonito
+        context.update({
+            "subtotal": subtotal,
+            "total": total,
+            "discount": discount,
+            "amount_paid": amount_paid,
+            "balance_due": balance_due,
+            "reservation_info": reservation_info,
+            "items": items,
+            "breadcrumb_label": f"Factura #{invoice.code or invoice.pk}",
+        })
+        return context
 
 
 # Factura HTML limpia
@@ -331,6 +427,17 @@ class InvoiceHTMLView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Invoice
     template_name = "backoffice/billing/invoice_template/invoice_template.html"
     context_object_name = "invoice"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        invoice = self.object
+
+        amount_paid = invoice.amount_paid or Decimal("0.00")
+        balance_due = invoice.total - amount_paid
+
+        context["balance_due"] = balance_due
+        return context
+
 
 
 

@@ -33,56 +33,7 @@
     </div>
   </div>
 
-  <!-- Filtros y búsqueda -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <form method="get" class="row g-3">
-            <!-- Buscar -->
-            <div class="col-md-4">
-              <label for="search" class="form-label">Buscar deporte</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" id="search" name="search" class="form-control"
-                       placeholder="Nombre del deporte..." value="{{ request.GET.search }}">
-              </div>
-            </div>
-
-            <!-- Estado -->
-            <div class="col-md-3">
-              <label for="status" class="form-label">Estado</label>
-              <select id="status" name="status" class="form-select">
-                <option value="">Todos los estados</option>
-                <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Activos</option>
-                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactivos</option>
-              </select>
-            </div>
-
-            <!-- Botones -->
-            <div class="col-md-2">
-              <label class="form-label">&nbsp;</label>
-              <div class="d-grid">
-                <button type="submit" class="btn btn-primary">
-                  <i class="bi bi-funnel me-2"></i>Filtrar
-                </button>
-              </div>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label">&nbsp;</label>
-              <div class="d-grid">
-                <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
-                  <i class="bi bi-x-circle me-2"></i>Limpiar
-                </a>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Estadísticas rápidas -->
+      <!-- Estadísticas rápidas -->
       <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="card stats-card border-left-success">
@@ -134,6 +85,56 @@
         </div>
       </div>
     </div>
+
+  <!-- Filtros y búsqueda -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <form method="get" class="row g-3">
+            <!-- Buscar -->
+            <div class="col-md-4">
+              <label for="search" class="form-label">Buscar deporte</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="search" name="search" class="form-control"
+                       placeholder="Nombre del deporte..." value="{{ request.GET.search }}">
+              </div>
+            </div>
+
+            <!-- Estado -->
+            <div class="col-md-3">
+              <label for="status" class="form-label">Estado</label>
+              <select id="status" name="status" class="form-select">
+                <option value="">Todos los estados</option>
+                <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Activos</option>
+                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactivos</option>
+              </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="col-md-2">
+              <label class="form-label">&nbsp;</label>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-funnel me-2"></i>Filtrar
+                </button>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">&nbsp;</label>
+              <div class="d-grid">
+                <a href="{% url 'backoffice:categories:absolute_list' %}" class="btn btn-outline-secondary">
+                  <i class="bi bi-x-circle me-2"></i>Limpiar
+                </a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Tabla principal -->
   <div class="card border-0 shadow-sm">

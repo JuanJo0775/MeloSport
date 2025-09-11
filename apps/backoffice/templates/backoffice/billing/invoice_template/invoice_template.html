@@ -9,34 +9,46 @@
 {% endblock %}
 
 {% block content %}
+  <!-- Datos del cliente -->
   <section class="mb-3">
     <strong>Cliente:</strong>
     <div>{{ invoice.client_first_name }} {{ invoice.client_last_name }}</div>
-    <div>Tel: {{ invoice.client_phone }}</div>
+    <div>Tel: {{ invoice.client_phone|default:"—" }}</div>
   </section>
 
-  <table class="table table-sm table-bordered align-middle">
+  <!-- Tabla de productos -->
+  <table class="table table-bordered align-middle">
     <thead class="table-light">
       <tr>
-        <th>Producto</th>
-        <th>Cant.</th>
-        <th>Precio unitario</th>
-        <th class="text-end">Subtotal</th>
+        <th style="width: 55%;">Producto</th>
+        <th style="width: 10%;" class="text-center">Cant.</th>
+        <th style="width: 15%;" class="text-end">Precio unitario</th>
+        <th style="width: 20%;" class="text-end">Subtotal</th>
       </tr>
     </thead>
     <tbody>
       {% for item in invoice.items.all %}
       <tr>
-        <td>{{ item.product.name }}{% if item.variant %} — {{ item.variant.label }}{% endif %}</td>
-        <td>{{ item.quantity }}</td>
-        <td>{{ item.unit_price|cop }}</td>
+        <td>
+          <div class="fw-semibold">{{ item.product.name }}</div>
+          {% if item.variant %}
+            <small class="text-muted">
+              {% if item.variant.label %}{{ item.variant.label }}{% endif %}
+              {% if item.variant.size %} | Talla: {{ item.variant.size }}{% endif %}
+              {% if item.variant.color %} | Color: {{ item.variant.color }}{% endif %}
+            </small>
+          {% endif %}
+        </td>
+        <td class="text-center">{{ item.quantity }}</td>
+        <td class="text-end">{{ item.unit_price|cop }}</td>
         <td class="text-end">{{ item.subtotal|cop }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <div class="d-flex justify-content-end">
+  <!-- Totales -->
+  <div class="d-flex justify-content-end mt-3">
     <div class="w-50">
       <div class="d-flex justify-content-between">
         <span>Subtotal:</span>
@@ -51,6 +63,16 @@
         <span>Total:</span>
         <span>{{ invoice.total|cop }}</span>
       </div>
+      {% if invoice.amount_paid and invoice.amount_paid < invoice.total %}
+      <div class="d-flex justify-content-between">
+        <span>Pagado:</span>
+        <span>{{ invoice.amount_paid|cop }}</span>
+      </div>
+    <div class="d-flex justify-content-between">
+      <span>Saldo pendiente:</span>
+      <span>{{ balance_due|cop }}</span>
+    </div>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

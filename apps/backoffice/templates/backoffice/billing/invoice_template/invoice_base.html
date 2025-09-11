@@ -12,6 +12,12 @@
   <!-- Estilos personalizados -->
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/styles_inventario.css' %}">
+
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
 </head>
 <body class="container py-4">
 
@@ -23,13 +29,18 @@
       <div>Dirección: ...</div>
     </div>
     <div class="text-end">
-      {% block header_right %}
-      <!-- Por defecto vacío, las facturas pueden sobreescribir -->
-      {% endblock %}
+      {% block header_right %}{% endblock %}
     </div>
   </header>
 
   <hr/>
+
+  <!-- BOTÓN DE IMPRIMIR (solo visible en pantalla) -->
+  <div class="text-end mb-3 no-print">
+    <button onclick="window.print()" class="btn btn-primary btn-sm">
+      <i class="bi bi-printer me-1"></i> Imprimir
+    </button>
+  </div>
 
   <!-- CONTENIDO CENTRAL -->
   <main>
@@ -42,6 +53,13 @@
     <p class="mb-0">MeloSport © {{ now|date:"Y" }} — Todos los derechos reservados</p>
     <p class="mb-0">IVA incluido</p>
   </footer>
+
+  <!-- Script para imprimir automáticamente al abrir -->
+  <script>
+    window.addEventListener("load", function() {
+      window.print();
+    });
+  </script>
 
 </body>
 </html>
