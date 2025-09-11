@@ -16,6 +16,7 @@ class Command(BaseCommand):
         # --- Admin: todos los permisos ---
         admin_group.permissions.set(Permission.objects.all())
 
+
         # --- Vendedor: permisos específicos ---
         allowed = []
 
@@ -33,10 +34,16 @@ class Command(BaseCommand):
 
         # Movimientos de inventario: solo ver y agregar
         inventory_perms = Permission.objects.filter(
-            content_type__app_label="products", codename__in=["view_inventorymovement", "add_inventorymovement"]
+            content_type__app_label="products",
+            codename__in=["view_inventorymovement", "add_inventorymovement"],
         )
         allowed += list(inventory_perms)
 
+        # --- Billing (ventas / reservas): todos los permisos ---
+        billing_perms = Permission.objects.filter(content_type__app_label="billing")
+        allowed += list(billing_perms)
+
+        # Asignar permisos al grupo Vendedor
         vendedor_group.permissions.set(allowed)
 
         # --- Superusuario por defecto ---

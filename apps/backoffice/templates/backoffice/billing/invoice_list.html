@@ -179,14 +179,22 @@
             </td>
             <td>
               {% if invoice.payment_method == "EF" %}
-                <span class="badge bg-success"><i class="bi bi-cash me-1"></i>Efectivo</span>
+                <span class="badge bg-success">
+                  <i class="bi bi-cash me-1"></i>Efectivo
+                </span>
               {% elif invoice.payment_method == "DI" %}
                 {% if invoice.payment_provider == "NEQUI" %}
-                  <span class="badge bg-info"><i class="bi bi-phone me-1"></i>Nequi</span>
+                  <span class="badge" style="background:#d63384; color:white;">
+                    <i class="bi bi-phone me-1"></i>Nequi
+                  </span>
                 {% elif invoice.payment_provider == "DAVIPLATA" %}
-                  <span class="badge bg-warning text-dark"><i class="bi bi-phone me-1"></i>Daviplata</span>
+                  <span class="badge bg-danger">
+                    <i class="bi bi-phone me-1"></i>Daviplata
+                  </span>
                 {% else %}
-                  <span class="badge bg-info"><i class="bi bi-phone me-1"></i>Digital</span>
+                  <span class="badge bg-primary">
+                    <i class="bi bi-phone me-1"></i>Digital
+                  </span>
                 {% endif %}
               {% else %}
                 <span class="badge bg-secondary">N/A</span>
