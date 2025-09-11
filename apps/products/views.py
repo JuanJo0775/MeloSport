@@ -163,7 +163,6 @@ class ProductDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
 
         return context
 
-
 class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     permission_required = "products.add_product"
     model = Product
@@ -174,20 +173,25 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         context = super().get_context_data(**kwargs)
         prefix = "images"
         if self.request.method == "POST":
-            context["image_formset"] = ProductImageFormSet(self.request.POST, self.request.FILES, prefix=prefix)
+            context["image_formset"] = ProductImageFormSet(
+                self.request.POST, self.request.FILES, prefix=prefix
+            )
         else:
             context["image_formset"] = ProductImageFormSet(prefix=prefix)
         return context
 
     def form_valid(self, form):
-        image_formset = self.get_context_data().get("image_formset")
+        prefix = "images"
+        image_formset = ProductImageFormSet(
+            self.request.POST, self.request.FILES, prefix=prefix
+        )
 
         with transaction.atomic():
             self.object = form.save()
-            if image_formset and image_formset.is_valid():
+            if image_formset.is_valid():
                 image_formset.instance = self.object
                 image_formset.save()
-            elif image_formset and not image_formset.is_valid():
+            else:
                 return self.form_invalid(form)
 
             AuditLog.log_action(
@@ -206,9 +210,14 @@ class ProductCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView)
         return redirect("backoffice:products:product_list")
 
     def form_invalid(self, form):
+        prefix = "images"
         context = self.get_context_data(form=form)
         if "image_formset" not in context:
-            context["image_formset"] = ProductImageFormSet(self.request.POST or None, self.request.FILES or None)
+            context["image_formset"] = ProductImageFormSet(
+                self.request.POST or None,
+                self.request.FILES or None,
+                prefix=prefix,
+            )
         return self.render_to_response(context)
 
 
@@ -221,41 +230,36 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         prefix = "images"
-        # cuando venga POST, construimos formset con POST+FILES para mostrar errores
         if self.request.method == "POST":
             context["image_formset"] = ProductImageFormSet(
                 self.request.POST, self.request.FILES, instance=self.object, prefix=prefix
             )
         else:
-            context["image_formset"] = ProductImageFormSet(instance=self.object, prefix=prefix)
+            context["image_formset"] = ProductImageFormSet(
+                instance=self.object, prefix=prefix
+            )
         return context
 
     def form_valid(self, form):
-        """
-        Guardamos el producto primero (para tener PK), luego validamos y guardamos el formset.
-        Si el formset falla, devolvemos el template con errores.
-        """
         prefix = "images"
-
         with transaction.atomic():
-            # guardar los cambios del producto (self.object queda disponible)
             self.object = form.save()
 
-            # construimos el formset con POST+FILES contra la instancia ya guardada
             image_formset = ProductImageFormSet(
-                self.request.POST or None, self.request.FILES or None, instance=self.object, prefix=prefix
+                self.request.POST or None,
+                self.request.FILES or None,
+                instance=self.object,
+                prefix=prefix,
             )
 
             if image_formset.is_valid():
                 image_formset.save()
             else:
-                # Si es inválido, hacemos rollback y re-renderizamos con los errores del formset
                 transaction.set_rollback(True)
                 context = self.get_context_data(form=form)
-                context["image_formset"] = image_formset  # formset con errores
+                context["image_formset"] = image_formset
                 return self.render_to_response(context)
 
-            # Audit log
             AuditLog.log_action(
                 request=self.request,
                 action="Update",
@@ -268,16 +272,20 @@ class ProductUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
         return redirect(self.get_success_url())
 
     def form_invalid(self, form):
-        # get_context_data ya añade image_formset (POST), así que solo aseguramos que exista
+        prefix = "images"
         context = self.get_context_data(form=form)
         if "image_formset" not in context:
             context["image_formset"] = ProductImageFormSet(
-                self.request.POST or None, self.request.FILES or None, instance=self.object
+                self.request.POST or None,
+                self.request.FILES or None,
+                instance=self.object,
+                prefix=prefix,
             )
         return self.render_to_response(context)
 
     def get_success_url(self):
         return reverse("backoffice:products:product_detail", args=[self.object.pk])
+
 
 
 class ProductDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
