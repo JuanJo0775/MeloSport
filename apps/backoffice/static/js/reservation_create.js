@@ -123,6 +123,7 @@ document.addEventListener("DOMContentLoaded", function () {
         previewMap.set(key, row);
       }
 
+      toggleNoProductsRow();
       recalcTotals();
     }
 
@@ -142,23 +143,40 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---------- tabla ----------
+    function updateRowNumbers() {
+      const rows = tableBody.querySelectorAll("tr.product-row");
+      rows.forEach((r, idx) => {
+        const firstCell = r.querySelector("td");
+        if (firstCell) firstCell.textContent = String(idx + 1);
+      });
+    }
+
     function insertPreviewRow(row) {
       const tr = document.createElement("tr");
       tr.dataset.key = row.key;
+      tr.classList.add("product-row");
       tr.innerHTML = `
-        <td></td>
+        <td class="text-muted small align-middle">#</td>
         <td>
-          <div class="small">${escapeHtml(row.product_name)}</div>
-          ${row.variant_label ? `<div class="text-muted small">${escapeHtml(row.variant_label)}</div>` : ""}
-          <div class="small text-muted">SKU: ${escapeHtml(row.sku)}</div>
+          <div class="fw-semibold text-dark small">${escapeHtml(row.product_name)}</div>
+          ${row.variant_label ? `<div class="text-muted small">Variante: <span class="fw-medium">${escapeHtml(row.variant_label)}</span></div>` : ""}
+          <div class="text-muted text-mono small">SKU: ${escapeHtml(row.sku) || "-"}</div>
         </td>
-        <td class="text-center">
-          <input type="number" min="1" value="${row.qty}" class="form-control form-control-sm preview-qty" style="width:80px;">
+        <td class="text-center align-middle">
+          <input type="number" min="1" value="${row.qty}" 
+                 class="form-control form-control-sm text-center preview-qty" 
+                 style="width:75px;">
         </td>
-        <td class="text-end unit-price">${fmtCOP(row.unit_price)}</td>
-        <td class="text-end subtotal">${fmtCOP(row.unit_price * row.qty)}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-danger btn-remove-item" type="button">&times;</button>
+        <td class="text-end align-middle unit-price fw-medium text-primary">
+          ${fmtCOP(row.unit_price)}
+        </td>
+        <td class="text-end align-middle subtotal fw-bold text-success">
+          ${fmtCOP(row.unit_price * row.qty)}
+        </td>
+        <td class="text-center align-middle">
+          <button class="btn btn-sm btn-outline-danger btn-remove-item" type="button" title="Quitar producto">
+            <i class="bi bi-trash"></i>
+          </button>
         </td>
       `;
       tableBody.appendChild(tr);
@@ -177,14 +195,22 @@ document.addEventListener("DOMContentLoaded", function () {
         tr.remove();
         decreaseTotalForms();
         recalcTotals();
+        updateRowNumbers();
+        toggleNoProductsRow(); // 👈 asegura placeholder
       });
+
+      updateRowNumbers();
+      toggleNoProductsRow(); // 👈 asegura ocultar placeholder al añadir
     }
 
     function updatePreviewRow(row) {
       const tr = tableBody.querySelector(`tr[data-key="${row.key}"]`);
       if (!tr) return;
-      tr.querySelector(".preview-qty").value = row.qty;
-      tr.querySelector(".subtotal").textContent = fmtCOP(row.unit_price * row.qty);
+      const qtyInput = tr.querySelector(".preview-qty");
+      if (qtyInput) qtyInput.value = row.qty;
+      const subtotalEl = tr.querySelector(".subtotal");
+      if (subtotalEl) subtotalEl.textContent = fmtCOP(row.unit_price * row.qty);
+      updateRowNumbers();
     }
 
     function updateFormQuantity(index, qty) {
@@ -193,18 +219,47 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---------- totales ----------
+    function toggleNoProductsRow() {
+      const noRow = $qs("#no-products-row", pageRoot);
+      if (!noRow) return;
+      noRow.style.display = previewMap.size > 0 ? "none" : "";
+      updateRowNumbers();
+    }
+
     function recalcTotals() {
       let total = 0;
       previewMap.forEach(r => { total += r.unit_price * r.qty; });
+
+      // total general
       totalDisplay.textContent = fmtCOP(total);
+
+      // abono mínimo sugerido
       const minDep = Math.round(total * 0.2);
-      minDepositDisplay.textContent = fmtCOP(minDep);
+      if (minDepositDisplay) minDepositDisplay.textContent = fmtCOP(minDep);
+
+      // monto abonado por el usuario
       const dep = parsePrice(amountDepositedInput?.value || 0);
-      dueMessage.textContent = total === 0
-        ? "Seleccione productos para calcular vencimiento."
-        : dep >= minDep
-          ? "Reserva válida por 30 días hábiles."
-          : "Reserva válida por 3 días hábiles (abono mínimo 20%).";
+
+      // actualizar resumen
+      const subtotalEl = $qs("#subtotal-display", pageRoot);
+      const depositEl = $qs("#deposit-display", pageRoot);
+      const remainingEl = $qs("#remaining-display", pageRoot);
+
+      if (subtotalEl) subtotalEl.textContent = fmtCOP(total);
+      if (depositEl) depositEl.textContent = fmtCOP(dep);
+      if (remainingEl) remainingEl.textContent = fmtCOP(Math.max(0, total - dep));
+
+      // mensaje de vencimiento
+      if (dueMessage) {
+        dueMessage.textContent =
+          total === 0
+            ? "Seleccione productos para calcular vencimiento."
+            : dep >= minDep
+            ? "Reserva válida por 30 días hábiles."
+            : "Reserva válida por 3 días hábiles (abono mínimo 20%).";
+      }
+
+      toggleNoProductsRow();
     }
 
     // ---------- eventos ----------
