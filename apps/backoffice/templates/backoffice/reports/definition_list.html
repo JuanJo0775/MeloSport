@@ -1,0 +1,134 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load static %}
+{% block title %}Reportes{% endblock %}
+
+{% block breadcrumb %}
+  {% load breadcrumbs %}
+  <nav aria-label="breadcrumb" class="breadcrumb-wrapper">
+    <ol class="breadcrumb small mb-2">
+      {% breadcrumb "Reportes|backoffice:reports:definition_list" %}
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+<!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <h3 class="mb-0">
+        <i class="bi me-2"></i> Reportes disponibles
+      </h3>
+      <div class="d-flex gap-2">
+          {% if perms.reports.add_reportdefinition %}
+          <a href="{% url 'backoffice:users:list' %}" class="btn btn-primary">
+            <i class="bi bi-graph-up me-1"></i>
+            Nueva definición
+          </a>
+          {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid de reportes -->
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+    {% for definition in definitions %}
+      <div class="col">
+        <div class="card h-100 text-center shadow-sm border-0">
+          <div class="card-body d-flex flex-column p-4">
+
+            <!-- Ícono circular -->
+            <div class="d-flex justify-content-center align-items-center mb-3">
+              <div class="rounded-circle d-flex justify-content-center align-items-center"
+                   style="width:70px; height:70px;
+                   {% if definition.report_type == 'daily' %} background-color: #0d6efd20; color:#0d6efd;
+                   {% elif definition.report_type == 'monthly' %} background-color: #0dcaf020; color:#0dcaf0;
+                   {% elif definition.report_type == 'inventory' %} background-color: #19875420; color:#198754;
+                   {% elif definition.report_type == 'sales' %} background-color: #ffc10720; color:#ffc107;
+                   {% elif definition.report_type == 'reservations' %} background-color: #6610f220; color:#6610f2;
+                   {% elif definition.report_type == 'categories' %} background-color: #20c99720; color:#20c997;
+                   {% elif definition.report_type == 'top_products' %} background-color: #fd7e1420; color:#fd7e14;
+                   {% elif definition.report_type == 'audit' %} background-color: #6c757d20; color:#6c757d;
+                   {% else %} background-color: #dee2e620; color:#212529; {% endif %}
+                   ">
+                <i class="bi
+                  {% if definition.report_type == 'daily' %} bi-calendar-day
+                  {% elif definition.report_type == 'monthly' %} bi-calendar-month
+                  {% elif definition.report_type == 'inventory' %} bi-boxes
+                  {% elif definition.report_type == 'sales' %} bi-receipt
+                  {% elif definition.report_type == 'reservations' %} bi-journal-bookmark
+                  {% elif definition.report_type == 'categories' %} bi-tags
+                  {% elif definition.report_type == 'top_products' %} bi-box-seam
+                  {% elif definition.report_type == 'audit' %} bi-clipboard-data
+                  {% else %} bi-file-earmark-text
+                  {% endif %}
+                " style="font-size: 2rem;"></i>
+              </div>
+            </div>
+
+            <!-- Título -->
+            <h5 class="card-title mb-2">{{ definition.name }}</h5>
+            <!-- Descripción -->
+            <p class="card-text text-muted small flex-grow-1">{{ definition.description|default:"Sin descripción definida." }}</p>
+
+            <!-- Botones -->
+            <div class="d-grid gap-2 mt-auto">
+              <form method="post" action="{% url 'backoffice:reports:definition_generate' definition.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="format" value="{{ definition.export_formats.0|default:'xlsx' }}">
+                <button class="btn btn-primary" type="submit">
+                  <i class="bi bi-play-circle"></i> Generar
+                </button>
+              </form>
+              <button class="btn btn-outline-secondary" data-bs-toggle="modal"
+                      data-bs-target="#filtersModal{{ definition.pk }}">
+                <i class="bi bi-sliders"></i> Filtros
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal filtros -->
+      <div class="modal fade" id="filtersModal{{ definition.pk }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <form method="post" action="{% url 'backoffice:reports:definition_generate' definition.pk %}">
+              {% csrf_token %}
+              <div class="modal-header">
+                <h5 class="modal-title">Filtros — {{ definition.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                {% if definition.default_parameters %}
+                  {% for k, v in definition.default_parameters.items %}
+                    <div class="mb-3">
+                      <label class="form-label">{{ k|capfirst }}</label>
+                      <input type="text" name="{{ k }}" value="{{ v }}" class="form-control" />
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <p class="text-muted">Este reporte no requiere parámetros adicionales.</p>
+                {% endif %}
+
+                <div class="mb-3">
+                  <label class="form-label">Formato de exportación</label>
+                  <select name="format" class="form-select">
+                    {% for fmt in definition.export_formats %}
+                      <option value="{{ fmt }}">{{ fmt|upper }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Generar reporte</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

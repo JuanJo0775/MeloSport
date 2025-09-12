@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from django import forms as django_forms
 from .serializers import EmailTokenObtainPairSerializer
 from .models import AuditLog
 from .forms import CustomUserCreationForm, CustomUserChangeForm, CustomPasswordChangeForm, UserProfileUpdateForm
@@ -325,16 +326,27 @@ class AuditLogListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
 # ========== AUDITORÍA DE ACCESOS ==========
 class AuditLogAccessListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    """Vista de listado de accesos/navegación con filtros y limpieza automática."""
     model = AuditLog
-    template_name = "backoffice/users/auditlog_access_list.html"  # 👈 crea plantilla separada
+    template_name = "backoffice/users/auditlog_access_list.html"
     context_object_name = "logs"
     paginate_by = 30
     permission_required = "users.view_auditlog"
 
+    # Guardamos el periodo de retención elegido (7, 15 o 30 días)
+    retention_days = None
+
     def get_queryset(self):
         qs = AuditLog.objects.select_related("user").filter(action="access")
 
-        # filtros opcionales
+        # --- Limpieza automática de registros antiguos ---
+        retention = self.request.GET.get("retention")
+        if retention in ["7", "15", "30"]:
+            self.retention_days = int(retention)
+            cutoff = now() - timedelta(days=self.retention_days)
+            AuditLog.objects.filter(action="access", created_at__lt=cutoff).delete()
+
+        # --- Filtros opcionales ---
         q = (self.request.GET.get("q") or "").strip()
         user_id = self.request.GET.get("user")
         date = self.request.GET.get("date")
@@ -347,14 +359,13 @@ class AuditLogAccessListView(LoginRequiredMixin, PermissionRequiredMixin, ListVi
                 pass
 
         if q:
-            base_q = (
-                Q(user__username__unaccent_icontains=q) |
-                Q(user__email__unaccent_icontains=q) |
-                Q(user__first_name__unaccent_icontains=q) |
-                Q(user__last_name__unaccent_icontains=q) |
-                Q(description__unaccent_icontains=q)
+            qs = qs.filter(
+                Q(user__username__unaccent_icontains=q)
+                | Q(user__email__unaccent_icontains=q)
+                | Q(user__first_name__unaccent_icontains=q)
+                | Q(user__last_name__unaccent_icontains=q)
+                | Q(description__unaccent_icontains=q)
             )
-            qs = qs.filter(base_q)
 
         if date:
             qs = qs.filter(created_at__date=date)
@@ -377,6 +388,7 @@ class AuditLogAccessListView(LoginRequiredMixin, PermissionRequiredMixin, ListVi
         ctx = super().get_context_data(**kwargs)
         ctx["unique_users"] = AuditLog.objects.filter(action="access").values("user").distinct().count()
         ctx["total_access"] = AuditLog.objects.filter(action="access").count()
+        ctx["retention_days"] = self.retention_days  # Para mostrar en template si se aplicó limpieza
         return ctx
 
 class AuditLogAccessDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
@@ -394,6 +406,49 @@ class AuditLogAccessDetailView(LoginRequiredMixin, PermissionRequiredMixin, Deta
         ctx = super().get_context_data(**kwargs)
         ctx["data_pretty"] = self.object.get_data_display()
         return ctx
+
+
+class ConfirmDeleteAllAccessForm(django_forms.Form):
+    password = django_forms.CharField(
+        label="Contraseña",
+        widget=django_forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Confirma tu contraseña",
+                "autocomplete": "current-password",
+            }
+        ),
+        strip=False,
+        help_text="Introduce tu contraseña para confirmar la eliminación.",
+    )
+
+
+class AuditLogAccessDeleteAllView(LoginRequiredMixin, PermissionRequiredMixin, FormView):
+    template_name = "backoffice/users/auditlog_access_confirm_delete.html"
+    form_class = ConfirmDeleteAllAccessForm
+    success_url = reverse_lazy("backoffice:users:auditlog_access_list")
+    permission_required = "users.delete_auditlog"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["total_access"] = AuditLog.objects.filter(action="access").count()
+        return ctx
+
+    def form_valid(self, form):
+        password = form.cleaned_data["password"]
+        user = authenticate(username=self.request.user.username, password=password)
+
+        if user is None:
+            form.add_error("password", "Contraseña incorrecta.")
+            return self.form_invalid(form)
+
+        # ✅ Eliminar todos los registros de accesos
+        deleted, _ = AuditLog.objects.filter(action="access").delete()
+        messages.success(
+            self.request,
+            f"Se eliminaron {deleted} registros de acceso permanentemente."
+        )
+        return super().form_valid(form)
 
 
 class AuditLogDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):

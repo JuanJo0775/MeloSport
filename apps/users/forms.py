@@ -155,3 +155,17 @@ class UserProfileUpdateForm(forms.ModelForm):
             "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "Correo"}),
             "phone": forms.TextInput(attrs={"class": "form-control", "placeholder": "Teléfono"}),
         }
+
+class ConfirmDeleteForm(forms.Form):
+    password = forms.CharField(
+        label="Contraseña",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Confirma tu contraseña",
+                "autocomplete": "current-password",
+            }
+        ),
+        strip=False,
+        help_text="Introduce tu contraseña para confirmar la eliminación.",
+    )

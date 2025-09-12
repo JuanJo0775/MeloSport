@@ -1,0 +1,125 @@
+{% extends "backoffice/base_backoffice.html" %}
+{% load breadcrumbs %}
+
+{% block title %}Eliminar Registros de Acceso{% endblock %}
+
+{% block breadcrumb %}
+  {% breadcrumb "Auditoría de Accesos|backoffice:users:auditlog_access_list" "Eliminar" %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <!-- Alerta principal -->
+      <div class="card shadow-sm border-left-danger">
+        <div class="card-header bg-danger bg-opacity-10 border-bottom">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-octagon-fill text-danger me-2" style="font-size: 1.25rem;"></i>
+            <h5 class="mb-0 fw-semibold">Confirmar Eliminación de Accesos</h5>
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <!-- Alerta roja -->
+          <div class="alert alert-danger border-left-danger mb-4">
+            <div class="d-flex align-items-start">
+              <i class="bi bi-shield-lock me-2 mt-1"></i>
+              <div>
+                <h6 class="alert-heading mb-2">¡Acción Irreversible!</h6>
+                <p class="mb-0">
+                  Estás a punto de eliminar <strong>permanentemente</strong>
+                  todos los registros de accesos (navegación) almacenados en el sistema.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen de lo que se eliminará -->
+          <div class="card bg-light border-0 mb-4">
+            <div class="card-body p-3">
+              <div class="d-flex align-items-center">
+                <div class="avatar-placeholder bg-danger text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                     style="width: 50px; height: 50px;">
+                  <i class="bi bi-globe2" style="font-size: 1.5rem;"></i>
+                </div>
+                <div>
+                  <h6 class="mb-1 fw-semibold">Registros de Acceso</h6>
+                  <p class="text-muted mb-0 small">
+                    Se eliminarán <strong>{{ total_access }}</strong> registros de accesos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Advertencias -->
+          <div class="alert alert-warning border-left-warning">
+            <h6 class="alert-heading">
+              <i class="bi bi-info-circle me-1"></i> Ten en cuenta:
+            </h6>
+            <ul class="mb-0 small">
+              <li>Una vez eliminados, no podrás recuperar estos registros</li>
+              <li>Se perderá el historial de navegación y accesos de los usuarios</li>
+              <li>Esta acción requiere confirmar tu contraseña</li>
+            </ul>
+          </div>
+
+          <!-- Formulario -->
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+              {{ form.password.label_tag }}
+              {{ form.password }}
+              {% if form.password.errors %}
+                <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end">
+              <a href="{% url 'backoffice:users:auditlog_access_list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Cancelar
+              </a>
+              <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash me-1"></i> Sí, eliminar todo
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Alternativa -->
+      <div class="card shadow-sm mt-4">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="bi bi-lightbulb me-1"></i> Alternativa Recomendadas
+          </h6>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            En lugar de eliminar todo de una vez, considera usar la limpieza automática
+            (7, 15 o 30 días) en el listado de accesos.
+          </p>
+          <div class="d-grid gap-2">
+            <a href="{% url 'backoffice:users:auditlog_access_list' %}?retention=7"
+               class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-calendar3-week me-1"></i> Mantener solo últimos 7 días
+            </a>
+            <a href="{% url 'backoffice:users:auditlog_access_list' %}?retention=15"
+               class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-calendar2-week me-1"></i> Mantener solo últimos 15 días
+            </a>
+            <a href="{% url 'backoffice:users:auditlog_access_list' %}?retention=30"
+               class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-calendar3 me-1"></i> Mantener solo últimos 30 días
+            </a>
+          </div>
+          <small class="text-muted d-block mt-2">
+            Estas opciones eliminan automáticamente accesos antiguos sin borrar todo el historial.
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
