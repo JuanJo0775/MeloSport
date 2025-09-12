@@ -7,6 +7,12 @@ migraciones
         python manage.py makemigrations
         python manage.py migrate
 
+
+Asignar roles
+
+        python manage.py init_roles
+
+
 Admin
 
         http://127.0.0.1:8000/admin

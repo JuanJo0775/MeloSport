@@ -28,7 +28,7 @@ urlpatterns = [
     # Auditoría
     path("auditlogs/", AuditLogListView.as_view(), name="auditlog_list"),
     path("audit/<int:pk>/", AuditLogDetailView.as_view(), name="audit_detail"),
-    path("/auditlogs/accesos/", AuditLogAccessListView.as_view(), name="auditlog_access_list"),
+    path("auditlogs/accesos/", AuditLogAccessListView.as_view(), name="auditlog_access_list"),
     path("audit/acceso/<int:pk>/", AuditLogAccessDetailView.as_view(), name="audit_access_detail"),
 
     # Configuraciones de usuario
