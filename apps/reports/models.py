@@ -66,18 +66,76 @@ class ReportDefinition(models.Model):
         ("custom", "Reporte Personalizado"),
     ]
 
+    DEFAULTS_BY_TYPE = {
+        "daily": {
+            "params": {"date": timezone.now().date().isoformat()},
+            "formats": ["xlsx", "pdf", "csv"],
+        },
+        "monthly": {
+            "params": {"month": timezone.now().strftime("%Y-%m")},
+            "formats": ["xlsx", "pdf", "csv"],
+        },
+        "inventory": {
+            "params": {"minimo": 5},
+            "formats": ["xlsx", "pdf", "csv"],
+        },
+        "sales": {
+            "params": {
+                "date_from": timezone.now().replace(day=1).date().isoformat(),
+                "date_to": timezone.now().date().isoformat(),
+            },
+            "formats": ["xlsx", "pdf", "csv"],
+        },
+        "reservations": {
+            "params": {
+                "date_from": timezone.now().replace(day=1).date().isoformat(),
+                "date_to": timezone.now().date().isoformat(),
+                "status": "pending",
+            },
+            "formats": ["xlsx", "pdf"],
+        },
+        "categories": {
+            "params": {
+                "date_from": timezone.now().replace(day=1).date().isoformat(),
+                "date_to": timezone.now().date().isoformat(),
+            },
+            "formats": ["xlsx", "pdf"],
+        },
+        "audit": {
+            "params": {
+                "date_from": timezone.now().replace(day=1).date().isoformat(),
+                "date_to": timezone.now().date().isoformat(),
+            },
+            "formats": ["xlsx", "pdf", "json"],
+        },
+        "top_products": {
+            "params": {
+                "date_from": timezone.now().replace(day=1).date().isoformat(),
+                "date_to": timezone.now().date().isoformat(),
+                "limit": 20,
+                "mode": "top",  # más vendidos por defecto
+            },
+            "formats": ["xlsx", "pdf", "csv"],
+        },
+    }
+
     name = models.CharField(max_length=180)
     slug = models.SlugField(max_length=180, unique=True)
     description = models.TextField(blank=True)
     report_type = models.CharField(max_length=40, choices=REPORT_TYPE_CHOICES, default="custom")
-    template = models.ForeignKey(ReportTemplate, null=True, blank=True, on_delete=models.SET_NULL)
+    template = models.ForeignKey("reports.ReportTemplate", null=True, blank=True, on_delete=models.SET_NULL)
     # default_parameters: p.e. {"date_from": "2025-01-01", "date_to": "2025-02-01"}
     default_parameters = models.JSONField(default=dict, blank=True)
     # export_formats = ["xlsx","csv","pdf","json"]
     export_formats = models.JSONField(default=list, blank=True)
     is_public = models.BooleanField(default=False)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
-                                   related_name="report_definitions")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="report_definitions"
+    )
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -88,6 +146,19 @@ class ReportDefinition(models.Model):
     def __str__(self):
         return self.name
 
+    def apply_type_defaults(self):
+        """Asigna default_parameters y export_formats según el tipo si están vacíos."""
+        config = self.DEFAULTS_BY_TYPE.get(self.report_type)
+        if config:
+            if not self.default_parameters:
+                self.default_parameters = config["params"]
+            if not self.export_formats:
+                self.export_formats = config["formats"]
+
+    def save(self, *args, **kwargs):
+        # Aplica defaults antes de guardar
+        self.apply_type_defaults()
+        super().save(*args, **kwargs)
 
 class GeneratedReport(models.Model):
     """

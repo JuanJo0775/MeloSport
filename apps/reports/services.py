@@ -257,14 +257,18 @@ def sales_report(definition: Any, params: Dict[str, Any]):
 @ReportService.register("top_products")
 def top_products_report(definition: Any, params: Dict[str, Any]):
     """
-    Top products by quantity sold and by revenue.
-    Usa InvoiceItem si está disponible.
-    Parámetros: date_from, date_to, limit
+    Top products report.
+    Parámetros:
+      - date_from, date_to (ISO)
+      - limit (int, default 20)
+      - mode ("top"=más vendidos, "bottom"=menos vendidos)
     """
     if InvoiceItem is None:
         raise RuntimeError("InvoiceItem no existe en este proyecto.")
 
     qs = InvoiceItem.objects.select_related("product", "invoice")
+
+    # Filtrar por fechas
     date_from = params.get("date_from")
     date_to = params.get("date_to")
     if date_from and date_to:
@@ -273,13 +277,20 @@ def top_products_report(definition: Any, params: Dict[str, Any]):
         except Exception:
             pass
 
-    # Aggregate via ORM if possible
     aggregated = (
         qs.values("product_id", "product__name", "product__sku")
           .annotate(qty_sold=Sum("quantity"), revenue=Sum(F("subtotal")))
-          .order_by("-qty_sold")
     )
+
+    # --- Nuevo: permitir elegir modo ---
+    mode = params.get("mode", "top")  # default "top"
+    if mode == "bottom":
+        aggregated = aggregated.order_by("qty_sold")  # menos vendidos
+    else:
+        aggregated = aggregated.order_by("-qty_sold")  # más vendidos
+
     limit = int(params.get("limit") or 20)
+
     rows = []
     for a in aggregated[:limit]:
         rows.append({

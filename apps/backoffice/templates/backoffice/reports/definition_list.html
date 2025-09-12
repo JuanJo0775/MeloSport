@@ -13,19 +13,19 @@
 
 {% block content %}
 <div class="container-fluid">
-<!-- Header -->
+  <!-- Header -->
   <div class="row mb-4">
     <div class="col-12 d-flex justify-content-between align-items-center">
       <h3 class="mb-0">
         <i class="bi me-2"></i> Reportes disponibles
       </h3>
       <div class="d-flex gap-2">
-          {% if perms.reports.add_reportdefinition %}
-          <a href="{% url 'backoffice:users:list' %}" class="btn btn-primary">
-            <i class="bi bi-graph-up me-1"></i>
-            Nueva definición
-          </a>
-          {% endif %}
+        {% if perms.reports.add_reportdefinition %}
+        <a href="{% url 'backoffice:users:list' %}" class="btn btn-primary">
+          <i class="bi bi-graph-up me-1"></i>
+          Nueva definición
+        </a>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -90,25 +90,56 @@
       </div>
 
       <!-- Modal filtros -->
-      <div class="modal fade" id="filtersModal{{ definition.pk }}" tabindex="-1" aria-hidden="true">
+      <div class="modal fade" id="filtersModal{{ definition.pk }}" tabindex="-1" aria-hidden="true" data-bs-backdrop="false" data-bs-keyboard="false" style="z-index:2000;">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-          <div class="modal-content">
+          <div class="modal-content"
+               style="border: 3px solid #0d6efd; box-shadow: 0 12px 30px rgba(13,110,253,0.15);
+                      border-radius: 0.6rem; position: relative; z-index:2001;">
             <form method="post" action="{% url 'backoffice:reports:definition_generate' definition.pk %}">
               {% csrf_token %}
-              <div class="modal-header">
+              <div class="modal-header" style="border-bottom: 1px solid rgba(0,0,0,0.06);">
                 <h5 class="modal-title">Filtros — {{ definition.name }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
-              <div class="modal-body">
+              <div class="modal-body" style="max-height:60vh; overflow:auto;">
                 {% if definition.default_parameters %}
                   {% for k, v in definition.default_parameters.items %}
                     <div class="mb-3">
-                      <label class="form-label">{{ k|capfirst }}</label>
-                      <input type="text" name="{{ k }}" value="{{ v }}" class="form-control" />
+                      <label class="form-label fw-semibold">
+                        {% if k == "limit" %}Cantidad de productos a mostrar{% else %}{{ k|capfirst }}{% endif %}
+                      </label>
+
+                      {% if "fecha" in k or "date" in k %}
+                        <input type="text" id="{{k}}_{{definition.pk}}" name="{{ k }}" value="{{ v }}" class="form-control flatpickr-input" placeholder="Selecciona fecha">
+
+                      {% elif "rango" in k or "range" in k %}
+                        <input type="text" id="{{k}}_{{definition.pk}}" name="{{ k }}" value="{{ v }}" class="form-control flatpickr-range" placeholder="Selecciona rango de fechas">
+
+                      {% elif "mes" in k or "month" in k %}
+                        <input type="text" id="{{k}}_{{definition.pk}}" name="{{ k }}" value="{{ v }}" class="form-control flatpickr-month" placeholder="Selecciona mes y año">
+
+                      {% elif k == "minimo" %}
+                        <input type="number" name="{{ k }}" value="{% if v %}{{ v }}{% else %}5{% endif %}" class="form-control" min="0">
+
+                      {% elif k == "limit" %}
+                        <input type="number" name="{{ k }}" value="{{ v }}" class="form-control" min="1" max="100">
+
+                      {% else %}
+                        <input type="text" name="{{ k }}" value="{{ v }}" class="form-control" />
+                      {% endif %}
                     </div>
                   {% endfor %}
-                {% else %}
-                  <p class="text-muted">Este reporte no requiere parámetros adicionales.</p>
+                {% endif %}
+
+                {% if definition.report_type == "top_products" %}
+                  <!-- Nuevo: selector de modo -->
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Modo</label>
+                    <select name="mode" class="form-select">
+                      <option value="top" selected>Más vendidos</option>
+                      <option value="bottom">Menos vendidos</option>
+                    </select>
+                  </div>
                 {% endif %}
 
                 <div class="mb-3">
@@ -120,7 +151,7 @@
                   </select>
                 </div>
               </div>
-              <div class="modal-footer">
+              <div class="modal-footer" style="border-top: 1px solid rgba(0,0,0,0.06);">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Generar reporte</button>
               </div>
@@ -131,4 +162,43 @@
     {% endfor %}
   </div>
 </div>
+
+<!-- Flatpickr CSS & JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+
+<!-- Script inline -->
+<script>
+  document.addEventListener('shown.bs.modal', function (e) {
+    try {
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) backdrop.style.zIndex = '1999';
+      e.target.style.zIndex = '2001';
+    } catch (err) {
+      console.warn('Modal z-index helper failed', err);
+    }
+
+    flatpickr(e.target.querySelectorAll('.flatpickr-input'), {
+      dateFormat: "Y-m-d",
+      locale: "es",
+      allowInput: true
+    });
+
+    flatpickr(e.target.querySelectorAll('.flatpickr-range'), {
+      mode: "range",
+      dateFormat: "Y-m-d",
+      locale: "es",
+      allowInput: true
+    });
+
+    flatpickr(e.target.querySelectorAll('.flatpickr-month'), {
+      plugins: [new monthSelectPlugin({ shorthand: true, dateFormat: "Y-m", altFormat: "F Y" })],
+      locale: "es",
+      allowInput: true
+    });
+  }, true);
+</script>
 {% endblock %}

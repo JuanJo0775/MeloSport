@@ -1,10 +1,116 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "backoffice/base_backoffice.html" %}
+{% load static %}
+{% block title %}{{ view.object.pk|yesno:"Editar,Crear" }} Definición de Reporte{% endblock %}
 
-</body>
-</html>
+{% block breadcrumb %}
+  {% load breadcrumbs %}
+  <nav aria-label="breadcrumb" class="breadcrumb-wrapper">
+    <ol class="breadcrumb small mb-2">
+      {% breadcrumb "Reportes|backoffice:reports:definition_list" view.object.pk|yesno:"Editar Definición,Crear Definición" %}
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <h3 class="mb-0">
+        <i class="bi bi-sliders me-2 text-primary"></i>
+        {{ view.object.pk|yesno:"Editar Definición de Reporte,Nueva Definición de Reporte" }}
+      </h3>
+      <div>
+        <a href="{% url 'backoffice:reports:definition_list' %}" class="btn btn-light">
+          <i class="bi bi-arrow-left"></i> Volver
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario -->
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="row g-3">
+          <!-- Nombre -->
+          <div class="col-md-6">
+            <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold">Nombre</label>
+            {{ form.name }}
+            {{ form.name.errors }}
+          </div>
+
+          <!-- Slug -->
+          <div class="col-md-6">
+            <label for="{{ form.slug.id_for_label }}" class="form-label fw-semibold">Slug</label>
+            {{ form.slug }}
+            <div class="form-text">Identificador único para la URL.</div>
+            {{ form.slug.errors }}
+          </div>
+
+          <!-- Descripción -->
+          <div class="col-12">
+            <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold">Descripción</label>
+            {{ form.description }}
+            {{ form.description.errors }}
+          </div>
+
+          <!-- Tipo de reporte -->
+          <div class="col-md-6">
+            <label for="{{ form.report_type.id_for_label }}" class="form-label fw-semibold">Tipo de reporte</label>
+            {{ form.report_type }}
+            {{ form.report_type.errors }}
+          </div>
+
+          <!-- Plantilla -->
+          <div class="col-md-6">
+            <label for="{{ form.template.id_for_label }}" class="form-label fw-semibold">Plantilla asociada</label>
+            {{ form.template }}
+            {{ form.template.errors }}
+          </div>
+
+          <!-- Default parameters -->
+          <div class="col-12">
+            <label for="{{ form.default_parameters.id_for_label }}" class="form-label fw-semibold">Parámetros por defecto</label>
+            {{ form.default_parameters }}
+            <div class="form-text">JSON con parámetros iniciales (ej: {"date_from": "2025-01-01"}).</div>
+            {{ form.default_parameters.errors }}
+          </div>
+
+          <!-- Export formats -->
+          <div class="col-12">
+            <label for="{{ form.export_formats.id_for_label }}" class="form-label fw-semibold">Formatos de exportación</label>
+            {{ form.export_formats }}
+            <div class="form-text">Lista JSON de formatos permitidos (ej: ["xlsx","pdf","csv"]).</div>
+            {{ form.export_formats.errors }}
+          </div>
+
+          <!-- Público -->
+          <div class="col-md-6">
+            <div class="form-check mt-4">
+              {{ form.is_public }}
+              <label class="form-check-label" for="{{ form.is_public.id_for_label }}">
+                Público (visible para todos los usuarios con permisos)
+              </label>
+              {{ form.is_public.errors }}
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4">
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{% url 'backoffice:reports:definition_list' %}" class="btn btn-light">Cancelar</a>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

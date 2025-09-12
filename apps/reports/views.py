@@ -127,7 +127,7 @@ class ReportGenerateView(LoginRequiredMixin, PermissionRequiredMixin, View):
             )
 
             messages.success(request, "Reporte generado correctamente.")
-            return redirect(reverse("reports:generated_detail", args=[gen.pk]))
+            return redirect(reverse("backoffice:reports:generated_detail", args=[gen.pk]))
 
         except Exception as e:
             gen.status = "failed"

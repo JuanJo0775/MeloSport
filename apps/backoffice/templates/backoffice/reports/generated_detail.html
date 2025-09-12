@@ -1,10 +1,110 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "backoffice/base_backoffice.html" %}
+{% load static %}
+{% block title %}Detalle de Reporte{% endblock %}
 
-</body>
-</html>
+{% block breadcrumb %}
+  {% load breadcrumbs %}
+  <nav aria-label="breadcrumb" class="breadcrumb-wrapper">
+    <ol class="breadcrumb small mb-2">
+      {% breadcrumb "Reportes|backoffice:reports:definition_list" "Detalle de Reporte" %}
+    </ol>
+  </nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <h3 class="mb-0">
+        <i class="bi bi-clipboard-data me-2 text-primary"></i>
+        {{ object.report_label }}
+      </h3>
+      <div class="d-flex gap-2">
+        <a href="{% url 'backoffice:reports:generated_list' %}" class="btn btn-light">
+          <i class="bi bi-arrow-left"></i> Volver al historial
+        </a>
+        {% if object.file %}
+        <a href="{% url 'backoffice:reports:generated_download' object.pk %}" class="btn btn-primary">
+          <i class="bi bi-download"></i> Descargar archivo
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Info del reporte -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="fw-semibold">Generado por</div>
+          <div>{{ object.generated_by.username|default:"-" }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="fw-semibold">Fecha de generación</div>
+          <div>{{ object.created_at|date:"Y-m-d H:i" }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="fw-semibold">Estado</div>
+          <span class="badge 
+            {% if object.status == 'completed' %} bg-success
+            {% elif object.status == 'failed' %} bg-danger
+            {% elif object.status == 'running' %} bg-warning text-dark
+            {% else %} bg-secondary {% endif %}">
+            {{ object.get_status_display }}
+          </span>
+        </div>
+        <div class="col-md-4">
+          <div class="fw-semibold">Formato</div>
+          <div>{{ object.format|upper }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="fw-semibold">Filas generadas</div>
+          <div>{{ object.rows_count|default:"-" }}</div>
+        </div>
+        <div class="col-md-12">
+          <div class="fw-semibold">Parámetros usados</div>
+          <pre class="bg-light p-2 rounded small mb-0">{{ object.parameters|json_script:"params" }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview de datos -->
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <h5 class="fw-semibold mb-3">
+        <i class="bi bi-table me-2 text-primary"></i>
+        Vista previa de los datos
+      </h5>
+      {% if object.preview %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-primary">
+              <tr>
+                {% for col in object.preview.0.keys %}
+                  <th scope="col">{{ col|capfirst }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in object.preview %}
+                <tr>
+                  {% for col, val in row.items %}
+                    <td>{{ val }}</td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No hay vista previa disponible para este reporte.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
