@@ -401,6 +401,7 @@
     prefix: "items",
     reservationItems: {{ reservation_items_json|safe }}
   };
+  window.SELECTION_SAVE_URL = "{% url 'backoffice:billing:selection_save' %}";
 </script>
 <script src="{% static 'js/sale_create.js' %}"></script>
 {% endblock %}

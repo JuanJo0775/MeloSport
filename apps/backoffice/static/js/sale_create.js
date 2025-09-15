@@ -287,7 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
       toggleNoProductsRow(); // asegura el estado inicial
     }
 
-    // ---------- totales extendidos ----------
+        // ---------- totales extendidos ----------
     function recalcTotals() {
       let subtotal = 0;
       previewMap.forEach(r => { subtotal += r.unit_price * r.qty; });
@@ -421,5 +421,71 @@ document.addEventListener("DOMContentLoaded", function () {
     attachPaymentListeners();
     loadInitialItems();
     recalcTotals();
+
+    // ---------- guardar selección en sesión antes de filtrar/paginar ----------
+    (function attachSelectionSaver() {
+      if (!pageRoot) return;
+
+      function getCSRFToken() {
+        const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+        return m ? m.pop() : '';
+      }
+
+      function collectPreviewItems() {
+        const arr = [];
+        previewMap.forEach(r => {
+          arr.push({
+            product_id: r.product_id,
+            variant_id: r.variant_id || null,
+            qty: r.qty,
+            unit_price: r.unit_price,
+            product_name: r.product_name,
+            sku: r.sku,
+            variant_label: r.variant_label
+          });
+        });
+        return arr;
+      }
+
+      const SAVE_URL = window.SELECTION_SAVE_URL || '/backoffice/billing/selection/save/';
+
+      function saveSelectionThenNavigate(targetUrl) {
+        const items = collectPreviewItems();
+        fetch(SAVE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+          },
+          body: JSON.stringify({ items: items }),
+          keepalive: true
+        }).catch(() => {
+          // si falla no bloqueamos la navegación
+        }).finally(() => {
+          if (targetUrl) window.location.href = targetUrl;
+        });
+      }
+
+      // interceptar envíos GET de filtros (form de búsqueda)
+      const filterForm = pageRoot.querySelector('form[method="get"]');
+      if (filterForm) {
+        filterForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          const url = (filterForm.action || window.location.pathname) + '?' +
+                      (new URLSearchParams(new FormData(filterForm))).toString();
+          saveSelectionThenNavigate(url);
+        });
+      }
+
+      // interceptar clicks en paginación
+      pageRoot.querySelectorAll('.pagination .page-link').forEach(a => {
+        a.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          saveSelectionThenNavigate(a.href);
+        });
+      });
+    })();
+
   })();
 });
+

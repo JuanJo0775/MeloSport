@@ -196,11 +196,11 @@ document.addEventListener("DOMContentLoaded", function () {
         decreaseTotalForms();
         recalcTotals();
         updateRowNumbers();
-        toggleNoProductsRow(); // 👈 asegura placeholder
+        toggleNoProductsRow();
       });
 
       updateRowNumbers();
-      toggleNoProductsRow(); // 👈 asegura ocultar placeholder al añadir
+      toggleNoProductsRow();
     }
 
     function updatePreviewRow(row) {
@@ -230,17 +230,13 @@ document.addEventListener("DOMContentLoaded", function () {
       let total = 0;
       previewMap.forEach(r => { total += r.unit_price * r.qty; });
 
-      // total general
       totalDisplay.textContent = fmtCOP(total);
 
-      // abono mínimo sugerido
       const minDep = Math.round(total * 0.2);
       if (minDepositDisplay) minDepositDisplay.textContent = fmtCOP(minDep);
 
-      // monto abonado por el usuario
       const dep = parsePrice(amountDepositedInput?.value || 0);
 
-      // actualizar resumen
       const subtotalEl = $qs("#subtotal-display", pageRoot);
       const depositEl = $qs("#deposit-display", pageRoot);
       const remainingEl = $qs("#remaining-display", pageRoot);
@@ -249,7 +245,6 @@ document.addEventListener("DOMContentLoaded", function () {
       if (depositEl) depositEl.textContent = fmtCOP(dep);
       if (remainingEl) remainingEl.textContent = fmtCOP(Math.max(0, total - dep));
 
-      // mensaje de vencimiento
       if (dueMessage) {
         dueMessage.textContent =
           total === 0
@@ -307,5 +302,68 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- init ----------
     attachAddButtons();
     recalcTotals();
+
+    // ---------- guardar selección en sesión antes de filtrar/paginar ----------
+    (function attachSelectionSaver() {
+      if (!pageRoot) return;
+
+      function getCSRFToken() {
+        const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+        return m ? m.pop() : '';
+      }
+
+      function collectPreviewItems() {
+        const arr = [];
+        previewMap.forEach(r => {
+          arr.push({
+            product_id: r.product_id,
+            variant_id: r.variant_id || null,
+            qty: r.qty,
+            unit_price: r.unit_price,
+            product_name: r.product_name,
+            sku: r.sku,
+            variant_label: r.variant_label
+          });
+        });
+        return arr;
+      }
+
+      const SAVE_URL = window.SELECTION_SAVE_URL || '/backoffice/billing/selection/save/';
+
+      function saveSelectionThenNavigate(targetUrl) {
+        const items = collectPreviewItems();
+        fetch(SAVE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+          },
+          body: JSON.stringify({ items: items }),
+          keepalive: true
+        }).catch(() => {
+          // si falla no bloqueamos la navegación
+        }).finally(() => {
+          if (targetUrl) window.location.href = targetUrl;
+        });
+      }
+
+      const filterForm = pageRoot.querySelector('form[method="get"]');
+      if (filterForm) {
+        filterForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          const url = (filterForm.action || window.location.pathname) + '?' +
+                      (new URLSearchParams(new FormData(filterForm))).toString();
+          saveSelectionThenNavigate(url);
+        });
+      }
+
+      pageRoot.querySelectorAll('.pagination .page-link').forEach(a => {
+        a.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          saveSelectionThenNavigate(a.href);
+        });
+      });
+    })();
+
   })();
 });

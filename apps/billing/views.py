@@ -6,6 +6,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
+from django.http import JsonResponse
 from django.views import View
 from django.views.generic import CreateView, ListView, DetailView, TemplateView, DeleteView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -118,7 +119,15 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             ]
             context["reservation_items_json"] = json.dumps(items_json, cls=DjangoJSONEncoder)
         else:
-            context["reservation_items_json"] = "[]"
+            # 🔹 Si no hay reserva, cargar ítems desde la sesión
+            if self.request.method != "POST":
+                session_items = self.request.session.get("billing_selected_items")
+                if session_items:
+                    context["reservation_items_json"] = json.dumps(session_items, cls=DjangoJSONEncoder)
+                else:
+                    context["reservation_items_json"] = "[]"
+            else:
+                context["reservation_items_json"] = "[]"
 
         qs = self.get_queryset()
         paginator = Paginator(qs, self.paginate_by)
@@ -260,13 +269,11 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 # -------------------------
                 # 6) FORZAR completion de la reserva (si existe) — mismo botón hace todo
                 # -------------------------
-                # Reobtener/lockear la reserva para mayor consistencia
                 if self.object.reservation:
                     try:
                         res = Reservation.objects.select_for_update().get(pk=self.object.reservation.pk)
                         print(
                             f"[form_valid] reservation BEFORE id={res.pk} status={res.status} movement_created={res.movement_created}")
-                        # Llamamos al método del modelo (es idempotente: si no está 'active' no hará cambios)
                         res.complete(user=self.request.user, request=self.request)
                         AuditLog.log_action(
                             request=self.request,
@@ -299,6 +306,13 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             print("❌ ERROR en finalize o transacción:", str(e))
             form.add_error(None, str(e))
             return self.form_invalid(form)
+
+        # 🔹 Limpiar la sesión de selección
+        try:
+            if "billing_selected_items" in self.request.session:
+                del self.request.session["billing_selected_items"]
+        except Exception:
+            pass
 
         # Mensaje y redirección final al detalle de la factura
         messages.success(self.request, f"Venta registrada correctamente. Factura #{self.object.code}")
@@ -518,6 +532,16 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
             qs_copy.pop("page")
         context["querystring"] = qs_copy.urlencode()
 
+        # 🔹 Cargar ítems desde la sesión si existen y no es POST
+        if self.request.method != "POST":
+            session_items = self.request.session.get("billing_selected_items")
+            if session_items:
+                context["reservation_items_json"] = json.dumps(session_items, cls=DjangoJSONEncoder)
+            else:
+                context["reservation_items_json"] = "[]"
+        else:
+            context["reservation_items_json"] = "[]"
+
         return context
 
     # Guardado (form + formset + auditoría + bloqueo stock)
@@ -572,6 +596,13 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
                 obj=reservation,
                 description=f"Reserva #{reservation.pk} creada para {reservation.client_first_name} {reservation.client_last_name}",
             )
+
+        # 🔹 Limpiar la sesión de selección
+        try:
+            if "billing_selected_items" in self.request.session:
+                del self.request.session["billing_selected_items"]
+        except Exception:
+            pass
 
         messages.success(self.request, f"Reserva registrada. Vence el {reservation.due_date.date()}")
         return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
@@ -902,3 +933,28 @@ class ReservationCompleteView(LoginRequiredMixin, PermissionRequiredMixin, View)
             return redirect(reverse("backoffice:billing:invoice_detail", args=[invoice_id]))
 
         return redirect(reverse("backoffice:billing:reservation_detail", args=[res.pk]))
+
+class SaveSelectionView(LoginRequiredMixin, View):
+    """
+    Recibe POST JSON { items: [...] } y lo guarda en request.session['billing_selected_items'].
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+            items = payload.get("items", [])
+            cleaned = []
+            for it in items:
+                cleaned.append({
+                    "product_id": int(it.get("product_id")) if it.get("product_id") is not None else None,
+                    "variant_id": int(it.get("variant_id")) if it.get("variant_id") else None,
+                    "qty": int(it.get("qty") or it.get("quantity") or 1),
+                    "unit_price": str(it.get("unit_price") or 0),  # 🔹 guardamos como str para no perder decimales
+                    "product_name": it.get("product_name") or "",
+                    "sku": it.get("sku") or "",
+                    "variant_label": it.get("variant_label") or "",
+                })
+            request.session["billing_selected_items"] = cleaned
+            request.session.modified = True
+            return JsonResponse({"ok": True})
+        except Exception as e:
+            return JsonResponse({"ok": False, "error": str(e)}, status=400)

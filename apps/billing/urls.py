@@ -22,4 +22,6 @@ urlpatterns = [
     path("invoices/<int:pk>/", views.InvoiceDetailView.as_view(), name="invoice_detail"),
     path("invoices/<int:pk>/html/", views.InvoiceHTMLView.as_view(), name="invoice_html"),
 
+    # Selección de productos para venta o reserva
+    path('billing/selection/save/', views.SaveSelectionView.as_view(), name='selection_save'),
 ]
