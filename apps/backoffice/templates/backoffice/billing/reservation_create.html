@@ -160,6 +160,11 @@
                 </dl>
               </div>
             </div>
+
+            <!-- 🔹 Mensaje dinámico de vigencia -->
+            <div class="alert alert-info mt-3" id="due-message">
+              Seleccione productos para calcular vencimiento.
+            </div>
           </div>
         </div>
 
@@ -265,17 +270,17 @@
 </div>
 {% endblock %}
 
-
-
-
 {% block extra_js %}
 <script>
-  // Configuración para reservation_create.js
-  window.RESERVATION_CONFIG = {
+  window.BILLING_SELECTION = {
     prefix: "items",
-    reservationItems: {{ reservation_items_json|safe }}
+    // lista de productos ya seleccionados desde sesión o reserva
+    items: {{ reservation_items_json|safe }},
+    // abono/deposito inicial desde sesión o reserva
+    deposit: "{{ reservation_abono|default:'0' }}",
+    // URL para persistir selección antes de paginar/filtrar
+    saveUrl: "{% url 'backoffice:billing:selection_save' %}"
   };
-  window.SELECTION_SAVE_URL = "{% url 'backoffice:billing:selection_save' %}";
 </script>
 <script src="{% static 'js/reservation_create.js' %}"></script>
 {% endblock %}

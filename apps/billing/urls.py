@@ -1,5 +1,5 @@
 # apps/billing/urls.py
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 app_name = "billing"
@@ -21,6 +21,8 @@ urlpatterns = [
     path("invoices/", views.InvoiceListView.as_view(), name="invoice_list"),
     path("invoices/<int:pk>/", views.InvoiceDetailView.as_view(), name="invoice_detail"),
     path("invoices/<int:pk>/html/", views.InvoiceHTMLView.as_view(), name="invoice_html"),
+
+    path("electronic/", include(("apps.billing.electronic.urls", "electronic"), namespace="electronic")),
 
     # Selección de productos para venta o reserva
     path('billing/selection/save/', views.SaveSelectionView.as_view(), name='selection_save'),

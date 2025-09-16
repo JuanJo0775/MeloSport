@@ -22,19 +22,40 @@ from apps.users.models import AuditLog
 from .models import Invoice, Reservation, InvoiceItem, ReservationItem, add_business_days
 from .forms import InvoiceForm, ReservationForm, InvoiceItemFormSet, \
     ReservationItemFormSetCreate, ReservationItemFormSetUpdate, InvoiceItemSimpleFormSet
+from .mixins import ProductCatalogMixin
 
 logger = logging.getLogger(__name__)
 
 
-class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+from decimal import Decimal
+import json
+from django.core.serializers.json import DjangoJSONEncoder
+from django.contrib import messages
+from django.db import transaction, IntegrityError
+from django.shortcuts import redirect, get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.views.generic import CreateView
+
+from apps.products.models import Product
+from apps.users.models import AuditLog
+from .forms import InvoiceForm, InvoiceItemSimpleFormSet
+from .models import Invoice, Reservation, InvoiceItem
+from .mixins import ProductCatalogMixin
+
+
+class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, ProductCatalogMixin, CreateView):
     """Registrar una venta (directa o desde reserva) con productos estilo tarjetas."""
     permission_required = "billing.add_invoice"
     model = Invoice
     form_class = InvoiceForm
     template_name = "backoffice/billing/sale_create.html"
-    paginate_by = 12  # productos por página
+    paginate_by = 12  # ya está en el mixin, pero lo dejamos explícito
 
-    # 🔹 Prefill inicial (si viene de reserva)
+    # -------------------------
+    # Prefill inicial (si viene de reserva)
+    # -------------------------
     def get_initial(self):
         initial = super().get_initial()
         reservation_id = self.request.GET.get("reservation")
@@ -49,49 +70,14 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 "client_last_name": res.client_last_name,
                 "client_phone": res.client_phone,
                 "reservation": res,
-                # prefill amount_paid with the remaining saldo (so UI shows remaining)
+                # prefill con saldo pendiente
                 "amount_paid": saldo_res,
             })
         return initial
 
-    # 🔹 Catálogo de productos con filtros
-    def get_queryset(self):
-        qs = (
-            Product.objects.filter(status="active")
-            .prefetch_related("variants", "images")
-        )
-        request = self.request
-        q = request.GET.get("q", "").strip()
-        filter_type = request.GET.get("type", "all")
-        stock_filter = request.GET.get("stock", "in_stock")
-
-        if q:
-            qs = qs.filter(
-                Q(name__unaccent_icontains=q) |
-                Q(sku__unaccent_icontains=q) |
-                Q(description__unaccent_icontains=q)
-            ).distinct()
-
-        simples = qs.filter(variants__isnull=True).order_by("name")
-        variantes = qs.filter(variants__isnull=False).distinct().order_by("name")
-
-        if filter_type == "simple":
-            final_qs = simples
-        elif filter_type == "variants":
-            final_qs = variantes
-        else:
-            # concatenamos simples + variantes para mantener orden mostrado antes
-            final_qs = list(simples) + list(variantes)
-
-        if stock_filter == "in_stock":
-            final_qs = [
-                p for p in final_qs
-                if (getattr(p, "stock", 0) and p.stock > 0) or
-                   any((getattr(v, "stock", 0) or 0) > 0 for v in p.variants.all())
-            ]
-        return final_qs
-
-    # 🔹 Contexto
+    # -------------------------
+    # Contexto
+    # -------------------------
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         reservation_id = self.request.GET.get("reservation")
@@ -105,13 +91,12 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         else:
             context["items_formset"] = InvoiceItemSimpleFormSet(prefix="items")
 
-        # items preload: desde reserva si existe, sino desde session
+        # items preload
         if reservation:
             items_json = [
                 {
                     "product_id": item.product_id,
                     "product_name": item.product.name,
-                    # preferir variant sku en la UI (backend factura usará variant si existe)
                     "sku": item.variant.sku if item.variant else item.product.sku,
                     "variant_id": item.variant_id or "",
                     "variant_label": " • ".join(
@@ -124,7 +109,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             ]
             reservation_abono = reservation.amount_deposited or Decimal("0.00")
         else:
-            # 🔹 Si no hay reserva, cargar ítems desde la sesión
             if self.request.method != "POST":
                 session_items = self.request.session.get("billing_selected_items", [])
                 items_json = session_items or []
@@ -134,13 +118,10 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 items_json = []
                 reservation_abono = Decimal("0.00")
 
-        # paginación productos
-        qs = self.get_queryset()
-        paginator = Paginator(qs, self.paginate_by)
-        page_number = self.request.GET.get("page")
-        page_obj = paginator.get_page(page_number)
+        # Catálogo de productos (desde el mixin)
+        context.update(self.get_catalog_context())
 
-        # calcular saldo si viene reserva (para mostrar en UI)
+        # calcular saldo si viene reserva
         abono = reservation_abono
         saldo = Decimal("0.00")
         if reservation:
@@ -148,14 +129,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             saldo = total_reserva - abono
 
         context.update({
-            "products": page_obj,
-            "page_obj": page_obj,
-            "is_paginated": page_obj.has_other_pages(),
-            "paginator": paginator,
-            "current_q": self.request.GET.get("q", ""),
-            "current_filter_type": self.request.GET.get("type", "all"),
-            "current_stock_filter": self.request.GET.get("stock", "in_stock"),
-            "querystring": self._get_querystring(),
             "reservation": reservation,
             "reservation_items_json": json.dumps(items_json, cls=DjangoJSONEncoder),
             "reservation_abono": abono,
@@ -163,20 +136,14 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         })
         return context
 
-    def _get_querystring(self):
-        qs_copy = self.request.GET.copy()
-        if "page" in qs_copy:
-            qs_copy.pop("page")
-        return qs_copy.urlencode()
-
-    # 🔹 Guardado con validaciones extra
+    # -------------------------
+    # Guardado con validaciones extra
+    # -------------------------
     def form_valid(self, form):
         context = self.get_context_data()
         items_formset = context["items_formset"]
 
-        # validar formset antes de entrar en transacción
         if not items_formset.is_valid():
-            # imprimir para debugging en development
             print("❌ FORMSET inválido:", items_formset.errors)
             print("❌ MANAGEMENT form:", items_formset.management_form.errors)
             return self.form_invalid(form)
@@ -187,15 +154,12 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 # 1) Crear/guardar factura base
                 # -------------------------
                 self.object = form.save(commit=False)
-                # marcamos como pagada si así lo define la lógica (aquí se considera que pago total se registro)
                 self.object.paid = True
                 if not self.object.payment_date:
                     self.object.payment_date = timezone.now()
 
-                # Intentar obtener la reserva desde cleaned_data (si el form la incluye)
+                # buscar reserva asociada
                 reservation = form.cleaned_data.get("reservation") if hasattr(form, "cleaned_data") else None
-
-                # Si no vino en el form, buscar en POST/GET o en la propia instancia
                 if not reservation:
                     reservation_id = (
                         self.request.POST.get("reservation")
@@ -208,15 +172,13 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                         except Reservation.DoesNotExist:
                             reservation = None
 
-                # Si encontramos la reserva, la adjuntamos a la factura antes de guardar
                 if reservation:
                     self.object.reservation = reservation
 
-                # Guardar la factura preliminar (necesario para relacionar FK de items)
                 self.object.save()
 
                 # -------------------------
-                # 2) Crear items de la factura (validar stock)
+                # 2) Crear items de la factura (stock check)
                 # -------------------------
                 total_calculado = Decimal("0.00")
                 for f in items_formset:
@@ -228,7 +190,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     qty = f.cleaned_data["quantity"]
                     unit_price = f.cleaned_data["unit_price"]
 
-                    # stock check: si hay variante usamos su stock, sino intentar atributo _stock o stock
                     stock = variant.stock if variant else (getattr(product, "_stock", None) or getattr(product, "stock", 0))
                     if qty > (stock or 0):
                         f.add_error("quantity", "Cantidad mayor al stock disponible.")
@@ -244,40 +205,31 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     total_calculado += (unit_price * qty)
 
                 # -------------------------
-                # 3) Totales y monto pagado (considerar abono de reserva o sesión)
+                # 3) Totales y monto pagado
                 # -------------------------
                 self.object.total = total_calculado
-
-                # Si obtuvimos reservation arriba, usamos esa info para calcular amount_paid
                 if reservation:
                     abono_res = reservation.amount_deposited or Decimal("0.00")
                     saldo_res = total_calculado - abono_res
                     if saldo_res < 0:
                         saldo_res = Decimal("0.00")
-                    # preferimos el comportamiento: amount_paid = saldo a pagar (total - abono)
                     self.object.amount_paid = saldo_res
                 else:
-                    # Si no hay reserva, comprobar si en sesión hay un depósito (p.ej. user guardó selección con abono)
                     session_dep = self.request.session.get("billing_reservation_deposit")
                     session_deposit = Decimal(session_dep) if session_dep else Decimal("0.00")
-
-                    # Si el formulario trae amount_paid y el usuario lo puso, respetarlo (ej. pago parcial/total desde UI)
                     if hasattr(self.object, "amount_paid") and self.object.amount_paid and self.object.amount_paid != Decimal("0.00"):
-                        # respetar lo que venga en el form (probablemente el usuario lo editó)
                         pass
                     else:
-                        # si hay depósito en sesión, restarlo del total para definir amount_paid por defecto
                         if session_deposit > Decimal("0.00"):
                             amt_to_pay = total_calculado - session_deposit
                             if amt_to_pay < Decimal("0.00"):
                                 amt_to_pay = Decimal("0.00")
                             self.object.amount_paid = amt_to_pay
                         else:
-                            # por defecto asumimos que se paga todo
                             self.object.amount_paid = total_calculado
 
                 # -------------------------
-                # 4) Revalidar formset (post-save) - no debería fallar, pero mantener seguridad
+                # 4) Revalidar formset (seguridad extra)
                 # -------------------------
                 form_for_check = self.get_form(self.get_form_class())
                 form_for_check.instance = self.object
@@ -287,18 +239,13 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     return self.form_invalid(form_for_check)
 
                 # -------------------------
-                # 5) Guardar factura definitiva y aplicar movimientos (finalize)
+                # 5) finalize
                 # -------------------------
                 self.object.save()
-                # finalize aplicará movimientos de inventario y actualizará el estado de la factura
-                try:
-                    self.object.finalize(user=self.request.user, request=self.request)
-                except Exception as e:
-                    # si finalize falla, preferimos fallar la transacción para no dejar datos inconsistentes
-                    raise
+                self.object.finalize(user=self.request.user, request=self.request)
 
                 # -------------------------
-                # 6) FORZAR completion de la reserva (si existe)
+                # 6) Completar reserva si aplica
                 # -------------------------
                 if self.object.reservation:
                     try:
@@ -313,7 +260,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                             description=f"Reserva #{res.pk} completada al crear venta (botón crear venta)."
                         )
                     except Reservation.DoesNotExist:
-                        # no hacemos nada si no se encuentra
                         pass
 
                 # -------------------------
@@ -329,15 +275,13 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 )
 
         except IntegrityError:
-            # errores de validación ya agregados en formset/item forms
             return self.form_invalid(form)
         except Exception as e:
-            # capturamos el error y lo mostramos en el form para debugging controlado
             print("❌ ERROR en finalize o transacción:", str(e))
             form.add_error(None, str(e))
             return self.form_invalid(form)
 
-        # 🔹 Limpiar la sesión de selección y depósito
+        # limpiar sesión
         try:
             if "billing_selected_items" in self.request.session:
                 del self.request.session["billing_selected_items"]
@@ -347,7 +291,6 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         except Exception:
             pass
 
-        # Mensaje y redirección final al detalle de la factura
         messages.success(self.request, f"Venta registrada correctamente. Factura #{self.object.code}")
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))
 
@@ -419,6 +362,12 @@ class InvoiceListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
 
         return context
 
+from decimal import Decimal
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.views.generic import DetailView
+
+from apps.billing.models import Invoice
+
 
 class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     permission_required = "billing.view_invoice"
@@ -430,36 +379,49 @@ class InvoiceDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView)
         context = super().get_context_data(**kwargs)
         invoice = self.object
 
-        # Totales
+        # Totales base
         subtotal = invoice.subtotal or Decimal("0.00")
         total = invoice.total or Decimal("0.00")
         discount = invoice.discount_amount or Decimal("0.00")
-        amount_paid = invoice.amount_paid or Decimal("0.00")
-        balance_due = invoice.remaining_due()
 
-        # Información de reserva (si existe)
-        reservation = invoice.reservation
+        # % de descuento (seguro contra división por 0)
+        discount_pct = Decimal("0.00")
+        if subtotal > 0 and discount > 0:
+            discount_pct = (discount / subtotal * 100).quantize(Decimal("0.01"))
+
+        # Pagos
+        pagado_venta = invoice.amount_paid or Decimal("0.00")
+
+        # 🔹 Sumar abono de la reserva si existe
+        abono_reserva = Decimal("0.00")
         reservation_info = None
-        if reservation:
+        if invoice.reservation:
+            abono_reserva = invoice.reservation.amount_deposited or Decimal("0.00")
             reservation_info = {
-                "id": reservation.pk,
-                "status": reservation.status,
-                "total": reservation.total,
-                "abonado": reservation.amount_deposited,
-                "saldo": reservation.remaining_due,
-                "vence": reservation.due_date,
+                "id": invoice.reservation.pk,
+                "status": invoice.reservation.status,
+                "total": invoice.reservation.total,
+                "abonado": abono_reserva,
+                "saldo": invoice.reservation.remaining_due,
+                "vence": invoice.reservation.due_date,
             }
+
+        # Totales de pagos
+        total_pagado = pagado_venta + abono_reserva
+        saldo_pendiente = max(Decimal("0.00"), total - total_pagado)
 
         # Productos facturados
         items = invoice.items.select_related("product", "variant").all()
 
-        # Armamos datos para mostrar bonito
         context.update({
             "subtotal": subtotal,
-            "total": total,
             "discount": discount,
-            "amount_paid": amount_paid,
-            "balance_due": balance_due,
+            "discount_pct": discount_pct,
+            "total": total,
+            "abono_reserva": abono_reserva,
+            "pagado_venta": pagado_venta,
+            "total_pagado": total_pagado,
+            "saldo_pendiente": saldo_pendiente,
             "reservation_info": reservation_info,
             "items": items,
             "breadcrumb_label": f"Factura #{invoice.code or invoice.pk}",
@@ -480,59 +442,45 @@ class InvoiceHTMLView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         invoice = self.object
 
-        amount_paid = invoice.amount_paid or Decimal("0.00")
-        balance_due = invoice.total - amount_paid
+        # Totales base
+        subtotal = invoice.subtotal or Decimal("0.00")
+        total = invoice.total or Decimal("0.00")
+        discount = invoice.discount_amount or Decimal("0.00")
 
-        context["balance_due"] = balance_due
+        discount_pct = Decimal("0.00")
+        if subtotal > 0 and discount > 0:
+            discount_pct = (discount / subtotal * 100).quantize(Decimal("0.01"))
+
+        # Pagos
+        pagado_venta = invoice.amount_paid or Decimal("0.00")
+        abono_reserva = invoice.reservation.amount_deposited if invoice.reservation else Decimal("0.00")
+
+        total_pagado = pagado_venta + abono_reserva
+        saldo_pendiente = max(Decimal("0.00"), total - total_pagado)
+
+        context.update({
+            "subtotal": subtotal,
+            "discount": discount,
+            "discount_pct": discount_pct,
+            "total": total,
+            "abono_reserva": abono_reserva,
+            "pagado_venta": pagado_venta,
+            "total_pagado": total_pagado,
+            "saldo_pendiente": saldo_pendiente,
+        })
         return context
 
-
-
-class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, ProductCatalogMixin, CreateView):
     """Registrar un apartado de productos con reglas de negocio."""
     permission_required = "billing.add_reservation"
     model = Reservation
     form_class = ReservationForm
     template_name = "backoffice/billing/reservation_create.html"
-    paginate_by = 12  # productos por página
+    paginate_by = 12  # hereda del mixin, pero lo dejamos explícito
 
-    # Queryset / filtros
-    def get_queryset(self):
-        qs = (
-            Product.objects.filter(status="active")
-            .prefetch_related("variants", "images")
-        )
-        request = self.request
-        q = request.GET.get("q", "").strip()
-        filter_type = request.GET.get("type", "all")
-        stock_filter = request.GET.get("stock", "in_stock")
-
-        if q:
-            qs = qs.filter(
-                Q(name__unaccent_icontains=q) |
-                Q(sku__unaccent_icontains=q) |
-                Q(description__unaccent_icontains=q)
-            ).distinct()
-
-        simples = qs.filter(variants__isnull=True).order_by("name")
-        variantes = qs.filter(variants__isnull=False).distinct().order_by("name")
-
-        if filter_type == "simple":
-            final_qs = simples
-        elif filter_type == "variants":
-            final_qs = variantes
-        else:
-            final_qs = list(simples) + list(variantes)
-
-        if stock_filter == "in_stock":
-            final_qs = [
-                p for p in final_qs
-                if (getattr(p, "stock", 0) and p.stock > 0) or
-                   any((getattr(v, "stock", 0) or 0) > 0 for v in p.variants.all())
-            ]
-        return final_qs
-
+    # -------------------------
     # Contexto
+    # -------------------------
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
@@ -544,25 +492,8 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         else:
             context["items_formset"] = ReservationItemFormSetCreate(prefix="items")
 
-        # Productos con paginación
-        qs = self.get_queryset()
-        paginator = Paginator(qs, self.paginate_by)
-        page_number = self.request.GET.get("page")
-        page_obj = paginator.get_page(page_number)
-
-        context["products"] = page_obj
-        context["page_obj"] = page_obj
-        context["is_paginated"] = page_obj.has_other_pages()
-        context["paginator"] = paginator
-
-        # mantener filtros actuales
-        context["current_q"] = self.request.GET.get("q", "")
-        context["current_filter_type"] = self.request.GET.get("type", "all")
-        context["current_stock_filter"] = self.request.GET.get("stock", "in_stock")
-        qs_copy = self.request.GET.copy()
-        if "page" in qs_copy:
-            qs_copy.pop("page")
-        context["querystring"] = qs_copy.urlencode()
+        # Catálogo de productos (traído desde el mixin)
+        context.update(self.get_catalog_context())
 
         # 🔹 Cargar ítems desde la sesión si existen y no es POST
         if self.request.method != "POST":
@@ -578,7 +509,9 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         return context
 
+    # -------------------------
     # Guardado (form + formset + auditoría + bloqueo stock)
+    # -------------------------
     def form_valid(self, form):
         reservation = form.save(commit=False)
         items_formset = ReservationItemFormSetCreate(
@@ -607,7 +540,7 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         abono = reservation.amount_deposited or Decimal("0.00")
 
-        # 🔹 Ahora ambos plazos son corridos
+        # 🔹 Definir vencimiento: 30 días si cumple abono mínimo, 3 días en caso contrario
         if total > 0 and abono >= (Decimal("0.20") * total):
             reservation.due_date = timezone.now() + timedelta(days=30)
         else:
@@ -642,6 +575,7 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
 
         messages.success(self.request, f"Reserva registrada. Vence el {reservation.due_date.date()}")
         return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
+
 
 
 

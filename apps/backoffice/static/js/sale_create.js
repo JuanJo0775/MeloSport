@@ -62,10 +62,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         .replace(/'/g, "&#039;");
     }
 
+    function getCSRFToken() {
+      const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+      return m ? m.pop() : '';
+    }
+
     // ---------- configuración ----------
-    const cfg = window.SALE_CONFIG || {};
+    const cfg = window.BILLING_SELECTION || window.SALE_CONFIG || {};
     const prefix = cfg.prefix || "items";
-    const SAVE_URL = cfg.SELECTION_SAVE_URL || window.SELECTION_SAVE_URL || '/backoffice/billing/selection/save/';
+    const SAVE_URL = cfg.saveUrl || '/backoffice/billing/selection/save/';
 
     const pageRoot = $qs("#sale-page");
     if (!pageRoot) return;
@@ -115,7 +120,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (qtyEl) qtyEl.value = row.qty;
       if (unitEl) unitEl.value = String(row.unit_price);
 
-      // campos ocultos opcionales para debugging
+      // ocultos opcionales
       const hiddenSkuName = `${base}-variant_sku`;
       const hiddenLabelName = `${base}-variant_label`;
       if (!itemsFormsContainer.querySelector(`[name="${hiddenSkuName}"]`)) {
@@ -226,9 +231,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const discount = Math.round(subtotal * (discountPct / 100));
 
       let deposit = 0;
-      try {
-        deposit = parsePrice(depositDisplay?.dataset?.value ?? cfg.reservationDeposit ?? 0);
-      } catch { deposit = 0; }
+      try { deposit = parsePrice(depositDisplay?.dataset?.value ?? cfg.deposit ?? 0); }
+      catch { deposit = 0; }
 
       const totalAfterDiscount = Math.max(0, subtotal - discount);
 
@@ -320,7 +324,6 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
-    // Validación simple al enviar
     saleForm?.addEventListener("submit", e => {
       if (previewMap.size === 0) {
         e.preventDefault();
@@ -334,7 +337,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- init ----------
     attachAddButtons();
     function loadInitialItems() {
-      const items = (cfg && cfg.reservationItems) || [];
+      const items = (cfg && cfg.items) || [];
       items.forEach(() => increaseTotalForms());
       items.forEach((it, idx) => {
         const row = {
@@ -358,104 +361,96 @@ document.addEventListener("DOMContentLoaded", function () {
     loadInitialItems();
     recalcTotals();
 
-    // ---------- guardar selección en sesión antes de filtrar/paginar (con AJAX parcial) ----------
-    (function attachSelectionSaver() {
-      if (!pageRoot) return;
+    // ---------- guardar selección en sesión y navegar ----------
+    async function getDepositValue() {
+      const valInput = $qs("#id_amount_deposit", pageRoot)?.value;
+      if (valInput) return parsePrice(valInput);
+      const ds = depositDisplay?.dataset?.value;
+      if (ds) return parsePrice(ds);
+      return parsePrice(cfg.deposit || 0);
+    }
 
-      function getCSRFToken() {
-        const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
-        return m ? m.pop() : '';
-      }
-
-      function collectPreviewItems() {
-        const arr = [];
-        previewMap.forEach(r => {
-          arr.push({
-            product_id: r.product_id,
-            variant_id: r.variant_id || null,
-            qty: r.qty,
-            unit_price: r.unit_price,
-            product_name: r.product_name,
-            sku: r.sku,
-            variant_label: r.variant_label
-          });
+    function collectPreviewItems() {
+      const arr = [];
+      previewMap.forEach(r => {
+        arr.push({
+          product_id: r.product_id,
+          variant_id: r.variant_id || null,
+          qty: r.qty,
+          unit_price: r.unit_price,
+          product_name: r.product_name,
+          sku: r.sku,
+          variant_label: r.variant_label
         });
-        return arr;
-      }
+      });
+      return arr;
+    }
 
-      function postSelection(items, deposit) {
-        return fetch(SAVE_URL, {
+    async function saveSelection() {
+      const items = collectPreviewItems();
+      const deposit = await getDepositValue();
+      try {
+        const resp = await fetch(SAVE_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCSRFToken()
           },
-          body: JSON.stringify({ items: items, deposit: deposit }),
+          body: JSON.stringify({ items: items, deposit: String(deposit) }),
           keepalive: true
-        }).then(r => r.json()).catch(() => ({ ok: false }));
-      }
-
-      const filterForm = pageRoot.querySelector('form[method="get"]');
-      if (filterForm) {
-        filterForm.addEventListener('submit', function (e) {
-          e.preventDefault();
-          const url = (filterForm.action || window.location.pathname) + '?' +
-                      (new URLSearchParams(new FormData(filterForm))).toString();
-          const items = collectPreviewItems();
-          const deposit = parsePrice(depositDisplay?.dataset?.value ?? cfg.reservationDeposit ?? 0);
-          postSelection(items, deposit).then(() => {
-            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-              .then(resp => resp.text())
-              .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newContainer = doc.querySelector('#products-container');
-                const curContainer = document.querySelector('#products-container');
-                if (newContainer && curContainer) {
-                  curContainer.innerHTML = newContainer.innerHTML;
-                  attachAddButtons();
-                  attachPaginationLinks();
-                } else {
-                  window.location.href = url;
-                }
-              }).catch(() => { window.location.href = url; });
-          });
         });
+        const data = await resp.json().catch(()=>({ok:false}));
+        return (resp.ok && data.ok) ? {ok:true,data} : {ok:false,data};
+      } catch(err) {
+        return {ok:false,error:err};
       }
+    }
 
-      function attachPaginationLinks() {
-        document.querySelectorAll('.pagination .page-link').forEach(a => {
-          a.replaceWith(a.cloneNode(true));
-        });
-        document.querySelectorAll('.pagination .page-link').forEach(a => {
-          a.addEventListener('click', function (ev) {
-            ev.preventDefault();
-            const url = a.href;
-            const items = collectPreviewItems();
-            const deposit = parsePrice(depositDisplay?.dataset?.value ?? cfg.reservationDeposit ?? 0);
-            postSelection(items, deposit).then(() => {
-              fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(resp => resp.text())
-                .then(html => {
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(html, 'text/html');
-                  const newContainer = doc.querySelector('#products-container');
-                  const curContainer = document.querySelector('#products-container');
-                  if (newContainer && curContainer) {
-                    curContainer.innerHTML = newContainer.innerHTML;
-                    attachAddButtons();
-                    attachPaginationLinks();
-                  } else {
-                    window.location.href = url;
-                  }
-                }).catch(() => { window.location.href = url; });
-            });
-          });
-        });
+    async function saveThenNavigate(url, useAjax=true) {
+      await saveSelection();
+      if (useAjax) {
+        try {
+          const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+          const html = await resp.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const newContainer = doc.querySelector('#products-container');
+          const curContainer = document.querySelector('#products-container');
+          if (newContainer && curContainer) {
+            curContainer.innerHTML = newContainer.innerHTML;
+            attachAddButtons();
+            attachPaginationLinks();
+            return;
+          }
+        } catch (e) {
+          console.warn("AJAX falló, redirigiendo...", e);
+        }
       }
+      window.location.href = url;
+    }
 
-      attachPaginationLinks();
-    })();
+    const filterForm = pageRoot.querySelector('form[method="get"]');
+    if (filterForm) {
+      filterForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const url = (filterForm.action || window.location.pathname) + '?' +
+                    (new URLSearchParams(new FormData(filterForm))).toString();
+        saveThenNavigate(url, true);
+      });
+    }
+
+    function attachPaginationLinks() {
+      document.querySelectorAll('.pagination .page-link').forEach(a => {
+        a.replaceWith(a.cloneNode(true));
+      });
+      document.querySelectorAll('.pagination .page-link').forEach(a => {
+        a.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          saveThenNavigate(a.href, true);
+        });
+      });
+    }
+    attachPaginationLinks();
 
   })();
 });

@@ -1,0 +1,98 @@
+{% extends "backoffice/billing/invoice_template/invoice_base.html" %}
+{% load static %}
+{% load money %}
+
+{% block title %}Factura Electrónica {{ invoice.code }}{% endblock %}
+
+{% block header_right %}
+  <div class="text-end">
+    <img src="{% static 'img/Logo sin fondo azul.png' %}" alt="Logo" style="height:45px;" class="mb-2">
+    <h6 class="mb-0 text-primary fw-bold">FACTURA ELECTRÓNICA</h6>
+    <div class="fw-semibold"># {{ invoice.code }}</div>
+    <small class="text-muted">{{ invoice.created_at|date:"d/m/Y H:i" }}</small>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="ticket-border p-3">
+
+  <!-- Info Emisor -->
+  <section class="mb-3 border-bottom border-dashed pb-2">
+    <strong>{{ issuer_info.Name }}</strong><br>
+    NIT: {{ issuer_info.NIT }}<br>
+    {{ issuer_info.Address }}<br>
+    {{ issuer_info.Email }}
+  </section>
+
+  <!-- Info Cliente -->
+  <section class="mb-3 border-bottom border-dashed pb-2">
+    <strong>Cliente:</strong> {{ receiver_info.Name }}<br>
+    Documento: {{ receiver_info.Document }}<br>
+    Tel: {{ receiver_info.Phone }}
+  </section>
+
+  <!-- Productos -->
+  <div class="table-responsive mb-3">
+    <table class="table table-sm mb-0 border border-dashed">
+      <thead class="table-light border-bottom border-dashed">
+        <tr>
+          <th>Producto</th>
+          <th class="text-center">Cant.</th>
+          <th class="text-end">Unit.</th>
+          <th class="text-end">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items.all %}
+        <tr class="border-bottom border-dashed">
+          <td>{{ item.product.name }}</td>
+          <td class="text-center">{{ item.quantity }}</td>
+          <td class="text-end">{{ item.unit_price|cop }}</td>
+          <td class="text-end fw-semibold">{{ item.subtotal|cop }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center text-muted py-3">No hay productos.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Totales -->
+  <div class="pt-2 border-top border-dashed">
+    <table class="table table-sm table-borderless mb-0">
+      <tbody>
+        <tr>
+          <td>Subtotal:</td>
+          <td class="text-end">{{ invoice.subtotal|cop }}</td>
+        </tr>
+        {% if invoice.discount_amount > 0 %}
+        <tr>
+          <td>Descuento:</td>
+          <td class="text-end text-danger">- {{ invoice.discount_amount|cop }}</td>
+        </tr>
+        {% endif %}
+        <tr class="border-top border-dashed">
+          <td class="fw-bold">TOTAL:</td>
+          <td class="text-end fw-bold text-primary">{{ invoice.total|cop }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- CUFE + QR -->
+  <section class="mt-3 text-center border-top border-dashed pt-2">
+    <div><strong>CUFE:</strong> {{ cufe }}</div>
+    <img src="{{ qr_img }}" alt="QR" class="mt-2" style="height:100px;">
+    <div class="small text-muted mt-1">Escanee para validar ante la DIAN</div>
+  </section>
+
+  <!-- XML -->
+  <section class="mt-3 border-top border-dashed pt-2">
+    <div class="small text-muted">XML codificado (base64):</div>
+    <textarea class="form-control form-control-sm" rows="3" readonly>{{ xml_b64 }}</textarea>
+  </section>
+
+</div>
+{% endblock %}

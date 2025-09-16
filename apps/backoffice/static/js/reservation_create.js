@@ -43,11 +43,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function safeParseJSON(str) {
       if (!str) return {};
-      try {
-        return JSON.parse(str);
-      } catch {
-        try { return new Function("return (" + str + ")")(); } catch { return {}; }
-      }
+      try { return JSON.parse(str); }
+      catch { try { return new Function("return (" + str + ")")(); } catch { return {}; } }
     }
 
     function escapeHtml(str) {
@@ -57,13 +54,20 @@ document.addEventListener("DOMContentLoaded", function () {
                         .replace(/'/g, "&#039;");
     }
 
+    function getCSRFToken() {
+      const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+      return m ? m.pop() : '';
+    }
+
     // ---------- configuración ----------
-    const cfg = window.RESERVATION_CONFIG || {};
+    const cfg = window.BILLING_SELECTION || window.RESERVATION_CONFIG || {};
     const prefix = cfg.prefix || "items";
+    const SAVE_URL = cfg.saveUrl || '/backoffice/billing/selection/save/';
 
     const pageRoot = $qs("#reservation-page");
     if (!pageRoot) return;
 
+    // elementos
     const tableBody = $qs("#selected-products-table tbody", pageRoot);
     const totalDisplay = $qs("#total-display", pageRoot);
     const minDepositDisplay = $qs("#min-deposit-display", pageRoot);
@@ -193,7 +197,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const minDep = Math.round(total * 0.2);
       if (minDepositDisplay) minDepositDisplay.textContent = fmtCOP(minDep);
 
-      const dep = parsePrice(amountDepositedInput?.value || cfg.reservationDeposit || 0);
+      const dep = parsePrice(amountDepositedInput?.value || cfg.deposit || 0);
 
       $qs("#subtotal-display", pageRoot).textContent = fmtCOP(total);
       $qs("#deposit-display", pageRoot).textContent = fmtCOP(dep);
@@ -290,66 +294,92 @@ document.addEventListener("DOMContentLoaded", function () {
     attachAddButtons();
     recalcTotals();
 
-    // ---------- guardar selección en sesión antes de filtrar/paginar ----------
-    (function attachSelectionSaver() {
-      if (!pageRoot) return;
+    // ---------- persistencia en sesión ----------
+    async function getDepositValue() {
+      return parsePrice(amountDepositedInput?.value || cfg.deposit || 0);
+    }
 
-      function getCSRFToken() {
-        const m = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
-        return m ? m.pop() : '';
-      }
-
-      function collectPreviewItems() {
-        const arr = [];
-        previewMap.forEach(r => {
-          arr.push({
-            product_id: r.product_id,
-            variant_id: r.variant_id || null,
-            qty: r.qty,
-            unit_price: r.unit_price,
-            product_name: r.product_name,
-            sku: r.sku,
-            variant_label: r.variant_label
-          });
+    function collectPreviewItems() {
+      const arr = [];
+      previewMap.forEach(r => {
+        arr.push({
+          product_id: r.product_id,
+          variant_id: r.variant_id || null,
+          qty: r.qty,
+          unit_price: r.unit_price,
+          product_name: r.product_name,
+          sku: r.sku,
+          variant_label: r.variant_label
         });
-        return arr;
-      }
+      });
+      return arr;
+    }
 
-      const SAVE_URL = window.SELECTION_SAVE_URL || '/backoffice/billing/selection/save/';
-
-      function postSelection(items, deposit) {
-        return fetch(SAVE_URL, {
+    async function saveSelection() {
+      const items = collectPreviewItems();
+      const deposit = await getDepositValue();
+      try {
+        const resp = await fetch(SAVE_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCSRFToken()
           },
-          body: JSON.stringify({ items: items, deposit: deposit }),
+          body: JSON.stringify({ items: items, deposit: String(deposit) }),
           keepalive: true
-        }).then(r => r.json()).catch(() => ({ ok: false }));
-      }
-
-      const filterForm = pageRoot.querySelector('form[method="get"]');
-      if (filterForm) {
-        filterForm.addEventListener('submit', function (e) {
-          e.preventDefault();
-          const url = (filterForm.action || window.location.pathname) + '?' +
-                      (new URLSearchParams(new FormData(filterForm))).toString();
-          const items = collectPreviewItems();
-          const dep = parsePrice(amountDepositedInput?.value || 0);
-          postSelection(items, dep).finally(() => { window.location.href = url; });
         });
+        const data = await resp.json().catch(()=>({ok:false}));
+        return (resp.ok && data.ok) ? {ok:true,data} : {ok:false,data};
+      } catch(err) {
+        return {ok:false,error:err};
       }
+    }
 
-      pageRoot.querySelectorAll('.pagination .page-link').forEach(a => {
+    async function saveThenNavigate(url, useAjax=true) {
+      await saveSelection();
+      if (useAjax) {
+        try {
+          const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+          const html = await resp.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const newContainer = doc.querySelector('#products-container');
+          const curContainer = document.querySelector('#products-container');
+          if (newContainer && curContainer) {
+            curContainer.innerHTML = newContainer.innerHTML;
+            attachAddButtons();
+            attachPaginationLinks();
+            return;
+          }
+        } catch (e) {
+          console.warn("AJAX falló, redirigiendo...", e);
+        }
+      }
+      window.location.href = url;
+    }
+
+    const filterForm = pageRoot.querySelector('form[method="get"]');
+    if (filterForm) {
+      filterForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const url = (filterForm.action || window.location.pathname) + '?' +
+                    (new URLSearchParams(new FormData(filterForm))).toString();
+        saveThenNavigate(url, true);
+      });
+    }
+
+    function attachPaginationLinks() {
+      document.querySelectorAll('.pagination .page-link').forEach(a => {
+        a.replaceWith(a.cloneNode(true));
+      });
+      document.querySelectorAll('.pagination .page-link').forEach(a => {
         a.addEventListener('click', function (ev) {
           ev.preventDefault();
-          const items = collectPreviewItems();
-          const dep = parsePrice(amountDepositedInput?.value || 0);
-          postSelection(items, dep).finally(() => { window.location.href = a.href; });
+          saveThenNavigate(a.href, true);
         });
       });
-    })();
+    }
+    attachPaginationLinks();
 
   })();
 });

@@ -304,12 +304,15 @@
 
 {% block extra_js %}
 <script>
-  // Configuración para el JavaScript
-  window.SALE_CONFIG = {
+  window.BILLING_SELECTION = {
     prefix: "items",
-    reservationItems: {{ reservation_items_json|safe }}
+    // lista de productos ya seleccionados desde sesión o reserva
+    items: {{ reservation_items_json|safe }},
+    // abono/deposito inicial desde sesión o reserva
+    deposit: "{{ reservation_abono|default:'0' }}",
+    // URL para persistir selección antes de paginar/filtrar
+    saveUrl: "{% url 'backoffice:billing:selection_save' %}"
   };
-  window.SELECTION_SAVE_URL = "{% url 'backoffice:billing:selection_save' %}";
 </script>
 <script src="{% static 'js/sale_create.js' %}"></script>
 {% endblock %}
