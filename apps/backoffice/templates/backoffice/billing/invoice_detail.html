@@ -11,7 +11,7 @@
 {% block content %}
 <div class="container-fluid">
 
-  <!-- Header con información principal -->
+  <!-- Header -->
   <div class="card mb-4 shadow-sm border-left-primary">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-start">
@@ -38,14 +38,13 @@
   </div>
 
   <!-- Resumen financiero -->
-<div class="card mb-4 shadow-sm">
-  <div class="card-header">
-    <h6 class="mb-0"><i class="bi bi-calculator me-2"></i>Resumen Financiero</h6>
-  </div>
-  <div class="card-body">
-    <div class="row text-center">
-      <div class="col-md-4">
-        <div class="border-end pe-3">
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-calculator me-2"></i>Resumen Financiero</h6>
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-4 border-end pe-3">
           <h6 class="text-muted mb-2">Estado</h6>
           {% if invoice.status == "completed" %}
             <span class="badge bg-success px-3 py-2 fs-6">
@@ -61,24 +60,21 @@
             </span>
           {% endif %}
         </div>
-      </div>
-      <div class="col-md-4">
-        <div class="border-end pe-3">
+        <div class="col-md-4 border-end pe-3">
           <h6 class="text-muted mb-2">Total</h6>
           <h4 class="mb-0 text-primary">{{ invoice.total|cop }}</h4>
         </div>
-      </div>
-      <div class="col-md-4">
-        <h6 class="text-muted mb-2">Pagado</h6>
-        <h4 class="mb-0 text-success">{{ invoice.amount_paid|cop }}</h4>
+        <div class="col-md-4">
+          <h6 class="text-muted mb-2">Pagado</h6>
+          <h4 class="mb-0 text-success">{{ invoice.amount_paid|cop }}</h4>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-
-  <!-- Información del cliente y pago -->
+  <!-- Información cliente y pago -->
   <div class="row mb-4">
+    <!-- Cliente -->
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
         <div class="card-header">
@@ -102,6 +98,7 @@
       </div>
     </div>
 
+    <!-- Pago -->
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
         <div class="card-header">
@@ -112,13 +109,9 @@
             <dt class="col-sm-5">Método de pago</dt>
             <dd class="col-sm-7">
               {% if invoice.payment_method == "EF" %}
-                <span class="badge bg-success">
-                  <i class="bi bi-cash me-1"></i>Efectivo
-                </span>
+                <span class="badge bg-success"><i class="bi bi-cash me-1"></i>Efectivo</span>
               {% elif invoice.payment_method == "DI" %}
-                <span class="badge bg-info">
-                  <i class="bi bi-phone me-1"></i>Digital
-                </span>
+                <span class="badge bg-info"><i class="bi bi-phone me-1"></i>Digital</span>
               {% else %}
                 <span class="text-muted">—</span>
               {% endif %}
@@ -153,47 +146,43 @@
     </div>
   </div>
 
-  <!-- Reserva asociada (si existe) -->
+  <!-- Reserva asociada -->
   {% if reservation_info %}
-  <div class="card mb-4 shadow-sm border-left-info">
-    <div class="card-header">
-      <h6 class="mb-0 text-info">
-        <i class="bi bi-journal-bookmark me-2"></i>Reserva Asociada
-      </h6>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <dl class="row">
-            <dt class="col-sm-4">Número</dt>
-            <dd class="col-sm-8 fw-semibold text-info">#{{ reservation_info.id }}</dd>
+    <div class="card mb-4 shadow-sm border-left-info">
+      <div class="card-header">
+        <h6 class="mb-0 text-info"><i class="bi bi-journal-bookmark me-2"></i>Reserva Asociada</h6>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <dl class="row">
+              <dt class="col-sm-4">Número</dt>
+              <dd class="col-sm-8 fw-semibold text-info">#{{ reservation_info.id }}</dd>
 
-            <dt class="col-sm-4">Estado</dt>
-            <dd class="col-sm-8">
-              <span class="badge bg-info">{{ reservation_info.status }}</span>
-            </dd>
+              <dt class="col-sm-4">Estado</dt>
+              <dd class="col-sm-8"><span class="badge bg-info">{{ reservation_info.status }}</span></dd>
 
-            <dt class="col-sm-4">Vence</dt>
-            <dd class="col-sm-8 text-mono">{{ reservation_info.vence|date:"d/m/Y H:i" }}</dd>
-          </dl>
-        </div>
-        <div class="col-md-6">
-          <dl class="row">
-            <dt class="col-sm-4">Total</dt>
-            <dd class="col-sm-8 fw-bold">{{ reservation_info.total|cop }}</dd>
+              <dt class="col-sm-4">Vence</dt>
+              <dd class="col-sm-8 text-mono">{{ reservation_info.vence|date:"d/m/Y H:i" }}</dd>
+            </dl>
+          </div>
+          <div class="col-md-6">
+            <dl class="row">
+              <dt class="col-sm-4">Total</dt>
+              <dd class="col-sm-8 fw-bold">{{ reservation_info.total|cop }}</dd>
 
-            <dt class="col-sm-4">Abonado</dt>
-            <dd class="col-sm-8 text-success">{{ reservation_info.abonado|cop }}</dd>
+              <dt class="col-sm-4">Abonado</dt>
+              <dd class="col-sm-8 text-success">{{ reservation_info.abonado|cop }}</dd>
 
-            <dt class="col-sm-4">Saldo</dt>
-            <dd class="col-sm-8 {% if reservation_info.saldo > 0 %}text-warning{% else %}text-success{% endif %}">
-              {{ reservation_info.saldo|cop }}
-            </dd>
-          </dl>
+              <dt class="col-sm-4">Saldo</dt>
+              <dd class="col-sm-8 {% if reservation_info.saldo > 0 %}text-warning{% else %}text-success{% endif %}">
+                {{ reservation_info.saldo|cop }}
+              </dd>
+            </dl>
+          </div>
         </div>
       </div>
     </div>
-  </div>
   {% endif %}
 
   <!-- Productos facturados -->
@@ -206,8 +195,8 @@
         <table class="table table-hover align-middle">
           <thead>
             <tr>
-              <th>Producto</th>
-              <th>Variante</th>
+              <th>SKU</th>
+              <th>Descripción</th>
               <th class="text-center">Cantidad</th>
               <th class="text-end">Precio Unitario</th>
               <th class="text-end">Subtotal</th>
@@ -215,35 +204,36 @@
           </thead>
           <tbody>
             {% for item in items %}
-            <tr>
-              <td>
-                <div class="fw-semibold">{{ item.product.name }}</div>
-                {% if item.product.sku %}
-                <small class="text-muted text-mono">SKU: {{ item.product.sku }}</small>
-                {% endif %}
-              </td>
-              <td>
-                {% if item.variant %}
-                  <div class="fw-medium">{{ item.variant }}</div>
-                  {% if item.variant.sku %}
-                  <small class="text-muted text-mono">{{ item.variant.sku }}</small>
+              <tr>
+                <!-- SKU -->
+                <td class="text-mono">
+                  {% if item.variant %}
+                    {{ item.variant.sku }}
+                  {% else %}
+                    {{ item.product.sku }}
                   {% endif %}
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td class="text-center">
-                <span class="badge bg-light text-dark fw-semibold">{{ item.quantity }}</span>
-              </td>
-              <td class="text-end fw-medium">{{ item.unit_price|cop }}</td>
-              <td class="text-end fw-bold text-primary">{{ item.subtotal|cop }}</td>
-            </tr>
+                </td>
+
+                <!-- Descripción -->
+                <td>
+                  {% if item.variant %}
+                    {{ item.product.name }}
+                    ({{ item.variant.size }} {{ item.variant.color }})
+                  {% else %}
+                    {{ item.product.name }}
+                  {% endif %}
+                </td>
+
+                <td class="text-center">
+                  <span class="badge bg-light text-dark fw-semibold">{{ item.quantity }}</span>
+                </td>
+                <td class="text-end fw-medium">{{ item.unit_price|cop }}</td>
+                <td class="text-end fw-bold text-primary">{{ item.subtotal|cop }}</td>
+              </tr>
             {% empty %}
-            <tr>
-              <td colspan="5" class="text-center text-muted py-4">
-                No hay productos en esta factura.
-              </td>
-            </tr>
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">No hay productos en esta factura.</td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>

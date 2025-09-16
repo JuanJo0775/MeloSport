@@ -45,13 +45,8 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!str) return {};
       try {
         return JSON.parse(str);
-      } catch (e) {
-        try {
-          // eslint-disable-next-line no-new-func
-          return new Function("return (" + str + ")")();
-        } catch {
-          return {};
-        }
+      } catch {
+        try { return new Function("return (" + str + ")")(); } catch { return {}; }
       }
     }
 
@@ -91,42 +86,6 @@ document.addEventListener("DOMContentLoaded", function () {
       if (totalFormsEl) totalFormsEl.value = String(Math.max(0, getNextFormIndex() - 1));
     }
 
-    // ---------- añadir item ----------
-    function addItem(productObj, variantObj, qty) {
-      const key = variantObj ? `${productObj.id}::${variantObj.id}` : `p::${productObj.id}`;
-      qty = Math.max(1, Math.floor(Number(qty) || 1));
-
-      if (previewMap.has(key)) {
-        const row = previewMap.get(key);
-        row.qty = row.qty + qty;
-        updatePreviewRow(row);
-        updateFormQuantity(row.formIndex, row.qty);
-      } else {
-        const formIndex = increaseTotalForms();
-        const rawPrice = variantObj ? variantObj.price : productObj.price;
-        const unitPrice = parsePrice(rawPrice);
-
-        const row = {
-          key,
-          product_id: productObj.id,
-          product_name: productObj.name || productObj.label || "",
-          sku: variantObj ? (variantObj.sku || "") : (productObj.sku || ""),
-          variant_id: variantObj ? variantObj.id : "",
-          variant_label: variantObj ? (variantObj.label || "") : "",
-          unit_price: unitPrice,
-          qty: qty,
-          formIndex: formIndex
-        };
-
-        insertFormsetForm(row);
-        insertPreviewRow(row);
-        previewMap.set(key, row);
-      }
-
-      toggleNoProductsRow();
-      recalcTotals();
-    }
-
     // ---------- formset ----------
     function insertFormsetForm(row) {
       const tpl = emptyTemplateTextarea?.value || "";
@@ -151,6 +110,13 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
+    function toggleNoProductsRow() {
+      const noRow = $qs("#no-products-row", pageRoot);
+      if (!noRow) return;
+      noRow.style.display = previewMap.size > 0 ? "none" : "";
+      updateRowNumbers();
+    }
+
     function insertPreviewRow(row) {
       const tr = document.createElement("tr");
       tr.dataset.key = row.key;
@@ -163,8 +129,8 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="text-muted text-mono small">SKU: ${escapeHtml(row.sku) || "-"}</div>
         </td>
         <td class="text-center align-middle">
-          <input type="number" min="1" value="${row.qty}" 
-                 class="form-control form-control-sm text-center preview-qty" 
+          <input type="number" min="1" value="${row.qty}"
+                 class="form-control form-control-sm text-center preview-qty"
                  style="width:75px;">
         </td>
         <td class="text-end align-middle unit-price fw-medium text-primary">
@@ -181,8 +147,7 @@ document.addEventListener("DOMContentLoaded", function () {
       `;
       tableBody.appendChild(tr);
 
-      const qtyInput = tr.querySelector(".preview-qty");
-      qtyInput.addEventListener("input", e => {
+      tr.querySelector(".preview-qty").addEventListener("input", e => {
         const v = Math.max(1, Math.floor(Number(e.target.value || 1)));
         row.qty = v;
         updateFormQuantity(row.formIndex, v);
@@ -219,13 +184,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ---------- totales ----------
-    function toggleNoProductsRow() {
-      const noRow = $qs("#no-products-row", pageRoot);
-      if (!noRow) return;
-      noRow.style.display = previewMap.size > 0 ? "none" : "";
-      updateRowNumbers();
-    }
-
     function recalcTotals() {
       let total = 0;
       previewMap.forEach(r => { total += r.unit_price * r.qty; });
@@ -235,29 +193,58 @@ document.addEventListener("DOMContentLoaded", function () {
       const minDep = Math.round(total * 0.2);
       if (minDepositDisplay) minDepositDisplay.textContent = fmtCOP(minDep);
 
-      const dep = parsePrice(amountDepositedInput?.value || 0);
+      const dep = parsePrice(amountDepositedInput?.value || cfg.reservationDeposit || 0);
 
-      const subtotalEl = $qs("#subtotal-display", pageRoot);
-      const depositEl = $qs("#deposit-display", pageRoot);
-      const remainingEl = $qs("#remaining-display", pageRoot);
-
-      if (subtotalEl) subtotalEl.textContent = fmtCOP(total);
-      if (depositEl) depositEl.textContent = fmtCOP(dep);
-      if (remainingEl) remainingEl.textContent = fmtCOP(Math.max(0, total - dep));
+      $qs("#subtotal-display", pageRoot).textContent = fmtCOP(total);
+      $qs("#deposit-display", pageRoot).textContent = fmtCOP(dep);
+      $qs("#remaining-display", pageRoot).textContent = fmtCOP(Math.max(0, total - dep));
 
       if (dueMessage) {
         dueMessage.textContent =
           total === 0
             ? "Seleccione productos para calcular vencimiento."
             : dep >= minDep
-            ? "Reserva válida por 30 días hábiles."
-            : "Reserva válida por 3 días hábiles (abono mínimo 20%).";
+            ? "Reserva válida por 30 días."
+            : "Reserva válida por 3 días (abono mínimo 20%).";
       }
 
       toggleNoProductsRow();
     }
 
-    // ---------- eventos ----------
+    // ---------- añadir ----------
+    function addItem(productObj, variantObj, qty) {
+      const key = variantObj ? `${productObj.id}::${variantObj.id}` : `p::${productObj.id}`;
+      qty = Math.max(1, Math.floor(Number(qty) || 1));
+
+      if (previewMap.has(key)) {
+        const row = previewMap.get(key);
+        row.qty += qty;
+        updatePreviewRow(row);
+        updateFormQuantity(row.formIndex, row.qty);
+      } else {
+        const formIndex = increaseTotalForms();
+        const rawPrice = variantObj ? variantObj.price : productObj.price;
+        const unitPrice = parsePrice(rawPrice);
+
+        const row = {
+          key,
+          product_id: productObj.id,
+          product_name: productObj.name || productObj.label || "",
+          sku: variantObj ? (variantObj.sku || "") : (productObj.sku || ""),
+          variant_id: variantObj ? variantObj.id : "",
+          variant_label: variantObj ? (variantObj.label || "") : "",
+          unit_price: unitPrice,
+          qty: qty,
+          formIndex
+        };
+        insertFormsetForm(row);
+        insertPreviewRow(row);
+        previewMap.set(key, row);
+      }
+
+      recalcTotals();
+    }
+
     function attachAddButtons() {
       pageRoot.querySelectorAll(".btn-add-simple").forEach(btn => {
         btn.addEventListener("click", e => {
@@ -265,7 +252,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const product = safeParseJSON(btn.getAttribute("data-product"));
           const qtyInput = btn.closest(".d-flex")?.querySelector(".simple-qty");
           const qty = Math.max(1, Math.floor(Number(qtyInput?.value || 1)));
-          if (product && typeof product.stock !== "undefined" && qty > Number(product.stock || 0)) {
+          if (product && qty > (Number(product.stock || 0))) {
             alert(`Stock disponible: ${product.stock}`);
             return;
           }
@@ -281,7 +268,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const rowEl = btn.closest("tr");
           const qtyInput = rowEl?.querySelector(".variant-qty-input");
           const qty = Math.max(1, Math.floor(Number(qtyInput?.value || 1)));
-          if (variant && typeof variant.stock !== "undefined" && qty > Number(variant.stock || 0)) {
+          if (variant && qty > (Number(variant.stock || 0))) {
             alert(`Stock disponible: ${variant.stock}`);
             return;
           }
@@ -330,21 +317,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const SAVE_URL = window.SELECTION_SAVE_URL || '/backoffice/billing/selection/save/';
 
-      function saveSelectionThenNavigate(targetUrl) {
-        const items = collectPreviewItems();
-        fetch(SAVE_URL, {
+      function postSelection(items, deposit) {
+        return fetch(SAVE_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCSRFToken()
           },
-          body: JSON.stringify({ items: items }),
+          body: JSON.stringify({ items: items, deposit: deposit }),
           keepalive: true
-        }).catch(() => {
-          // si falla no bloqueamos la navegación
-        }).finally(() => {
-          if (targetUrl) window.location.href = targetUrl;
-        });
+        }).then(r => r.json()).catch(() => ({ ok: false }));
       }
 
       const filterForm = pageRoot.querySelector('form[method="get"]');
@@ -353,14 +335,18 @@ document.addEventListener("DOMContentLoaded", function () {
           e.preventDefault();
           const url = (filterForm.action || window.location.pathname) + '?' +
                       (new URLSearchParams(new FormData(filterForm))).toString();
-          saveSelectionThenNavigate(url);
+          const items = collectPreviewItems();
+          const dep = parsePrice(amountDepositedInput?.value || 0);
+          postSelection(items, dep).finally(() => { window.location.href = url; });
         });
       }
 
       pageRoot.querySelectorAll('.pagination .page-link').forEach(a => {
         a.addEventListener('click', function (ev) {
           ev.preventDefault();
-          saveSelectionThenNavigate(a.href);
+          const items = collectPreviewItems();
+          const dep = parsePrice(amountDepositedInput?.value || 0);
+          postSelection(items, dep).finally(() => { window.location.href = a.href; });
         });
       });
     })();

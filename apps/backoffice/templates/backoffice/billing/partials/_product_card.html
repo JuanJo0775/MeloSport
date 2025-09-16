@@ -1,0 +1,96 @@
+{% load static %}
+{% load money %}
+
+<div class="col-12 col-md-6 col-lg-4">
+  <div class="card h-100 shadow-sm border">
+    <div class="card-body p-3">
+      <div class="d-flex align-items-start">
+        <!-- Imagen -->
+        <div class="flex-shrink-0 me-3">
+          <img src="{{ p.get_main_image_url|default:p.images.first.image.url|default:'/static/img/no-image.png' }}"
+               alt="{{ p.name }}"
+               class="gallery-thumb"
+               style="width:80px; height:80px;">
+        </div>
+
+        <!-- Información -->
+        <div class="flex-grow-1">
+          <h6 class="card-title mb-2 text-truncate fw-semibold">{{ p.name }}</h6>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="text-muted text-mono">SKU: {{ p.sku }}</small>
+            <small class="text-muted">
+              Stock:
+              <span class="{% if p.stock > 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                {{ p.stock|default:"-" }}
+              </span>
+            </small>
+          </div>
+
+          {% if p.variants.exists %}
+            <!-- Producto con variantes -->
+            <div class="table-responsive">
+              <table class="table table-sm table-borderless mb-0">
+                <tbody>
+                  {% for v in p.variants.all %}
+                    <tr>
+                      <td class="ps-0">
+                        <div class="small fw-semibold">
+                          {% if v.size %}{{ v.size }}{% endif %}
+                          {% if v.color %}{% if v.size %} - {% endif %}{{ v.color }}{% endif %}
+                        </div>
+                        <small class="text-muted text-mono">{{ v.sku }}</small>
+                      </td>
+                      <td class="text-end">
+                        <div class="small fw-semibold text-primary">{{ v.price|default:p.price|cop }}</div>
+                        <small class="{% if v.stock > 0 %}text-success{% else %}text-danger{% endif %}">
+                          Stock: {{ v.stock }}
+                        </small>
+                      </td>
+                      <td style="width:60px;">
+                        <input type="number" min="1" value="1"
+                               class="form-control form-control-sm variant-qty-input"
+                               {% if v.stock <= 0 %}disabled{% endif %}>
+                      </td>
+                      <td style="width:80px;">
+                        <button class="btn btn-sm btn-success btn-add-variant w-100"
+                                {% if v.stock <= 0 %}disabled title="Sin stock"{% endif %}
+                                data-product='{"id":{{ p.pk }},"name":"{{ p.name|escapejs }}","sku":"{{ p.sku|escapejs }}"}'
+                                data-variant='{"id":{{ v.pk }},
+                                               "label":"{% if v.size %}{{ v.size }}{% endif %}{% if v.color %}{% if v.size %} - {% endif %}{{ v.color }}{% endif %}",
+                                               "sku":"{{ v.sku|escapejs }}",
+                                               "stock":{{ v.stock|default:0 }},
+                                               "price":"{{ v.price|default:p.price }}"}'>
+                          <i class="bi bi-plus-circle"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <!-- Producto simple -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div class="fw-semibold text-primary fs-6">{{ p.price|cop }}</div>
+            </div>
+            <div class="d-flex gap-2">
+              <input type="number" min="1" value="1"
+                     class="form-control form-control-sm simple-qty"
+                     style="width:80px;"
+                     {% if p.stock <= 0 %}disabled{% endif %}>
+              <button class="btn btn-sm btn-success flex-grow-1 btn-add-simple"
+                      {% if p.stock <= 0 %}disabled title="Sin stock"{% endif %}
+                      data-product='{"id":{{ p.pk }},
+                                     "name":"{{ p.name|escapejs }}",
+                                     "sku":"{{ p.sku|escapejs }}",
+                                     "price":"{{ p.price }}",
+                                     "stock":{{ p.stock|default:0 }}}'>
+                <i class="bi bi-plus-circle me-1"></i>Agregar
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

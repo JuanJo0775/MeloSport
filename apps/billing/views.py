@@ -49,6 +49,7 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 "client_last_name": res.client_last_name,
                 "client_phone": res.client_phone,
                 "reservation": res,
+                # prefill amount_paid with the remaining saldo (so UI shows remaining)
                 "amount_paid": saldo_res,
             })
         return initial
@@ -79,6 +80,7 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         elif filter_type == "variants":
             final_qs = variantes
         else:
+            # concatenamos simples + variantes para mantener orden mostrado antes
             final_qs = list(simples) + list(variantes)
 
         if stock_filter == "in_stock":
@@ -97,47 +99,51 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         if reservation_id:
             reservation = get_object_or_404(Reservation, pk=reservation_id)
 
+        # formset (POST vs GET)
         if self.request.method == "POST":
             context["items_formset"] = InvoiceItemSimpleFormSet(self.request.POST, prefix="items")
         else:
             context["items_formset"] = InvoiceItemSimpleFormSet(prefix="items")
 
+        # items preload: desde reserva si existe, sino desde session
         if reservation:
             items_json = [
                 {
                     "product_id": item.product_id,
                     "product_name": item.product.name,
-                    "sku": item.product.sku,
+                    # preferir variant sku en la UI (backend factura usará variant si existe)
+                    "sku": item.variant.sku if item.variant else item.product.sku,
                     "variant_id": item.variant_id or "",
                     "variant_label": " • ".join(
-                        filter(None, [item.variant.size, item.variant.color])
+                        filter(None, [getattr(item.variant, "size", None), getattr(item.variant, "color", None)])
                     ) if item.variant else "",
                     "unit_price": str(item.unit_price),
                     "qty": item.quantity,
                 }
                 for item in reservation.items.all()
             ]
-            context["reservation_items_json"] = json.dumps(items_json, cls=DjangoJSONEncoder)
+            reservation_abono = reservation.amount_deposited or Decimal("0.00")
         else:
             # 🔹 Si no hay reserva, cargar ítems desde la sesión
             if self.request.method != "POST":
-                session_items = self.request.session.get("billing_selected_items")
-                if session_items:
-                    context["reservation_items_json"] = json.dumps(session_items, cls=DjangoJSONEncoder)
-                else:
-                    context["reservation_items_json"] = "[]"
+                session_items = self.request.session.get("billing_selected_items", [])
+                items_json = session_items or []
+                session_dep = self.request.session.get("billing_reservation_deposit")
+                reservation_abono = Decimal(session_dep) if session_dep else Decimal("0.00")
             else:
-                context["reservation_items_json"] = "[]"
+                items_json = []
+                reservation_abono = Decimal("0.00")
 
+        # paginación productos
         qs = self.get_queryset()
         paginator = Paginator(qs, self.paginate_by)
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
-        abono = Decimal("0.00")
+        # calcular saldo si viene reserva (para mostrar en UI)
+        abono = reservation_abono
         saldo = Decimal("0.00")
         if reservation:
-            abono = reservation.amount_deposited or Decimal("0.00")
             total_reserva = sum(item.subtotal for item in reservation.items.all())
             saldo = total_reserva - abono
 
@@ -151,6 +157,7 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
             "current_stock_filter": self.request.GET.get("stock", "in_stock"),
             "querystring": self._get_querystring(),
             "reservation": reservation,
+            "reservation_items_json": json.dumps(items_json, cls=DjangoJSONEncoder),
             "reservation_abono": abono,
             "reservation_saldo": saldo,
         })
@@ -167,7 +174,9 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         context = self.get_context_data()
         items_formset = context["items_formset"]
 
+        # validar formset antes de entrar en transacción
         if not items_formset.is_valid():
+            # imprimir para debugging en development
             print("❌ FORMSET inválido:", items_formset.errors)
             print("❌ MANAGEMENT form:", items_formset.management_form.errors)
             return self.form_invalid(form)
@@ -178,6 +187,7 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 # 1) Crear/guardar factura base
                 # -------------------------
                 self.object = form.save(commit=False)
+                # marcamos como pagada si así lo define la lógica (aquí se considera que pago total se registro)
                 self.object.paid = True
                 if not self.object.payment_date:
                     self.object.payment_date = timezone.now()
@@ -188,9 +198,9 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 # Si no vino en el form, buscar en POST/GET o en la propia instancia
                 if not reservation:
                     reservation_id = (
-                            self.request.POST.get("reservation")
-                            or self.request.GET.get("reservation")
-                            or getattr(self.object, "reservation_id", None)
+                        self.request.POST.get("reservation")
+                        or self.request.GET.get("reservation")
+                        or getattr(self.object, "reservation_id", None)
                     )
                     if reservation_id:
                         try:
@@ -202,11 +212,11 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 if reservation:
                     self.object.reservation = reservation
 
-                # Guardar la factura preliminar
+                # Guardar la factura preliminar (necesario para relacionar FK de items)
                 self.object.save()
 
                 # -------------------------
-                # 2) Crear items de la factura
+                # 2) Crear items de la factura (validar stock)
                 # -------------------------
                 total_calculado = Decimal("0.00")
                 for f in items_formset:
@@ -218,8 +228,9 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     qty = f.cleaned_data["quantity"]
                     unit_price = f.cleaned_data["unit_price"]
 
-                    stock = variant.stock if variant else getattr(product, "_stock", 0)
-                    if qty > stock:
+                    # stock check: si hay variante usamos su stock, sino intentar atributo _stock o stock
+                    stock = variant.stock if variant else (getattr(product, "_stock", None) or getattr(product, "stock", 0))
+                    if qty > (stock or 0):
                         f.add_error("quantity", "Cantidad mayor al stock disponible.")
                         raise IntegrityError("Stock insuficiente")
 
@@ -233,7 +244,7 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     total_calculado += (unit_price * qty)
 
                 # -------------------------
-                # 3) Totales y monto pagado
+                # 3) Totales y monto pagado (considerar abono de reserva o sesión)
                 # -------------------------
                 self.object.total = total_calculado
 
@@ -243,37 +254,55 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                     saldo_res = total_calculado - abono_res
                     if saldo_res < 0:
                         saldo_res = Decimal("0.00")
+                    # preferimos el comportamiento: amount_paid = saldo a pagar (total - abono)
                     self.object.amount_paid = saldo_res
                 else:
-                    # Si el form trae campo amount_paid, se respetará; sino asumimos total
-                    if not self.object.amount_paid or self.object.amount_paid == Decimal("0.00"):
-                        self.object.amount_paid = total_calculado
+                    # Si no hay reserva, comprobar si en sesión hay un depósito (p.ej. user guardó selección con abono)
+                    session_dep = self.request.session.get("billing_reservation_deposit")
+                    session_deposit = Decimal(session_dep) if session_dep else Decimal("0.00")
+
+                    # Si el formulario trae amount_paid y el usuario lo puso, respetarlo (ej. pago parcial/total desde UI)
+                    if hasattr(self.object, "amount_paid") and self.object.amount_paid and self.object.amount_paid != Decimal("0.00"):
+                        # respetar lo que venga en el form (probablemente el usuario lo editó)
+                        pass
+                    else:
+                        # si hay depósito en sesión, restarlo del total para definir amount_paid por defecto
+                        if session_deposit > Decimal("0.00"):
+                            amt_to_pay = total_calculado - session_deposit
+                            if amt_to_pay < Decimal("0.00"):
+                                amt_to_pay = Decimal("0.00")
+                            self.object.amount_paid = amt_to_pay
+                        else:
+                            # por defecto asumimos que se paga todo
+                            self.object.amount_paid = total_calculado
 
                 # -------------------------
-                # 4) Revalidar formset (igual que antes)
+                # 4) Revalidar formset (post-save) - no debería fallar, pero mantener seguridad
                 # -------------------------
-                form = self.get_form(self.get_form_class())
-                form.instance = self.object
+                form_for_check = self.get_form(self.get_form_class())
+                form_for_check.instance = self.object
                 if not items_formset.is_valid():
                     print("❌ FORMSET inválido (post-save):", items_formset.errors)
                     print("❌ MANAGEMENT form (post-save):", items_formset.management_form.errors)
-                    return self.form_invalid(form)
+                    return self.form_invalid(form_for_check)
 
                 # -------------------------
-                # 5) Guardar factura definitiva y aplicar movimientos
+                # 5) Guardar factura definitiva y aplicar movimientos (finalize)
                 # -------------------------
                 self.object.save()
                 # finalize aplicará movimientos de inventario y actualizará el estado de la factura
-                self.object.finalize(user=self.request.user, request=self.request)
+                try:
+                    self.object.finalize(user=self.request.user, request=self.request)
+                except Exception as e:
+                    # si finalize falla, preferimos fallar la transacción para no dejar datos inconsistentes
+                    raise
 
                 # -------------------------
-                # 6) FORZAR completion de la reserva (si existe) — mismo botón hace todo
+                # 6) FORZAR completion de la reserva (si existe)
                 # -------------------------
                 if self.object.reservation:
                     try:
                         res = Reservation.objects.select_for_update().get(pk=self.object.reservation.pk)
-                        print(
-                            f"[form_valid] reservation BEFORE id={res.pk} status={res.status} movement_created={res.movement_created}")
                         res.complete(user=self.request.user, request=self.request)
                         AuditLog.log_action(
                             request=self.request,
@@ -283,10 +312,9 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                             obj=res,
                             description=f"Reserva #{res.pk} completada al crear venta (botón crear venta)."
                         )
-                        print(f"[form_valid] reservation AFTER id={res.pk} status={res.status}")
                     except Reservation.DoesNotExist:
-                        print(
-                            f"[form_valid] reservation id {self.object.reservation.pk} no encontrada al intentar completar.")
+                        # no hacemos nada si no se encuentra
+                        pass
 
                 # -------------------------
                 # 7) Log de la factura
@@ -301,22 +329,28 @@ class SaleCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
                 )
 
         except IntegrityError:
+            # errores de validación ya agregados en formset/item forms
             return self.form_invalid(form)
         except Exception as e:
+            # capturamos el error y lo mostramos en el form para debugging controlado
             print("❌ ERROR en finalize o transacción:", str(e))
             form.add_error(None, str(e))
             return self.form_invalid(form)
 
-        # 🔹 Limpiar la sesión de selección
+        # 🔹 Limpiar la sesión de selección y depósito
         try:
             if "billing_selected_items" in self.request.session:
                 del self.request.session["billing_selected_items"]
+            if "billing_reservation_deposit" in self.request.session:
+                del self.request.session["billing_reservation_deposit"]
+            self.request.session.modified = True
         except Exception:
             pass
 
         # Mensaje y redirección final al detalle de la factura
         messages.success(self.request, f"Venta registrada correctamente. Factura #{self.object.code}")
         return redirect(reverse("backoffice:billing:invoice_detail", args=[self.object.pk]))
+
 
 
 
@@ -454,8 +488,6 @@ class InvoiceHTMLView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
 
 
 
-
-
 class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     """Registrar un apartado de productos con reglas de negocio."""
     permission_required = "billing.add_reservation"
@@ -535,12 +567,14 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
         # 🔹 Cargar ítems desde la sesión si existen y no es POST
         if self.request.method != "POST":
             session_items = self.request.session.get("billing_selected_items")
-            if session_items:
-                context["reservation_items_json"] = json.dumps(session_items, cls=DjangoJSONEncoder)
-            else:
-                context["reservation_items_json"] = "[]"
+            session_deposit = self.request.session.get("billing_reservation_deposit")
+            context["reservation_items_json"] = json.dumps(
+                session_items or [], cls=DjangoJSONEncoder
+            )
+            context["reservation_abono"] = Decimal(session_deposit) if session_deposit else Decimal("0.00")
         else:
             context["reservation_items_json"] = "[]"
+            context["reservation_abono"] = Decimal("0.00")
 
         return context
 
@@ -597,15 +631,18 @@ class ReservationCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateV
                 description=f"Reserva #{reservation.pk} creada para {reservation.client_first_name} {reservation.client_last_name}",
             )
 
-        # 🔹 Limpiar la sesión de selección
+        # 🔹 Guardar abono en sesión (para continuidad con venta) y limpiar items
         try:
+            self.request.session["billing_reservation_deposit"] = str(abono)
             if "billing_selected_items" in self.request.session:
                 del self.request.session["billing_selected_items"]
+            self.request.session.modified = True
         except Exception:
             pass
 
         messages.success(self.request, f"Reserva registrada. Vence el {reservation.due_date.date()}")
         return redirect(reverse("backoffice:billing:reservation_detail", args=[reservation.pk]))
+
 
 
 class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -936,25 +973,73 @@ class ReservationCompleteView(LoginRequiredMixin, PermissionRequiredMixin, View)
 
 class SaveSelectionView(LoginRequiredMixin, View):
     """
-    Recibe POST JSON { items: [...] } y lo guarda en request.session['billing_selected_items'].
+    Guarda en sesión la selección de productos (y opcionalmente el depósito).
+    Espera POST JSON con estructura:
+
+    {
+        "items": [
+            {
+                "product_id": 1,
+                "variant_id": 5,
+                "qty": 2,
+                "unit_price": "12000.00",
+                "product_name": "Camiseta Azul",
+                "sku": "CAM-001",
+                "variant_label": "M • Azul"
+            },
+            ...
+        ],
+        "deposit": "30000.00"   # opcional
+    }
     """
+
     def post(self, request, *args, **kwargs):
         try:
             payload = json.loads(request.body.decode("utf-8") or "{}")
+
+            # --------------------------
+            # Procesar items
+            # --------------------------
             items = payload.get("items", [])
-            cleaned = []
+            cleaned_items = []
             for it in items:
-                cleaned.append({
-                    "product_id": int(it.get("product_id")) if it.get("product_id") is not None else None,
+                cleaned_items.append({
+                    "product_id": int(it.get("product_id")) if it.get("product_id") else None,
                     "variant_id": int(it.get("variant_id")) if it.get("variant_id") else None,
                     "qty": int(it.get("qty") or it.get("quantity") or 1),
-                    "unit_price": str(it.get("unit_price") or 0),  # 🔹 guardamos como str para no perder decimales
+                    # 🔹 Guardamos como str para no perder decimales
+                    "unit_price": str(it.get("unit_price") or "0"),
                     "product_name": it.get("product_name") or "",
                     "sku": it.get("sku") or "",
                     "variant_label": it.get("variant_label") or "",
                 })
-            request.session["billing_selected_items"] = cleaned
+
+            # Guardar items en sesión
+            request.session["billing_selected_items"] = cleaned_items
+
+            # --------------------------
+            # Procesar depósito (opcional)
+            # --------------------------
+            deposit_raw = payload.get("deposit")
+            if deposit_raw not in (None, "", 0, "0"):
+                try:
+                    deposit_val = str(Decimal(str(deposit_raw)))
+                    request.session["billing_reservation_deposit"] = deposit_val
+                except Exception:
+                    # si no es convertible a decimal, lo ignoramos
+                    request.session["billing_reservation_deposit"] = "0.00"
+            else:
+                # limpiar si el cliente lo manda vacío
+                if "billing_reservation_deposit" in request.session:
+                    del request.session["billing_reservation_deposit"]
+
             request.session.modified = True
-            return JsonResponse({"ok": True})
+
+            return JsonResponse({
+                "ok": True,
+                "count": len(cleaned_items),
+                "deposit": request.session.get("billing_reservation_deposit", "0.00"),
+            })
+
         except Exception as e:
             return JsonResponse({"ok": False, "error": str(e)}, status=400)
