@@ -355,20 +355,24 @@
                         <div class="row">
                             <div class="col-md-3 col-sm-6 mb-3">
                                 <a href="{% url 'backoffice:products:product_create' %}" class="btn btn-outline-primary w-100 p-3">
-                                    <i class="bi bi-plus-circle d-block mb-2" style="font-size: 2rem;"></i>
+                                    <i class="bi bi-box-seam d-block mb-2" style="font-size: 2rem;"></i>
                                     Agregar Producto
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6 mb-3">
-                                <a href="{% url 'backoffice:inventory-upload' %}" class="btn btn-outline-success w-100 p-3">
-                                    <i class="bi bi-upload d-block mb-2" style="font-size: 2rem;"></i>
-                                    Subir Inventario
+                                <a href="{% url 'backoffice:products:inventory:products_inventory_list' %}"
+                                   class="btn w-100 p-3"
+                                   style="color:#fd7e14; border:1px solid #fd7e14; background-color:transparent;"
+                                   onmouseover="this.style.backgroundColor='#fd7e14'; this.style.color='#fff';"
+                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='#fd7e14';">
+                                    <i class="bi bi-boxes d-block mb-2" style="font-size: 2rem;"></i>
+                                    Agregar stock
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6 mb-3">
-                                <a href="{% url 'backoffice:report-list' %}" class="btn btn-outline-info w-100 p-3">
-                                    <i class="bi bi-file-earmark-text d-block mb-2" style="font-size: 2rem;"></i>
-                                    Generar Reporte
+                                <a href="{% url 'backoffice:billing:sale_create' %}" class="btn btn-outline-success w-100 p-3">
+                                    <i class="bi bi-cash-coin d-block mb-2" style="font-size: 2rem;"></i>
+                                    Nueva venta
                                 </a>
                             </div>
                             <div class="col-md-3 col-sm-6 mb-3">

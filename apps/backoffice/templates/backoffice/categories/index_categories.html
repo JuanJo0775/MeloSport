@@ -24,7 +24,11 @@
           </a>
           {% endif %}
           {% if perms.categories.add_category %}
-          <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary">
+          <a href="{% url 'backoffice:categories:create' %}"
+             class="btn"
+             style="background-color:#fd7e14; color:#fff; border:1px solid #fd7e14;"
+             onmouseover="this.style.backgroundColor='#e66900';"
+             onmouseout="this.style.backgroundColor='#fd7e14';">
             <i class="bi bi-plus-circle me-2"></i>Nueva Categoría
           </a>
           {% endif %}
@@ -33,61 +37,60 @@
     </div>
   </div>
 
-<!-- Información didáctica -->
-<div class="row mb-4">
-  <div class="col-12">
-    <div class="alert alert-info border-0 shadow-sm">
-      <div class="d-flex">
-        <div class="flex-shrink-0">
-          <i class="bi bi-info-circle fs-4 text-info"></i>
-        </div>
-        <div class="flex-grow-1 ms-3">
-          <h5 class="alert-heading mb-3">¿Cuál es la diferencia?</h5>
-          <div class="row g-3">
+  <!-- Información didáctica -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="alert alert-info border-0 shadow-sm">
+        <div class="d-flex">
+          <div class="flex-shrink-0">
+            <i class="bi bi-info-circle fs-4 text-info"></i>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h5 class="alert-heading mb-3">¿Cuál es la diferencia?</h5>
+            <div class="row g-3">
 
-            <!-- Deportes (Categorías Absolutas) -->
-            <div class="col-md-6">
-              <div class="d-flex">
-                <div class="flex-shrink-0">
-                  <i class="bi bi-dribbble text-success fs-5 me-2"></i>
-                </div>
-                <div>
-                  <p class="mb-1"><strong>Deportes (Categorías Absolutas):</strong></p>
-                  <p class="mb-0 small text-muted">
-                    Contenedores principales como "Fútbol", "Baloncesto".
-                    Se muestran como deportes en el frontend y no tienen jerarquía padre-hijo.
-                  </p>
+              <!-- Deportes -->
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <i class="bi bi-dribbble text-success fs-5 me-2"></i>
+                  </div>
+                  <div>
+                    <p class="mb-1"><strong>Deportes (Categorías Absolutas):</strong></p>
+                    <p class="mb-0 small text-muted">
+                      Contenedores principales como "Fútbol", "Baloncesto".
+                      Se muestran como deportes en el frontend y no tienen jerarquía padre-hijo.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Categorías Jerárquicas -->
-            <div class="col-md-6">
-              <div class="d-flex">
-                <div class="flex-shrink-0">
-                  <i class="bi bi-diagram-3 text-primary fs-5 me-2"></i>
-                </div>
-                <div>
-                  <p class="mb-1"><strong>Categorías Jerárquicas:</strong></p>
-                  <p class="mb-0 small text-muted">
-                    Permiten crear estructuras padre-hijo como "Calzado" → "Zapatos de Fútbol"
-                    para organizar productos dentro de cada deporte.
-                  </p>
+              <!-- Categorías Jerárquicas -->
+              <div class="col-md-6">
+                <div class="d-flex">
+                  <div class="flex-shrink-0">
+                    <i class="bi bi-diagram-3 fs-5 me-2" style="color:#fd7e14;"></i>
+                  </div>
+                  <div>
+                    <p class="mb-1"><strong>Categorías Jerárquicas:</strong></p>
+                    <p class="mb-0 small text-muted">
+                      Permiten crear estructuras padre-hijo como "Calzado" → "Zapatos de Fútbol"
+                      para organizar productos dentro de cada deporte.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-
 
   <!-- Tarjetas principales -->
   <div class="row g-4">
-    <!-- Deportes (Categorías Absolutas) -->
+    <!-- Deportes -->
     <div class="col-lg-6">
       <div class="card h-100 border-0 shadow-sm">
         <div class="card-body p-4">
@@ -127,19 +130,19 @@
       </div>
     </div>
 
-    <!-- Categorías Jerárquicas -->
+    <!-- Categorías (en naranja) -->
     <div class="col-lg-6">
       <div class="card h-100 border-0 shadow-sm">
         <div class="card-body p-4">
           <div class="d-flex align-items-center mb-3">
-            <div class="icon-wrapper bg-primary bg-opacity-10 rounded-3 p-3 me-3">
-              <i class="bi bi-diagram-3 text-primary fs-2"></i>
+            <div class="icon-wrapper rounded-3 p-3 me-3" style="background-color:rgba(253,126,20,0.1);">
+              <i class="bi bi-diagram-3 fs-2" style="color:#fd7e14;"></i>
             </div>
             <div class="flex-grow-1">
               <h4 class="card-title mb-1">Categorías</h4>
               <p class="text-muted mb-0">Estructura Jerárquica</p>
             </div>
-            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">Organización</span>
+            <span class="badge px-3 py-2" style="background-color:rgba(253,126,20,0.1); color:#fd7e14;">Organización</span>
           </div>
 
           <p class="text-muted mb-4">
@@ -154,11 +157,19 @@
           </div>
 
           <div class="d-flex gap-2">
-              <a href="{% url 'backoffice:categories:list' %}" class="btn btn-outline-primary flex-fill">
+              <a href="{% url 'backoffice:categories:list' %}"
+                 class="btn flex-fill"
+                 style="color:#fd7e14; border:1px solid #fd7e14; background-color:transparent;"
+                 onmouseover="this.style.backgroundColor='#fd7e14'; this.style.color='#fff';"
+                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='#fd7e14';">
                 <i class="bi bi-list-task me-2"></i>Ver Listado
               </a>
               {% if perms.categories.add_category %}
-              <a href="{% url 'backoffice:categories:create' %}" class="btn btn-primary flex-fill">
+              <a href="{% url 'backoffice:categories:create' %}"
+                 class="btn flex-fill"
+                 style="background-color:#fd7e14; color:#fff; border:1px solid #fd7e14;"
+                 onmouseover="this.style.backgroundColor='#e66900';"
+                 onmouseout="this.style.backgroundColor='#fd7e14';">
                 <i class="bi bi-plus-circle me-2"></i>Crear Categoría
               </a>
               {% endif %}
@@ -168,74 +179,69 @@
     </div>
   </div>
 
-    <!-- Estadísticas rápidas -->
-        <div class="row mt-5 g-3">
-      <div class="col-12">
-        <h5 class="mb-3">Resumen del Sistema</h5>
-      </div>
+  <!-- Estadísticas rápidas -->
+  <div class="row mt-5 g-3">
+    <div class="col-12">
+      <h5 class="mb-3">Resumen del Sistema</h5>
+    </div>
 
-      <div class="col-md-3">
-        <div class="card stats-card border-left-success">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-success mb-1">{{ deportes_activos|default:"0" }}</h5>
-              <p class="card-text text-muted small mb-0">Deportes Activos</p>
-            </div>
-            <div class="stats-icon text-success"><i class="bi bi-dribbble"></i></div>
+    <div class="col-md-3">
+      <div class="card stats-card border-left-success">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title text-success mb-1">{{ deportes_activos|default:"0" }}</h5>
+            <p class="card-text text-muted small mb-0">Deportes Activos</p>
           </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card stats-card border-left-primary">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-primary mb-1">{{ categorias_count|default:"0" }}</h5>
-              <p class="card-text text-muted small mb-0">Categorías Totales</p>
-            </div>
-            <div class="stats-icon text-primary"><i class="bi bi-diagram-3"></i></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card stats-card border-left-info">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-info mb-1">{{ productos_count|default:"0" }}</h5>
-              <p class="card-text text-muted small mb-0">Productos Asociados</p>
-            </div>
-            <div class="stats-icon text-info"><i class="bi bi-boxes"></i></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card stats-card border-left-warning">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div>
-              <h5 class="card-title text-warning mb-1">{{ categorias_padre_count|default:"0" }}</h5>
-              <p class="card-text text-muted small mb-0">Categorías Padre</p>
-            </div>
-            <div class="stats-icon text-warning"><i class="bi bi-graph-up"></i></div>
-          </div>
+          <div class="stats-icon text-success"><i class="bi bi-dribbble"></i></div>
         </div>
       </div>
     </div>
-</div>
 
+    <div class="col-md-3">
+      <div class="card stats-card" style="border-left:4px solid #fd7e14;">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title mb-1" style="color:#fd7e14;">{{ categorias_count|default:"0" }}</h5>
+            <p class="card-text text-muted small mb-0">Categorías Totales</p>
+          </div>
+          <div class="stats-icon" style="color:#fd7e14;"><i class="bi bi-diagram-3"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card stats-card border-left-info">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title text-info mb-1">{{ productos_count|default:"0" }}</h5>
+            <p class="card-text text-muted small mb-0">Productos Asociados</p>
+          </div>
+          <div class="stats-icon text-info"><i class="bi bi-boxes"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card stats-card border-left-warning">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title text-warning mb-1">{{ categorias_padre_count|default:"0" }}</h5>
+            <p class="card-text text-muted small mb-0">Categorías Padre</p>
+          </div>
+          <div class="stats-icon text-warning"><i class="bi bi-graph-up"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // Inicializar tooltips si existen
-  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-  });
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
 
-  // Animaciones suaves para las tarjetas
   const cards = document.querySelectorAll('.card');
   cards.forEach((card, index) => {
     card.style.opacity = '0';

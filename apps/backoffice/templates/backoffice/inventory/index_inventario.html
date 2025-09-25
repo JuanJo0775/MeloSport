@@ -88,8 +88,8 @@
               <i class="bi bi-eye me-2"></i>Ver Movimientos
             </a>
             {% if perms.products.add_inventorymovement %}
-            <a href="{% url 'backoffice:products:inventory:inventory_create' %}" class="btn btn-primary flex-fill">
-              <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
+            <a href="{% url 'backoffice:products:inventory:inventory_adjust' %}" class="btn btn-primary flex-fill">
+              <i class="bi bi-plus-circle me-2"></i>Ajuste de stock
             </a>
             {% endif %}
           </div>
