@@ -1,4 +1,6 @@
 # apps/backoffice/views.py
+import json
+from datetime import datetime, timedelta
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
@@ -8,9 +10,15 @@ from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.models import Permission
 from django.db.models import F
+from django.db.models import Sum
+from django.db.models.functions import TruncDate
+from django.shortcuts import render
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models.functions import TruncDate
 
 from apps.categories.models import Category, AbsoluteCategory
-from apps.products.models import Product
+from apps.products.models import Product, InventoryMovement
+from apps.billing.models import InvoiceItem
 from apps.users.models import AuditLog
 
 
@@ -21,30 +29,28 @@ from apps.users.models import AuditLog
 def dashboard(request):
     user = request.user
 
+    # --- Productos e inventario
     products = Product.objects.all()
-
     total_products = products.count()
-    inventory_value = sum(p.stock * p.price for p in products)  # ✅ usa property stock
+    inventory_value = sum(p.stock * p.price for p in products)
 
-    # Alertas de stock calculadas en Python (no con _stock directo)
     low_stock_qs = [p for p in products if 0 < p.stock <= p.min_stock]
     no_stock_qs = [p for p in products if p.stock == 0]
 
+    # --- Auditoría
     qs = AuditLog.objects.filter(user__isnull=False)
-
     if user.is_superuser:
         recent_activity = qs.order_by("-created_at")[:10]
     else:
         allowed_models = set()
         for perm in user.get_all_permissions():
             try:
-                app_label, codename = perm.split(".")
+                _, codename = perm.split(".")
                 if codename.startswith(("view_", "add_", "change_", "delete_")):
                     model_name = codename.split("_", 1)[1]
                     allowed_models.add(model_name.capitalize())
             except ValueError:
                 continue
-
         recent_activity = (
             qs.filter(
                 action__in=["create", "update", "delete"],
@@ -53,6 +59,78 @@ def dashboard(request):
             .order_by("-created_at")[:10]
         )
 
+    # --- Fechas: últimos 7 días
+    today = timezone.localdate()
+    date_from = today - timedelta(days=6)
+    date_to = today
+
+    # --- Movimientos inventario (solo in/out)
+    movements_qs = (
+        InventoryMovement.objects.filter(
+            created_at__date__range=(date_from, date_to)
+        )
+        .exclude(movement_type="reserve")
+        .annotate(day=TruncDate("created_at"))
+        .values("day", "movement_type")
+        .annotate(total_qty=Sum("quantity"))
+    )
+
+    mov_map = {}
+    for m in movements_qs:
+        d = m["day"]
+        t = m["movement_type"]
+        q = m["total_qty"] or 0
+        mov_map.setdefault(d, {})[t] = int(q)
+
+    labels, entries, exits = [], [], []
+    cur = date_from
+    while cur <= date_to:
+        labels.append(cur.strftime("%Y-%m-%d"))
+        day_map = mov_map.get(cur, {})
+        entries.append(day_map.get("in", 0))
+        exits.append(day_map.get("out", 0))
+        cur += timedelta(days=1)
+
+    total_entries = sum(entries)
+    total_exits = sum(exits)
+
+    # --- Top productos vendidos (facturas completadas)
+    top_qs = (
+        InvoiceItem.objects.filter(
+            invoice__status="completed",
+            invoice__created_at__date__range=(date_from, date_to)
+        )
+        .values(
+            "product_id",
+            "product__name",
+            "product__sku",
+            "variant__color",
+            "variant__size"
+        )
+        .annotate(total_qty=Sum("quantity"))
+        .order_by("-total_qty")[:10]
+    )
+
+    top_products = []
+    for t in top_qs:
+        name = t["product__name"] or "Sin nombre"
+        # Añadimos color/talla si existen
+        if t.get("variant__color") or t.get("variant__size"):
+            extras = []
+            if t.get("variant__color"):
+                extras.append(t["variant__color"])
+            if t.get("variant__size"):
+                extras.append(t["variant__size"])
+            name = f"{name} ({', '.join(extras)})"
+
+        top_products.append({
+            "product_id": t["product_id"],
+            "name": name,
+            "sku": t.get("product__sku") or "N/A",
+            "qty": int(t["total_qty"] or 0),
+        })
+
+    # --- Contexto final
     context = {
         "last_login": user.last_access,
         "current_login": user.current_login,
@@ -66,6 +144,18 @@ def dashboard(request):
         },
         "stock_alerts": low_stock_qs + no_stock_qs,
         "recent_activity": recent_activity,
+        "chart_labels_json": json.dumps(labels, cls=DjangoJSONEncoder),
+        "chart_entries_json": json.dumps(entries, cls=DjangoJSONEncoder),
+        "chart_exits_json": json.dumps(exits, cls=DjangoJSONEncoder),
+        "total_entries": total_entries,
+        "total_exits": total_exits,
+        "top_products": top_products,
+        "top_products_labels_json": json.dumps(
+            [p["name"] for p in top_products], cls=DjangoJSONEncoder
+        ),
+        "top_products_qty_json": json.dumps(
+            [p["qty"] for p in top_products], cls=DjangoJSONEncoder
+        ),
     }
 
     return render(request, "backoffice/dashboard.html", context)

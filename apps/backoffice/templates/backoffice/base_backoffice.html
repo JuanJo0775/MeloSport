@@ -128,7 +128,8 @@
           <hr>
 
           {% if perms.auth.view_user %}
-          <a href="{% url 'backoffice:users:list' %}" class="sidebar-link">
+          <a href="{% url 'backoffice:users:list' %}"
+            class="sidebar-link {% if request.resolver_match.url_name == 'list' %}active{% endif %}">
             <i class="bi bi-people"></i> Usuarios
           </a>
           {% endif %}
@@ -141,27 +142,30 @@
           {% endif %}
 
           {% if perms.reports.view_report %}
-          <a href="{% url 'backoffice:reports:definition_list' %}" class="sidebar-link">
+          <a href="{% url 'backoffice:reports:definition_list' %}"
+             class="sidebar-link {% if request.resolver_match.url_name == 'definition_list' %}active{% endif %}">
             <i class="bi bi-graph-up"></i> Reportes
           </a>
           {% endif %}
-
+<!--
           {% if perms.auth.view_group %}
           <a href="#" class="sidebar-link">
             <i class="bi bi-shield-check"></i> Seguridad
           </a>
           {% endif %}
+-->
         </div>
 
         <!-- Grupo: Respaldos y Configuración -->
         <div class="mt-auto">
           <hr>
+<!--
           {% if perms.database.view_backup %}
           <a href="#" class="sidebar-link">
             <i class="bi bi-database"></i> Respaldos
           </a>
           {% endif %}
-
+-->
           <a href="{% url 'backoffice:configuraciones' %}"
              class="sidebar-link {% if request.resolver_match.url_name == 'configuraciones' %}active{% endif %}">
             <i class="bi bi-gear"></i> Configuración
