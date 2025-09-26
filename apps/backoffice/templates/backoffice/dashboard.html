@@ -137,61 +137,87 @@
         </div>
     </div>
 
-    <!-- Gráficos y reportes -->
-    <div class="row mb-4">
-        <!-- Gráfico de movimientos -->
-        <div class="col-lg-8 mb-4">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">Movimientos de Inventario - Últimos 7 días</h6>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-three-dots"></i>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#">Ver reporte completo</a></li>
-                            <li><a class="dropdown-item" href="#">Exportar datos</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="card-body" style="min-height: 320px;">
-                    <!-- canvas con alto controlado para evitar estiramiento infinito -->
-                    <canvas id="movimientosChart" style="width:100%; height:300px; max-height:300px;"></canvas>
-                </div>
-            </div>
-        </div>
 
-        <!-- Top productos -->
-        <div class="col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold text-primary">Productos Más Vendidos</h6>
-                </div>
-                <div class="card-body" style="max-height: 330px; overflow-y: auto;">
-                    {% if top_products %}
-                      {% for p in top_products %}
-                        <div class="mb-3 pb-3 border-bottom d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="fw-bold">{{ p.name }}</div>
-                                <small class="text-muted">SKU: {{ p.sku }}</small>
-                            </div>
-                            <span class="badge bg-success">{{ p.qty }} vendidos</span>
-                        </div>
-                      {% endfor %}
-                    {% else %}
-                      <div class="text-center text-muted py-4">
-                          <i class="bi bi-bar-chart display-6 d-block mb-2 text-primary"></i>
-                          <p class="mb-0 fw-semibold">No hay ventas recientes</p>
-                      </div>
-                    {% endif %}
-                    <div class="text-center mt-2">
-                        <a href="#" class="btn btn-sm btn-outline-primary">Ver todos los reportes <i class="bi bi-arrow-right"></i></a>
-                    </div>
-                </div>
-            </div>
+
+    <div class="row mb-4">
+<!--
+      <div class="col-12 mb-3">
+        <form method="get" class="d-flex flex-wrap align-items-end gap-3">
+
+          <div>
+            <label for="week" class="form-label mb-1">Seleccionar semana</label>
+            <input type="week" id="week" name="week" class="form-control"
+                   value="{{ request.GET.week|default:'' }}">
+          </div>
+
+
+          <div>
+            <label for="day" class="form-label mb-1">Seleccionar día</label>
+            <input type="date" id="day" name="day" class="form-control"
+                   value="{{ request.GET.day|default:'' }}">
+          </div>
+
+
+          <div>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-funnel"></i> Aplicar
+            </button>
+            {% if request.GET.week or request.GET.day %}
+              <a href="{% url 'backoffice:dashboard' %}" class="btn btn-outline-secondary">
+                Limpiar
+              </a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+-->
+
+      <!-- Gráfico de movimientos -->
+      <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+              Movimientos de Inventario
+            </h6>
+          </div>
+          <div class="card-body" style="min-height: 320px;">
+            <canvas id="movimientosChart" style="width:100%; height:300px; max-height:300px;"></canvas>
+          </div>
         </div>
+      </div>
+
+      <!-- Top productos -->
+      <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+          <div class="card-header">
+            <h6 class="m-0 font-weight-bold text-primary">Productos Más Vendidos</h6>
+          </div>
+          <div class="card-body" style="max-height: 330px; overflow-y: auto;">
+            {% if top_products %}
+              {% for p in top_products %}
+                <div class="mb-3 pb-3 border-bottom d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="fw-bold">{{ p.name }}</div>
+                    <small class="text-muted">SKU: {{ p.sku }}</small>
+                  </div>
+                  <span class="badge bg-success">{{ p.qty }} vendidos</span>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="text-center text-muted py-4">
+                <i class="bi bi-bar-chart display-6 d-block mb-2 text-primary"></i>
+                <p class="mb-0 fw-semibold">No hay ventas</p>
+              </div>
+            {% endif %}
+            <div class="text-center mt-2">
+              <a href="{% url 'backoffice:billing:invoice_list' %}" class="btn btn-sm btn-outline-primary">Ver todas las ventas <i class="bi bi-arrow-right"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
 
     <!-- Alertas y Notificaciones -->
     <div class="row mb-4">
@@ -341,14 +367,11 @@
                             </a>
                         </div>
                         <div class="col-md-3 col-sm-6 mb-3">
-                            <!-- Botón Nueva reserva: color actualizado inline -->
-                            <a href="{% url 'backoffice:billing:reservation_create' %}" class="btn w-100 p-3"
-                               style="color:#6f42c1; border:1px solid #6f42c1; background-color:transparent;"
-                               onmouseover="this.style.backgroundColor='#6f42c1'; this.style.color='#fff';"
-                               onmouseout="this.style.backgroundColor='transparent'; this.style.color='#6f42c1';">
-                                <i class="bi bi-card-list d-block mb-2" style="font-size: 2rem;"></i>
-                                Nueva reserva
-                            </a>
+                          <a href="{% url 'backoffice:billing:reservation_create' %}"
+                             class="btn btn-outline-info w-100 p-3">
+                            <i class="bi bi-card-list d-block mb-2" style="font-size: 2rem;"></i>
+                            Nueva reserva
+                          </a>
                         </div>
                     </div>
                 </div>

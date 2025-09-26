@@ -1,7 +1,7 @@
 # apps/backoffice/views.py
 import json
-from datetime import datetime, timedelta
-from django.db.models import Q
+from datetime import datetime, timedelta, time as dt_time
+from django.db.models import Q, F, Sum
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, permission_required
@@ -9,12 +9,8 @@ from django_ratelimit.decorators import ratelimit
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.models import Permission
-from django.db.models import F
-from django.db.models import Sum
 from django.db.models.functions import TruncDate
-from django.shortcuts import render
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models.functions import TruncDate
 
 from apps.categories.models import Category, AbsoluteCategory
 from apps.products.models import Product, InventoryMovement
@@ -32,12 +28,11 @@ def dashboard(request):
     # --- Productos e inventario
     products = Product.objects.all()
     total_products = products.count()
-    inventory_value = sum(p.stock * p.price for p in products)
+    inventory_value = sum((getattr(p, "stock", 0) or 0) * (getattr(p, "price", 0) or 0) for p in products)
+    low_stock_qs = [p for p in products if 0 < (getattr(p, "stock", 0) or 0) <= (getattr(p, "min_stock", 0) or 0)]
+    no_stock_qs = [p for p in products if (getattr(p, "stock", 0) or 0) == 0]
 
-    low_stock_qs = [p for p in products if 0 < p.stock <= p.min_stock]
-    no_stock_qs = [p for p in products if p.stock == 0]
-
-    # --- Auditoría
+    # --- Auditoría (igual que antes)
     qs = AuditLog.objects.filter(user__isnull=False)
     if user.is_superuser:
         recent_activity = qs.order_by("-created_at")[:10]
@@ -52,23 +47,43 @@ def dashboard(request):
             except ValueError:
                 continue
         recent_activity = (
-            qs.filter(
-                action__in=["create", "update", "delete"],
-                model__in=allowed_models
-            )
+            qs.filter(action__in=["create", "update", "delete"], model__in=allowed_models)
             .order_by("-created_at")[:10]
         )
 
-    # --- Fechas: últimos 7 días
+    # =============================
+    # Manejo de fechas dinámico
+    # =============================
     today = timezone.localdate()
-    date_from = today - timedelta(days=6)
-    date_to = today
+    tz = timezone.get_current_timezone()
 
-    # --- Movimientos inventario (solo in/out)
+    # --- semana por defecto = semana actual
+    iso_year, iso_week, _ = today.isocalendar()
+
+    week_param = request.GET.get("week")
+    if week_param:
+        # El input type="week" devuelve algo como "2025-W39"
+        try:
+            year_str, week_str = week_param.split("-W")
+            year, week = int(year_str), int(week_str)
+        except ValueError:
+            year, week = iso_year, iso_week
+    else:
+        year, week = iso_year, iso_week
+
+    # Calcular fecha inicial y final de la semana seleccionada
+    # ISO: lunes=1, domingo=7
+    first_day = datetime.fromisocalendar(year, week, 1).date()
+    last_day = datetime.fromisocalendar(year, week, 7).date()
+    date_from, date_to = first_day, last_day
+
+    # Rango datetime aware
+    start_dt = timezone.make_aware(datetime.combine(date_from, dt_time.min), tz)
+    end_dt = timezone.make_aware(datetime.combine(date_to, dt_time.max), tz)
+
+    # --- Movimientos inventario en la semana seleccionada
     movements_qs = (
-        InventoryMovement.objects.filter(
-            created_at__date__range=(date_from, date_to)
-        )
+        InventoryMovement.objects.filter(created_at__range=(start_dt, end_dt))
         .exclude(movement_type="reserve")
         .annotate(day=TruncDate("created_at"))
         .values("day", "movement_type")
@@ -78,15 +93,17 @@ def dashboard(request):
     mov_map = {}
     for m in movements_qs:
         d = m["day"]
-        t = m["movement_type"]
-        q = m["total_qty"] or 0
-        mov_map.setdefault(d, {})[t] = int(q)
+        if not d:
+            continue
+        d_key = d.isoformat()
+        mov_map.setdefault(d_key, {})[m["movement_type"]] = int(m["total_qty"] or 0)
 
     labels, entries, exits = [], [], []
     cur = date_from
     while cur <= date_to:
-        labels.append(cur.strftime("%Y-%m-%d"))
-        day_map = mov_map.get(cur, {})
+        key = cur.isoformat()
+        labels.append(key)
+        day_map = mov_map.get(key, {})
         entries.append(day_map.get("in", 0))
         exits.append(day_map.get("out", 0))
         cur += timedelta(days=1)
@@ -94,46 +111,56 @@ def dashboard(request):
     total_entries = sum(entries)
     total_exits = sum(exits)
 
-    # --- Top productos vendidos (facturas completadas)
+    # =============================
+    # Top productos vendidos
+    # =============================
+    day_param = request.GET.get("day")
+
+    top_qs = InvoiceItem.objects.filter(invoice__status="completed")
+
+    if day_param:
+        # filtro por día específico
+        try:
+            d = datetime.strptime(day_param, "%Y-%m-%d").date()
+            d_start = timezone.make_aware(datetime.combine(d, dt_time.min), tz)
+            d_end = timezone.make_aware(datetime.combine(d, dt_time.max), tz)
+            top_qs = top_qs.filter(invoice__created_at__range=(d_start, d_end))
+        except ValueError:
+            pass
+    elif week_param:
+        # filtro por la semana seleccionada
+        top_qs = top_qs.filter(invoice__created_at__range=(start_dt, end_dt))
+    else:
+        # sin filtro = todos los tiempos
+        pass
+
     top_qs = (
-        InvoiceItem.objects.filter(
-            invoice__status="completed",
-            invoice__created_at__date__range=(date_from, date_to)
-        )
-        .values(
-            "product_id",
-            "product__name",
-            "product__sku",
-            "variant__color",
-            "variant__size"
-        )
+        top_qs.values("product_id", "product__name", "product__sku", "variant__color", "variant__size")
         .annotate(total_qty=Sum("quantity"))
         .order_by("-total_qty")[:10]
     )
 
     top_products = []
     for t in top_qs:
-        name = t["product__name"] or "Sin nombre"
-        # Añadimos color/talla si existen
-        if t.get("variant__color") or t.get("variant__size"):
-            extras = []
-            if t.get("variant__color"):
-                extras.append(t["variant__color"])
-            if t.get("variant__size"):
-                extras.append(t["variant__size"])
+        name = t.get("product__name") or "Sin nombre"
+        extras = []
+        if t.get("variant__color"):
+            extras.append(t["variant__color"])
+        if t.get("variant__size"):
+            extras.append(t["variant__size"])
+        if extras:
             name = f"{name} ({', '.join(extras)})"
-
         top_products.append({
             "product_id": t["product_id"],
             "name": name,
             "sku": t.get("product__sku") or "N/A",
-            "qty": int(t["total_qty"] or 0),
+            "qty": int(t.get("total_qty") or 0),
         })
 
-    # --- Contexto final
+    # --- Contexto
     context = {
-        "last_login": user.last_access,
-        "current_login": user.current_login,
+        "last_login": getattr(user, "last_access", None),
+        "current_login": getattr(user, "current_login", None),
         "stats": {
             "products_count": total_products,
             "inventory_value": inventory_value,
@@ -150,12 +177,8 @@ def dashboard(request):
         "total_entries": total_entries,
         "total_exits": total_exits,
         "top_products": top_products,
-        "top_products_labels_json": json.dumps(
-            [p["name"] for p in top_products], cls=DjangoJSONEncoder
-        ),
-        "top_products_qty_json": json.dumps(
-            [p["qty"] for p in top_products], cls=DjangoJSONEncoder
-        ),
+        "top_products_labels_json": json.dumps([p["name"] for p in top_products], cls=DjangoJSONEncoder),
+        "top_products_qty_json": json.dumps([p["qty"] for p in top_products], cls=DjangoJSONEncoder),
     }
 
     return render(request, "backoffice/dashboard.html", context)
