@@ -1,0 +1,9 @@
+# .gitignore
+
+# Entorno
+.env
+**/local_settings.py
+
+# Archivos locales que no deben ir al repo
+melosport_backup.dump
+Correr.txt

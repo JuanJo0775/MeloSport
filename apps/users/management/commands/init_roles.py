@@ -1,3 +1,4 @@
+#apps/users/management/commands/init_roles.py
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth import get_user_model
@@ -49,10 +50,10 @@ class Command(BaseCommand):
         # --- Superusuario por defecto ---
         if not User.objects.filter(username="admin").exists():
             User.objects.create_superuser(
-                "admin", "admin@melosport.com", "Bocato0731@"
+                "admin", "admin@melosport.com", "melosport@admin1010"
             )
             self.stdout.write(
-                self.style.SUCCESS("✅ Superusuario creado: admin / Bocato0731@")
+                self.style.SUCCESS("✅ Superusuario creado: admin / melosport@admin1010")
             )
 
         self.stdout.write(

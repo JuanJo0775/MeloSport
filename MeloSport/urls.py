@@ -20,11 +20,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls import handler404, handler500, handler403, handler400
 from django.shortcuts import render
+from django.views.generic.base import RedirectView
+from apps.backoffice.views import error_404_view, error_500_view, error_403_view, error_401_view
 
 admin.site.site_header = "Administración de MeloSport"
 admin.site.site_title = "MeloSport Admin"
 admin.site.index_title = "Bienvenido al Panel de Administración"
 urlpatterns = [
+    path('', RedirectView.as_view(url='/backoffice/login/', permanent=False), name='root_redirect'),
     path('admin/', admin.site.urls),
     path('api/', include('apps.api.urls')),
     path('backoffice/', include(('apps.backoffice.urls', 'backoffice'), namespace='backoffice')),
@@ -33,17 +36,7 @@ urlpatterns = [
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
-def error_404_view(request, exception):
-    return render(request, 'errors/404.html', status=404)
 
-def error_500_view(request):
-    return render(request, 'errors/500.html', status=500)
-
-def error_403_view(request, exception):
-    return render(request, 'errors/403.html', status=403)
-
-def error_401_view(request, exception):
-    return render(request, 'errors/401.html', status=400)
 
 handler404 = error_404_view
 handler500 = error_500_view
