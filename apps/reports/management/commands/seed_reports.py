@@ -1,10 +1,17 @@
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 from apps.reports.models import ReportDefinition
 
 class Command(BaseCommand):
     help = "Crea definiciones iniciales de reportes (8 básicos)."
 
     def handle(self, *args, **options):
+        today = timezone.localdate()
+        current_month = today.strftime("%Y-%m")       # yyyy-mm
+        first_day = today.replace(day=1).strftime("%Y-%m-%d")
+        last_day = today.replace(day=28).strftime("%Y-%m-%d")  # seguro hasta el 28
+        # ⚠️ tip: si quieres último día real del mes usa calendar.monthrange
+
         definitions = [
             {
                 "name": "Reporte Diario",
@@ -12,7 +19,7 @@ class Command(BaseCommand):
                 "description": "Rendimiento de un día específico.",
                 "report_type": "daily",
                 "export_formats": ["xlsx", "csv", "pdf"],
-                "default_parameters": {"date": "2025-09-12"},
+                "default_parameters": {"date": today.strftime("%Y-%m-%d")},
             },
             {
                 "name": "Reporte Mensual",
@@ -20,7 +27,7 @@ class Command(BaseCommand):
                 "description": "Tendencias, ingresos, top productos, reservas.",
                 "report_type": "monthly",
                 "export_formats": ["xlsx", "csv", "pdf"],
-                "default_parameters": {"month": "2025-09"},
+                "default_parameters": {"month": current_month},
             },
             {
                 "name": "Reporte de Inventario",
@@ -28,13 +35,13 @@ class Command(BaseCommand):
                 "description": "Stock actual, reservado, valor total y alertas.",
                 "report_type": "inventory",
                 "export_formats": ["xlsx", "csv", "pdf"],
-                "default_parameters": {"min_stock": 0},
+                "default_parameters": {"min_stock": 5},
             },
             {
                 "name": "Reporte de Productos",
                 "slug": "reporte-productos",
                 "description": "Más vendidos, menos vendidos, sin rotación.",
-                "report_type": "top_products",  # usa el handler top_products
+                "report_type": "top_products",
                 "export_formats": ["xlsx", "csv", "pdf"],
                 "default_parameters": {"limit": 20},
             },
@@ -44,7 +51,7 @@ class Command(BaseCommand):
                 "description": "Ventas y distribución de ingresos por categoría.",
                 "report_type": "categories",
                 "export_formats": ["xlsx", "csv", "pdf"],
-                "default_parameters": {"date_from": "2025-09-01", "date_to": "2025-09-30"},
+                "default_parameters": {"date_from": first_day, "date_to": last_day},
             },
             {
                 "name": "Reporte de Ventas",
@@ -52,7 +59,7 @@ class Command(BaseCommand):
                 "description": "Listado detallado de ventas, descuentos, métodos de pago.",
                 "report_type": "sales",
                 "export_formats": ["xlsx", "csv", "pdf"],
-                "default_parameters": {"date_from": "2025-09-01", "date_to": "2025-09-30"},
+                "default_parameters": {"date_from": first_day, "date_to": last_day},
             },
             {
                 "name": "Reporte de Reservas",
@@ -60,7 +67,7 @@ class Command(BaseCommand):
                 "description": "Activas, completadas, canceladas, vencidas, impacto en inventario.",
                 "report_type": "reservations",
                 "export_formats": ["xlsx", "csv", "pdf"],
-                "default_parameters": {"date_from": "2025-09-01", "date_to": "2025-09-30"},
+                "default_parameters": {"date_from": first_day, "date_to": last_day},
             },
             {
                 "name": "Reporte de Auditoría",
@@ -68,7 +75,7 @@ class Command(BaseCommand):
                 "description": "Acciones de usuarios, cambios realizados, transparencia.",
                 "report_type": "audit",
                 "export_formats": ["xlsx", "csv", "pdf"],
-                "default_parameters": {"date_from": "2025-09-01", "date_to": "2025-09-30"},
+                "default_parameters": {"date_from": first_day, "date_to": last_day},
             },
         ]
 

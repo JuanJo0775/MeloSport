@@ -28,7 +28,8 @@ USE_TZ = True
 USE_L10N = True
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-key-dev")
-DEBUG = os.getenv("DEBUG", "True") == "True"
+#poner en true en produccion
+DEBUG = os.getenv("DEBUG", "False") == "False"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
 STATIC_URL = '/static/'
