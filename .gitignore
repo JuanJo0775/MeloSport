@@ -1,9 +1,42 @@
 # .gitignore
 
+# ====================
 # Entorno
+# ====================
 .env
 **/local_settings.py
+.venv/
+env/
+venv/
 
-# Archivos locales que no deben ir al repo
+# ====================
+# Archivos locales
+# ====================
 melosport_backup.dump
 Correr.txt
+
+# ====================
+# Python
+# ====================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# ====================
+# Base de datos local
+# ====================
+db.sqlite3
+
+# ====================
+# Reportes generados
+# ====================
+/media/generated_reports/
+
+# ====================
+# IDEs y editores
+# ====================
+.idea/
+.vscode/
+*.iml
