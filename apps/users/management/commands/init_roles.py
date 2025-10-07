@@ -50,10 +50,10 @@ class Command(BaseCommand):
         # --- Superusuario por defecto ---
         if not User.objects.filter(username="admin").exists():
             User.objects.create_superuser(
-                "admin", "admin@melosport.com", "melosport@admin1010"
+                "admin", "melosport4@gmail.com", "DimeSport2025$"
             )
             self.stdout.write(
-                self.style.SUCCESS("✅ Superusuario creado: admin / melosport@admin1010")
+                self.style.SUCCESS("✅ Superusuario creado: admin / DimeSport2025$")
             )
 
         self.stdout.write(

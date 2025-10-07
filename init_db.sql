@@ -1,4 +1,4 @@
--- Crear usuario (si no existe)
+-- Crear usuario si no existe
 DO
 $$
 BEGIN
@@ -10,7 +10,7 @@ BEGIN
 END
 $$;
 
--- Crear base de datos (si no existe) y asignar propietario
+-- Crear base de datos si no existe y asignar propietario
 DO
 $$
 BEGIN
@@ -23,20 +23,9 @@ BEGIN
 END
 $$;
 
--- Conectarse a la base de datos melosport_app y activar extensiones
+-- Conectarse a la base de datos
 \c melosport_app
-CREATE EXTENSION IF NOT EXISTS unaccent;
-CREATE EXTENSION IF NOT EXISTS citext;
 
-
-
--- Crear usuario
-CREATE ROLE melosport_user LOGIN PASSWORD 'melosport@admin1010';
-
--- Crear base de datos y asignar propietario
-CREATE DATABASE melosport_app OWNER melosport_user;
-
--- Conectarse a la base de datos (hazlo en el Query Tool seleccionando melosport_app)
--- y luego ejecuta estas dos sentencias:
+-- Activar extensiones necesarias
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS citext;
