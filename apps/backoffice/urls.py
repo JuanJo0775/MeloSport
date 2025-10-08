@@ -30,8 +30,9 @@ urlpatterns = [
         auth_views.PasswordResetView.as_view(
             template_name="login/password_reset.html",
             form_class=BackofficePasswordResetForm,
-            email_template_name="login/password_reset_email.txt",  # <- archivo que creamos
-            subject_template_name="login/password_reset_subject.txt",  # <- opcional
+            email_template_name="login/password_reset_email.txt",
+            html_email_template_name="login/password_reset_email.html",
+            subject_template_name="login/password_reset_subject.txt",
             success_url="/backoffice/password_reset/done/",
         ),
         name="password_reset"
