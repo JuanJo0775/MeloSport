@@ -66,7 +66,7 @@ class ReportService:
         # Logo en Excel
         try:
             from django.conf import settings
-            logo_path = os.path.join(settings.BASE_DIR, "static", "img", "Logo sin fondo azul.png")
+            logo_path = os.path.join(settings.BASE_DIR, "static", "img", "Logo_sin_fondo_azul.png")
             if os.path.exists(logo_path):
                 img = XLImage(logo_path)
                 img.width, img.height = 150, 50
@@ -134,7 +134,7 @@ class ReportService:
         try:
             from django.conf import settings
             import os
-            logo_path = os.path.join(settings.BASE_DIR, "static", "img", "Logo sin fondo azul.png")
+            logo_path = os.path.join(settings.BASE_DIR, "static", "img", "Logo_sin_fondo_azul.png")
             if os.path.exists(logo_path):
                 img = Image(logo_path, width=120, height=40)
                 story.append(img)
