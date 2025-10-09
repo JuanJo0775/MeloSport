@@ -47,7 +47,7 @@ AUTHENTICATION_BACKENDS = [
 
 SESSION_COOKIE_AGE = 3600  # 1 hora
 SESSION_SAVE_EVERY_REQUEST = True
-PASSWORD_RESET_TIMEOUT = 3600  # 1 hora
+PASSWORD_RESET_TIMEOUT = 1800  # 30 minutos
 
 # ================================
 # Apps instaladas
