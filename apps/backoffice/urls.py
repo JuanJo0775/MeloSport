@@ -1,18 +1,18 @@
 from django.urls import path, include
-from MeloSport import settings
-from . import views
+from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
 
-# 👇 Importar formularios custom del backoffice
-from apps.backoffice.forms import (
-    BackofficePasswordChangeForm,
-    BackofficePasswordResetForm,
-    BackofficeSetPasswordForm,
+from . import views
+from .views_auth import (
+    BackofficePasswordChangeView,
+    BackofficePasswordChangeDoneView,
+    BackofficePasswordResetView,
+    BackofficePasswordResetDoneView,
+    BackofficePasswordResetConfirmView,
+    BackofficePasswordResetCompleteView,
 )
 
-# 👇 Namespace para evitar conflictos de nombres
 app_name = "backoffice"
 
 urlpatterns = [
@@ -25,66 +25,27 @@ urlpatterns = [
     # ==========================
     # Reset de contraseña
     # ==========================
-    path(
-        "password_reset/",
-        auth_views.PasswordResetView.as_view(
-            template_name="login/password_reset.html",
-            form_class=BackofficePasswordResetForm,
-            email_template_name="login/password_reset_email.txt",
-            html_email_template_name="login/password_reset_email.html",
-            subject_template_name="login/password_reset_subject.txt",
-            success_url="/backoffice/password_reset/done/",
-        ),
-        name="password_reset"
-    ),
-    path(
-        "password_reset/done/",
-        auth_views.PasswordResetDoneView.as_view(
-            template_name="login/password_reset_done.html"
-        ),
-        name="password_reset_done"
-    ),
-    path(
-        "reset/<uidb64>/<token>/",
-        auth_views.PasswordResetConfirmView.as_view(
-            template_name="login/password_reset_confirm.html",
-            form_class=BackofficeSetPasswordForm
-        ),
-        name="password_reset_confirm"
-    ),
-    path(
-        "reset/done/",
-        auth_views.PasswordResetCompleteView.as_view(
-            template_name="login/password_reset_complete.html"
-        ),
-        name="password_reset_complete"
-    ),
+    path("password_reset/", BackofficePasswordResetView.as_view(), name="password_reset"),
+    path("password_reset/done/", BackofficePasswordResetDoneView.as_view(), name="password_reset_done"),
+    path("reset/<uidb64>/<token>/", BackofficePasswordResetConfirmView.as_view(), name="password_reset_confirm"),
+    path("reset/done/", BackofficePasswordResetCompleteView.as_view(), name="password_reset_complete"),
 
     # ==========================
-    # Logout (redirige al login)
+    # Cambiar contraseña
+    # ==========================
+    path("cambiar-password/", BackofficePasswordChangeView.as_view(), name="cambiar_password"),
+    path("cambiar-password/done/", BackofficePasswordChangeDoneView.as_view(), name="password_change_done"),
+
+    # ==========================
+    # Logout
     # ==========================
     path("logout/", LogoutView.as_view(next_page="backoffice:login"), name="logout"),
 
     # ==========================
-    # Perfil y configuraciones
+    # Perfil
     # ==========================
     path("perfil/", views.perfil_view, name="perfil"),
     path("configuraciones/", views.configuraciones_view, name="configuraciones"),
-    path(
-        "cambiar-password/",
-        auth_views.PasswordChangeView.as_view(
-            template_name="perfil/cambiar_password.html",
-            form_class=BackofficePasswordChangeForm
-        ),
-        name="cambiar_password"
-    ),
-    path(
-        "cambiar-password/done/",
-        auth_views.PasswordChangeDoneView.as_view(
-            template_name="perfil/cambiar_password_done.html"
-        ),
-        name="password_change_done"
-    ),
 
     # ==========================
     # Apps internas
@@ -98,7 +59,7 @@ urlpatterns = [
     path("billing/", include(("apps.billing.urls", "billing"), namespace="billing")),
 
     # ==========================
-    # Rutas dummy (temporal)
+    # Rutas dummy
     # ==========================
     path("inventario/subir/", views.placeholder_view, name="inventory-upload"),
     path("reportes/lista/", views.placeholder_view, name="report-list"),

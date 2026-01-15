@@ -51,9 +51,9 @@ cuenta hostinger
 
 user: admin
 correo: melosport4@gmail.com
-contraseña: DimeSport2025$
+contraseña: DimeSport$
 
-"admin", "melosport4@gmail.com", "DimeSport2025$"
+"admin", "melosport4@gmail.com", "DimeSport$"
 
 correo melo
 
@@ -65,53 +65,3 @@ Correo notificaciones
 user: notificaciones.melosport@gmail.com
 
 ---------------------------------------------------------------------------------------------------------------
-env:
-
-# ================================
-# ⚙️ CONFIGURACIÓN GENERAL
-# ================================
-SECRET_KEY=@^!demd$=gli25q7rq7adv--aom(bx@#5(eiqb-5)!%5kpt897
-DEBUG=False
-ALLOWED_HOSTS=melosport.onrender.com,localhost,127.0.0.1
-
-# Render usa HTTPS proxy, así que Django debe confiar en él
-CSRF_TRUSTED_ORIGINS=https://melosport.onrender.com,https://www.melosport.onrender.com
-
-# ================================
-# 🗄️ CONFIGURACIÓN BASE DE DATOS (Render PostgreSQL)
-# ================================
-DB_NAME=melosport_app
-DB_USER=melosport_user
-DB_PASSWORD=tIxEhyOnOAOvgWLKmuzC4iMLvE8dYyvO
-DB_HOST=dpg-d3ju7kffte5s73bt6ji0-a.oregon-postgres.render.com
-DB_PORT=5432
-
-# Si prefieres que Django lo detecte automáticamente:
-DATABASE_URL=postgresql://melosport_user:tIxEhyOnOAOvgWLKmuzC4iMLvE8dYyvO@dpg-d3ju7kffte5s73bt6ji0-a.oregon-postgres.render.com/melosport_app
-
-# ================================
-# 🌐 CONFIGURACIÓN CORS / FRONTEND
-# ================================
-CORS_ALLOW_ALL_ORIGINS=False
-CORS_ALLOWED_ORIGINS=https://melosport-frontend.onrender.com,https://melosport.onrender.com,http://localhost:8000,http://127.0.0.1:8000
-
-# ================================
-# 📧 CONFIGURACIÓN DE CORREO (SMTP)
-# ================================
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=melosport.notificaciones@gmail.com
-EMAIL_HOST_PASSWORD=pjvduvujgrazuomc
-DEFAULT_FROM_EMAIL="Melosport Notificaciones <melosport.notificaciones@gmail.com>"
-
-
-
-
-EMAIL_HOST=smtp.hostinger.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=Admin@melosport.club
-EMAIL_HOST_PASSWORD=MeloSport@1010
-DEFAULT_FROM_EMAIL=Admin@melosport.club

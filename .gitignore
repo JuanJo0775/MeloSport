@@ -3,7 +3,8 @@
 # ====================
 # Entorno
 # ====================
-.env
+.env.local
+.env.prod
 **/local_settings.py
 .venv/
 env/
