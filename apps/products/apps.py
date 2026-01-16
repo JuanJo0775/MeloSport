@@ -1,11 +1,16 @@
 from django.apps import AppConfig
-from django.db.models import CharField, TextField, Lookup
+from django.db.models import CharField, TextField
 from django.db.models.lookups import IContains
 
 
 class ProductsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.products'
+
+    def ready(self):
+        # Registrar señales (limpieza de imágenes, etc.)
+        import apps.products.signals
+
 
 @CharField.register_lookup
 @TextField.register_lookup

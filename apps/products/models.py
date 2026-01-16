@@ -8,7 +8,7 @@ from apps.categories.models import Category
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
-
+from .image_optimizer import optimize_product_image
 
 class Product(models.Model):
     PRODUCT_STATUS = [
@@ -325,10 +325,17 @@ class ProductVariant(models.Model):
 
 
 class ProductImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    product = models.ForeignKey(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='images'
+    )
     image = models.ImageField(upload_to='products/')
     is_main = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
+
+    # 🔒 Marca interna para evitar reprocesar
+    optimized = models.BooleanField(default=False, editable=False)
 
     class Meta:
         verbose_name = "Imagen de Producto"
@@ -337,16 +344,45 @@ class ProductImage(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.product_id:
-            raise ValueError("La imagen debe estar asociada a un producto existente")
+            raise ValidationError("La imagen debe estar asociada a un producto existente")
+
+        old_image = None
+        if self.pk:
+            try:
+                old_image = ProductImage.objects.get(pk=self.pk).image
+            except ProductImage.DoesNotExist:
+                pass
+
+        # Detectar imagen nueva o reemplazada
+        image_changed = (
+            self.image
+            and (
+                not old_image
+                or old_image.name != self.image.name
+            )
+        )
+
+        # Optimizar SOLO si cambió y aún no está optimizada
+        if image_changed and not self.optimized:
+            optimized_file = optimize_product_image(self.image)
+            self.image = optimized_file
+            self.optimized = True
+
         super().save(*args, **kwargs)
 
+        # Limpieza segura del archivo antiguo (solo si hubo reemplazo)
+        if image_changed and old_image:
+            try:
+                old_image.delete(save=False)
+            except Exception:
+                pass
 
 class InventoryMovement(models.Model):
     MOVEMENT_TYPES = [
         ('in', 'Entrada'),
         ('out', 'Salida'),
         ('adjust', 'Ajuste'),
-        ('reserve', 'Reserva'),  # 👈 Nuevo tipo
+        ('reserve', 'Reserva'),
     ]
 
     # Relaciones
